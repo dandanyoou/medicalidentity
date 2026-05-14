@@ -1,0 +1,14 @@
+# Accidental nested git repo (separate clone, ignore)
+medicalidentity/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# OS
+.DS_Store
+
+# Env
+.env
+.env.local
