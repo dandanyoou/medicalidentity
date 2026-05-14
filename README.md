@@ -1,5 +1,46 @@
 # DID 기반 응급 의료 신원 인증 시스템
 
+> 48시간 Open DID 해커톤 데모. **SD-JWT VC + 한국 mDL Reference Issuer + 정적 DDI 룩업**으로 30초 안에 "선택적 공개"의 인간 가치를 시연.
+
+## 데모 실행
+
+```bash
+npm install
+npm run dev        # → http://localhost:5173/wallet
+npm test           # 6개 vitest 케이스
+npm run build      # 프로덕션 빌드 (Vercel/Netlify 정적 배포 가능)
+```
+
+두 탭으로 시연:
+- `/wallet` — 환자 모바일 지갑 (mDL · 혈액형 · 알레르기 VC 3개, 응급 모드 토글 → QR + 클립보드 자동 복사)
+- `/doctor` — 의사 화면 (QR 스캔 또는 페이스트 → SD-JWT VP 검증 → 마스킹된 클레임 + DUR 충돌 경고)
+
+## 30초 데모 시나리오
+
+1. **0-10초** — wallet 진입, mDL "🇰🇷 Korean mDL Reference Issuer (Demo)" 배지 노출 (한국 특화 angle).
+2. **10-20초** — 응급 모드 ON → QR 생성 → doctor에서 스캔/페이스트 → 혈액형 A+, 페니실린 알레르기만 표시. 이름·주민번호·주소는 ●●● 마스킹.
+3. **20-28초** — 의사 "Amoxicillin" 선택 → 빨간 충돌 경고 (페니실린 알레르기). 미등록 약물(Vancomycin 등)은 회색 "수동 확인" 배지.
+4. **28-30초** — "환자가 의식 없으면?" 슬라이드 1장 (역방향 호출 아키텍처는 슬라이드만, 본 코드 범위 밖).
+
+## 문서
+
+- [`docs/design.md`](docs/design.md) — /office-hours + /plan-eng-review 통합 설계 문서
+- [`docs/test-plan.md`](docs/test-plan.md) — QA 테스트 계획
+- [`TODOS.md`](TODOS.md) — 데모 후 승격 후보 (NFC/BLE 역방향 호출)
+
+## 기술 스택
+
+- Vite + React + TypeScript + React Router + Tailwind
+- SD-JWT-like wrapper 자체 구현 (`src/lib/sdjwt.ts`) on `@noble/curves/ed25519` + `@noble/hashes`. 프로덕션은 `@sd-jwt/sd-jwt-vc` 권장.
+- QR: `qrcode` (생성) + `html5-qrcode` (스캔, paste fallback 항상 노출)
+- DUR: 한국 DUR 참고 정적 룩업 (5종 알레르기 × 10종 응급 약물)
+
+## 보안 주의
+
+본 코드의 모든 issuer/holder 키는 `src/data/issuer-keys.ts`에 hardcode된 데모 키입니다. 프로덕션 사용 금지. 한국 mDL/행안부 키 인프라와 무관한 reference implementation입니다.
+
+---
+
 ## 아이디어 개요
 
 모바일 신분증과 DID(Decentralized Identity), 블록체인 기술을 활용하여 응급 상황에서 필요한 의료 정보를 빠르게 확인하고, 동시에 마약성 의약품 오남용 및 불법 처방을 방지하는 의료 인증 플랫폼.

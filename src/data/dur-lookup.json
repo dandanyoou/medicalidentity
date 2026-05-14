@@ -1,0 +1,17 @@
+{
+  "penicillin": [
+    "Amoxicillin",
+    "Ampicillin",
+    "Piperacillin",
+    "Penicillin G",
+    "Penicillin V"
+  ],
+  "sulfa": [
+    "Sulfamethoxazole",
+    "Trimethoprim-Sulfamethoxazole",
+    "Sulfadiazine"
+  ],
+  "nsaid": ["Ibuprofen", "Naproxen", "Ketorolac"],
+  "aspirin": ["Aspirin", "Acetylsalicylic Acid"],
+  "iodine_contrast": ["Iohexol", "Iodixanol"]
+}
