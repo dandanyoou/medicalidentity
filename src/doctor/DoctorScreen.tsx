@@ -8,14 +8,14 @@ import { DDICheck } from "./DDICheck";
 interface PresentationBundle {
   blood: string;
   allergy: string;
-  mDL: string;
+  mDL?: string; // optional — dropped from QR path to fit ~2,953-byte limit
   nonce: string;
 }
 
 interface VerifiedBundle {
   blood: VerifyResult;
   allergy: VerifyResult;
-  mDL: VerifyResult;
+  mDL: VerifyResult | null;
   mDLTrusted: boolean;
 }
 
@@ -48,17 +48,19 @@ export function DoctorScreen() {
         expectedAudience: DEMO_AUDIENCE,
         expectedNonce: parsed.nonce,
       });
-      const mDL = verifyVP({
-        vp: parsed.mDL,
-        trustAnchors: TRUST_ANCHORS,
-        expectedAudience: DEMO_AUDIENCE,
-        expectedNonce: parsed.nonce,
-      });
+      const mDL = parsed.mDL
+        ? verifyVP({
+            vp: parsed.mDL,
+            trustAnchors: TRUST_ANCHORS,
+            expectedAudience: DEMO_AUDIENCE,
+            expectedNonce: parsed.nonce,
+          })
+        : null;
       setBundle({
         blood,
         allergy,
         mDL,
-        mDLTrusted: mDL.issuer === MDL_ISSUER.did,
+        mDLTrusted: mDL?.issuer === MDL_ISSUER.did,
       });
     } catch (e) {
       if (e instanceof VerifyError) {
@@ -140,7 +142,7 @@ export function DoctorScreen() {
           <textarea
             value={pasteValue}
             onChange={(e) => setPasteValue(e.target.value)}
-            placeholder='wallet에서 복사한 JSON ({"blood":"...","allergy":"...","mDL":"...","nonce":"..."})'
+            placeholder='wallet에서 복사한 JSON ({"blood":"...","allergy":"...","nonce":"..."[,"mDL":"..."]})'
             className="w-full h-24 border border-slate-300 rounded p-2 text-xs font-mono"
           />
         </section>
@@ -177,6 +179,11 @@ export function DoctorScreen() {
               </div>
             </div>
           )}
+          {!bundle.mDL && (
+            <div className="bg-amber-50 border border-amber-300 rounded p-2 text-xs text-amber-900">
+              ID anchor: QR fast-path (mDL 미포함). 신원 확인이 필요하면 환자 wallet에서 페이로드 복사 후 페이스트로 mDL 포함된 full bundle 검증.
+            </div>
+          )}
 
           <div className="grid md:grid-cols-2 gap-4">
             <PatientPanel bundle={bundle} />
@@ -210,12 +217,14 @@ export function DoctorScreen() {
                     revealed: bundle.allergy.revealedClaims,
                     hiddenCount: bundle.allergy.hiddenClaimNames.length,
                   },
-                  mDL: {
-                    issuer: bundle.mDL.issuer,
-                    vct: bundle.mDL.vct,
-                    revealed: bundle.mDL.revealedClaims,
-                    hiddenCount: bundle.mDL.hiddenClaimNames.length,
-                  },
+                  mDL: bundle.mDL
+                    ? {
+                        issuer: bundle.mDL.issuer,
+                        vct: bundle.mDL.vct,
+                        revealed: bundle.mDL.revealedClaims,
+                        hiddenCount: bundle.mDL.hiddenClaimNames.length,
+                      }
+                    : "(not provided in QR fast-path)",
                 },
                 null,
                 2,

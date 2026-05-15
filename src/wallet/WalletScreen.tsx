@@ -25,14 +25,15 @@ export function WalletScreen() {
   const [qrDataUrl, setQRDataUrl] = useState<string | null>(null);
   const [vpCompact, setVpCompact] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [seedError, setSeedError] = useState<string | null>(null);
+  const [qrError, setQrError] = useState<string | null>(null);
 
   useEffect(() => {
     try {
       const result = getPatientVCs();
       setVCs(result);
     } catch (e) {
-      setError(`VC seed 실패: ${(e as Error).message}`);
+      setSeedError(`VC seed 실패: ${(e as Error).message}`);
     }
   }, []);
 
@@ -40,16 +41,29 @@ export function WalletScreen() {
     if (!emergencyOn || !vcs) {
       setQRDataUrl(null);
       setVpCompact(null);
+      setQrError(null);
       return;
     }
-    void buildEmergencyQR(vcs).then(({ qr, compact }) => {
-      setQRDataUrl(qr);
-      setVpCompact(compact);
-      // Copy to clipboard so doctor tab can paste — bypass camera scan issues.
-      navigator.clipboard?.writeText(compact).catch(() => {
-        /* ignore (insecure context) */
+    buildEmergencyQR(vcs)
+      .then(({ qr, compact }) => {
+        setQRDataUrl(qr);
+        setVpCompact(compact);
+        setQrError(null);
+        navigator.clipboard?.writeText(compact).catch(() => {});
+      })
+      .catch((e) => {
+        const msg = (e as Error)?.message ?? String(e);
+        // QR overflow is recoverable — keep paste path alive.
+        try {
+          const compact = buildVPPayload(vcs);
+          setVpCompact(compact);
+          setQRDataUrl(null);
+          setQrError(`QR 인코딩 실패: ${msg}. 페이로드 복사로 의사 화면에 붙여넣으세요.`);
+          navigator.clipboard?.writeText(compact).catch(() => {});
+        } catch (inner) {
+          setQrError(`VP 생성 실패: ${(inner as Error).message}`);
+        }
       });
-    });
   }, [emergencyOn, vcs]);
 
   const copy = () => {
@@ -60,10 +74,10 @@ export function WalletScreen() {
     });
   };
 
-  if (error) {
+  if (seedError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-rose-50 p-6">
-        <div className="text-rose-700">{error}</div>
+        <div className="text-rose-700">{seedError}</div>
       </div>
     );
   }
@@ -163,7 +177,29 @@ export function WalletScreen() {
           </div>
         )}
 
-        {emergencyOn && !qrDataUrl && (
+        {emergencyOn && !qrDataUrl && qrError && vpCompact && (
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
+              {qrError}
+            </p>
+            <button
+              onClick={copy}
+              className="w-full bg-slate-800 text-white py-2 rounded text-sm font-medium"
+            >
+              {copied ? "✓ 복사됨" : "VP 페이로드 클립보드 복사"}
+            </button>
+            <details>
+              <summary className="text-xs text-slate-500 cursor-pointer">
+                SD-JWT VP 페이로드 ({new TextEncoder().encode(vpCompact).length} bytes)
+              </summary>
+              <pre className="text-[10px] break-all whitespace-pre-wrap bg-slate-50 p-2 mt-1 max-h-32 overflow-auto">
+                {vpCompact}
+              </pre>
+            </details>
+          </div>
+        )}
+
+        {emergencyOn && !qrDataUrl && !qrError && (
           <p className="text-xs text-slate-500">QR 생성 중...</p>
         )}
 
@@ -216,43 +252,55 @@ function VCCard({ title, issuerLabel, subtitle, claims, accent }: VCCardProps) {
   );
 }
 
-async function buildEmergencyQR(vcs: ReturnType<typeof getPatientVCs>) {
+function buildBundle(vcs: ReturnType<typeof getPatientVCs>) {
   const nonce = randomNonce();
-  const bloodVP = presentVP({
-    vc: vcs.bloodType,
-    revealClaimNames: ["bloodType", "rhFactor"],
+  const presentArgs = {
     holderPrivateKey: DEMO_HOLDER.privateKey,
     holderDid: DEMO_HOLDER.did,
     audience: DEMO_AUDIENCE,
     nonce,
+  };
+  const bloodVP = presentVP({
+    vc: vcs.bloodType,
+    revealClaimNames: ["bloodType", "rhFactor"],
+    ...presentArgs,
   });
   const allergyVP = presentVP({
     vc: vcs.allergy,
     revealClaimNames: ["allergens", "severity"],
-    holderPrivateKey: DEMO_HOLDER.privateKey,
-    holderDid: DEMO_HOLDER.did,
-    audience: DEMO_AUDIENCE,
-    nonce,
+    ...presentArgs,
   });
   const mDLVP = presentVP({
     vc: vcs.mDL,
-    revealClaimNames: [], // 전체 마스킹
-    holderPrivateKey: DEMO_HOLDER.privateKey,
-    holderDid: DEMO_HOLDER.did,
-    audience: DEMO_AUDIENCE,
-    nonce,
+    revealClaimNames: [],
+    ...presentArgs,
   });
-
-  const compact = JSON.stringify({
+  // Full bundle (paste path) includes mDL identity anchor.
+  // QR bundle (scan path) drops mDL — payload exceeds QR v40 (~2,953 bytes) otherwise.
+  const fullCompact = JSON.stringify({
     blood: bloodVP.compact,
     allergy: allergyVP.compact,
     mDL: mDLVP.compact,
     nonce,
   });
-  const qr = await QRCode.toDataURL(compact, {
+  const qrCompact = JSON.stringify({
+    blood: bloodVP.compact,
+    allergy: allergyVP.compact,
+    nonce,
+  });
+  return { fullCompact, qrCompact };
+}
+
+function buildVPPayload(vcs: ReturnType<typeof getPatientVCs>): string {
+  return buildBundle(vcs).fullCompact;
+}
+
+async function buildEmergencyQR(vcs: ReturnType<typeof getPatientVCs>) {
+  const { fullCompact, qrCompact } = buildBundle(vcs);
+  const qr = await QRCode.toDataURL(qrCompact, {
     errorCorrectionLevel: "L",
     margin: 1,
     width: 256,
   });
-  return { qr, compact };
+  return { qr, compact: fullCompact };
 }

@@ -18,3 +18,4 @@ vite.config.d.ts
 # Env
 .env
 .env.local
+.gstack/
