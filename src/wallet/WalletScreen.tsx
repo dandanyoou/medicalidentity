@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import QRCode from "qrcode";
-import { getPatientVCs } from "../data/patient-vcs";
+import { getPatientVCs, type PatientVCs } from "../data/patient-vcs";
 import { DEMO_AUDIENCE, DEMO_HOLDER } from "../data/issuer-keys";
 import { presentVP, randomNonce, type SignedVC } from "../lib/sdjwt";
 
@@ -20,7 +20,7 @@ import { presentVP, randomNonce, type SignedVC } from "../lib/sdjwt";
  *   알레르기 VC → allergens, severity
  */
 export function WalletScreen() {
-  const [vcs, setVCs] = useState<ReturnType<typeof getPatientVCs> | null>(null);
+  const [vcs, setVCs] = useState<PatientVCs | null>(null);
   const [emergencyOn, setEmergencyOn] = useState(false);
   const [qrDataUrl, setQRDataUrl] = useState<string | null>(null);
   const [vpCompact, setVpCompact] = useState<string | null>(null);
@@ -29,12 +29,9 @@ export function WalletScreen() {
   const [qrError, setQrError] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const result = getPatientVCs();
-      setVCs(result);
-    } catch (e) {
-      setSeedError(`VC seed 실패: ${(e as Error).message}`);
-    }
+    getPatientVCs()
+      .then(setVCs)
+      .catch((e) => setSeedError(`VC seed 실패: ${(e as Error).message}`));
   }, []);
 
   useEffect(() => {
@@ -44,18 +41,18 @@ export function WalletScreen() {
       setQrError(null);
       return;
     }
-    buildEmergencyQR(vcs)
-      .then(({ qr, compact }) => {
+    (async () => {
+      try {
+        const { qr, compact } = await buildEmergencyQR(vcs);
         setQRDataUrl(qr);
         setVpCompact(compact);
         setQrError(null);
         navigator.clipboard?.writeText(compact).catch(() => {});
-      })
-      .catch((e) => {
+      } catch (e) {
         const msg = (e as Error)?.message ?? String(e);
         // QR overflow is recoverable — keep paste path alive.
         try {
-          const compact = buildVPPayload(vcs);
+          const compact = await buildVPPayload(vcs);
           setVpCompact(compact);
           setQRDataUrl(null);
           setQrError(`QR 인코딩 실패: ${msg}. 페이로드 복사로 의사 화면에 붙여넣으세요.`);
@@ -63,7 +60,8 @@ export function WalletScreen() {
         } catch (inner) {
           setQrError(`VP 생성 실패: ${(inner as Error).message}`);
         }
-      });
+      }
+    })();
   }, [emergencyOn, vcs]);
 
   const copy = () => {
@@ -252,7 +250,7 @@ function VCCard({ title, issuerLabel, subtitle, claims, accent }: VCCardProps) {
   );
 }
 
-function buildBundle(vcs: ReturnType<typeof getPatientVCs>) {
+async function buildBundle(vcs: PatientVCs) {
   const nonce = randomNonce();
   const presentArgs = {
     holderPrivateKey: DEMO_HOLDER.privateKey,
@@ -260,22 +258,22 @@ function buildBundle(vcs: ReturnType<typeof getPatientVCs>) {
     audience: DEMO_AUDIENCE,
     nonce,
   };
-  const bloodVP = presentVP({
+  const bloodVP = await presentVP({
     vc: vcs.bloodType,
     revealClaimNames: ["bloodType", "rhFactor"],
     ...presentArgs,
   });
-  const allergyVP = presentVP({
+  const allergyVP = await presentVP({
     vc: vcs.allergy,
     revealClaimNames: ["allergens", "severity"],
     ...presentArgs,
   });
-  const mDLVP = presentVP({
+  const mDLVP = await presentVP({
     vc: vcs.mDL,
     revealClaimNames: [],
     ...presentArgs,
   });
-  const controlledSubstanceVP = presentVP({
+  const controlledSubstanceVP = await presentVP({
     vc: vcs.controlledSubstance,
     revealClaimNames: ["priorVisits"],
     ...presentArgs,
@@ -297,12 +295,12 @@ function buildBundle(vcs: ReturnType<typeof getPatientVCs>) {
   return { fullCompact, qrCompact };
 }
 
-function buildVPPayload(vcs: ReturnType<typeof getPatientVCs>): string {
-  return buildBundle(vcs).fullCompact;
+async function buildVPPayload(vcs: PatientVCs): Promise<string> {
+  return (await buildBundle(vcs)).fullCompact;
 }
 
-async function buildEmergencyQR(vcs: ReturnType<typeof getPatientVCs>) {
-  const { fullCompact, qrCompact } = buildBundle(vcs);
+async function buildEmergencyQR(vcs: PatientVCs) {
+  const { fullCompact, qrCompact } = await buildBundle(vcs);
   const qr = await QRCode.toDataURL(qrCompact, {
     errorCorrectionLevel: "L",
     margin: 1,

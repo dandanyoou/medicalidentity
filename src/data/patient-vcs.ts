@@ -16,15 +16,19 @@ export interface PatientVCs {
   controlledSubstance: SignedVC;
 }
 
-let cached: PatientVCs | null = null;
+let cached: Promise<PatientVCs> | null = null;
 
-export function getPatientVCs(): PatientVCs {
+export function getPatientVCs(): Promise<PatientVCs> {
   if (cached) return cached;
+  cached = buildPatientVCs();
+  return cached;
+}
 
+async function buildPatientVCs(): Promise<PatientVCs> {
   const holderDid = DEMO_HOLDER.did;
   const holderPubKey = DEMO_HOLDER.publicKey;
 
-  const mDL = signVC({
+  const mDL = await signVC({
     issuerPrivateKey: MDL_ISSUER.privateKey,
     issuerDid: MDL_ISSUER.did,
     holderDid,
@@ -41,7 +45,7 @@ export function getPatientVCs(): PatientVCs {
     ttlSeconds: 60 * 60 * 24,
   });
 
-  const bloodType = signVC({
+  const bloodType = await signVC({
     issuerPrivateKey: HOSPITAL_ISSUER.privateKey,
     issuerDid: HOSPITAL_ISSUER.did,
     holderDid,
@@ -56,7 +60,7 @@ export function getPatientVCs(): PatientVCs {
     ttlSeconds: 60 * 60 * 24,
   });
 
-  const allergy = signVC({
+  const allergy = await signVC({
     issuerPrivateKey: HOSPITAL_ISSUER.privateKey,
     issuerDid: HOSPITAL_ISSUER.did,
     holderDid,
@@ -72,7 +76,7 @@ export function getPatientVCs(): PatientVCs {
     ttlSeconds: 60 * 60 * 24,
   });
 
-  const controlledSubstance = signVC({
+  const controlledSubstance = await signVC({
     issuerPrivateKey: HOSPITAL_ISSUER.privateKey,
     issuerDid: HOSPITAL_ISSUER.did,
     holderDid,
@@ -87,6 +91,5 @@ export function getPatientVCs(): PatientVCs {
     ttlSeconds: 60 * 60 * 24,
   });
 
-  cached = { mDL, bloodType, allergy, controlledSubstance };
-  return cached;
+  return { mDL, bloodType, allergy, controlledSubstance };
 }

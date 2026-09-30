@@ -28,9 +28,9 @@ function makeBloodVC() {
 }
 
 describe("sdjwt", () => {
-  it("[#1] sign → present → verify happy path round trip", () => {
-    const vc = makeBloodVC();
-    const vp = presentVP({
+  it("[#1] sign → present → verify happy path round trip", async () => {
+    const vc = await makeBloodVC();
+    const vp = await presentVP({
       vc,
       revealClaimNames: ["bloodType", "rhFactor"],
       holderPrivateKey: DEMO_HOLDER.privateKey,
@@ -38,7 +38,7 @@ describe("sdjwt", () => {
       audience: DEMO_AUDIENCE,
       nonce: randomNonce(),
     });
-    const result = verifyVP({
+    const result = await verifyVP({
       vp: vp.compact,
       trustAnchors: TRUST_ANCHORS,
       expectedAudience: DEMO_AUDIENCE,
@@ -50,9 +50,9 @@ describe("sdjwt", () => {
     expect(result.hiddenClaimNames.length).toBe(1); // name is hidden
   });
 
-  it("[#2] verifyVP throws on aud mismatch", () => {
-    const vc = makeBloodVC();
-    const vp = presentVP({
+  it("[#2] verifyVP throws on aud mismatch", async () => {
+    const vc = await makeBloodVC();
+    const vp = await presentVP({
       vc,
       revealClaimNames: ["bloodType"],
       holderPrivateKey: DEMO_HOLDER.privateKey,
@@ -60,17 +60,17 @@ describe("sdjwt", () => {
       audience: DEMO_AUDIENCE,
       nonce: randomNonce(),
     });
-    expect(() =>
+    await expect(
       verifyVP({
         vp: vp.compact,
         trustAnchors: TRUST_ANCHORS,
         expectedAudience: "wrong-audience",
       }),
-    ).toThrow(VerifyError);
+    ).rejects.toThrow(VerifyError);
   });
 
-  it("[#3] verifyVP throws on exp past", () => {
-    const vc = signVC({
+  it("[#3] verifyVP throws on exp past", async () => {
+    const vc = await signVC({
       issuerPrivateKey: HOSPITAL_ISSUER.privateKey,
       issuerDid: HOSPITAL_ISSUER.did,
       holderDid: DEMO_HOLDER.did,
@@ -80,7 +80,7 @@ describe("sdjwt", () => {
       selectiveClaims: { bloodType: "A" },
       ttlSeconds: 1,
     });
-    const vp = presentVP({
+    const vp = await presentVP({
       vc,
       revealClaimNames: ["bloodType"],
       holderPrivateKey: DEMO_HOLDER.privateKey,
@@ -88,19 +88,19 @@ describe("sdjwt", () => {
       audience: DEMO_AUDIENCE,
       nonce: randomNonce(),
     });
-    expect(() =>
+    await expect(
       verifyVP({
         vp: vp.compact,
         trustAnchors: TRUST_ANCHORS,
         expectedAudience: DEMO_AUDIENCE,
         now: Math.floor(Date.now() / 1000) + 10, // 10s in future
       }),
-    ).toThrow(/expired/);
+    ).rejects.toThrow(/expired/);
   });
 
-  it("[#4] verifyVP throws on invalid issuer signature (tampered sig)", () => {
-    const vc = makeBloodVC();
-    const vp = presentVP({
+  it("[#4] verifyVP throws on invalid issuer signature (tampered sig)", async () => {
+    const vc = await makeBloodVC();
+    const vp = await presentVP({
       vc,
       revealClaimNames: ["bloodType"],
       holderPrivateKey: DEMO_HOLDER.privateKey,
@@ -122,18 +122,18 @@ describe("sdjwt", () => {
     const tamperedSig = sig.slice(0, mid) + swap + sig.slice(mid + 1);
     parts[0] = `${h}.${pl}.${tamperedSig}`;
     const tampered = parts.join("~");
-    expect(() =>
+    await expect(
       verifyVP({
         vp: tampered,
         trustAnchors: TRUST_ANCHORS,
         expectedAudience: DEMO_AUDIENCE,
       }),
-    ).toThrow(/invalid issuer signature/);
+    ).rejects.toThrow(VerifyError);
   });
 
-  it("[#5] verifyVP throws on untrusted issuer (anchor mismatch)", () => {
-    const vc = makeBloodVC();
-    const vp = presentVP({
+  it("[#5] verifyVP throws on untrusted issuer (anchor mismatch)", async () => {
+    const vc = await makeBloodVC();
+    const vp = await presentVP({
       vc,
       revealClaimNames: ["bloodType"],
       holderPrivateKey: DEMO_HOLDER.privateKey,
@@ -141,17 +141,17 @@ describe("sdjwt", () => {
       audience: DEMO_AUDIENCE,
       nonce: randomNonce(),
     });
-    expect(() =>
+    await expect(
       verifyVP({
         vp: vp.compact,
         trustAnchors: { [MDL_ISSUER.did]: MDL_ISSUER.publicKey }, // hospital removed
         expectedAudience: DEMO_AUDIENCE,
       }),
-    ).toThrow(/untrusted issuer/);
+    ).rejects.toThrow(/untrusted issuer/);
   });
 
-  it("[#6] mDL-style 0-disclosure presentation (issuer signature anchor only)", () => {
-    const mDL = signVC({
+  it("[#6] mDL-style 0-disclosure presentation (issuer signature anchor only)", async () => {
+    const mDL = await signVC({
       issuerPrivateKey: MDL_ISSUER.privateKey,
       issuerDid: MDL_ISSUER.did,
       holderDid: DEMO_HOLDER.did,
@@ -161,7 +161,7 @@ describe("sdjwt", () => {
       selectiveClaims: { name: "김단유", residentNumber: "940123-1******" },
       ttlSeconds: 60,
     });
-    const vp = presentVP({
+    const vp = await presentVP({
       vc: mDL,
       revealClaimNames: [],
       holderPrivateKey: DEMO_HOLDER.privateKey,
@@ -169,7 +169,7 @@ describe("sdjwt", () => {
       audience: DEMO_AUDIENCE,
       nonce: randomNonce(),
     });
-    const result = verifyVP({
+    const result = await verifyVP({
       vp: vp.compact,
       trustAnchors: TRUST_ANCHORS,
       expectedAudience: DEMO_AUDIENCE,
@@ -180,11 +180,11 @@ describe("sdjwt", () => {
     expect(result.hiddenClaimNames.length).toBe(2); // both masked
   });
 
-  it("[#7] salt makes identical claim values unlinkable across VCs", () => {
+  it("[#7] salt makes identical claim values unlinkable across VCs", async () => {
     // 혈액형처럼 경우의 수가 적은 값이라도, salt가 매번 랜덤이면 같은 값에 대해
     // 서로 다른 두 VC의 _sd 해시가 절대 겹치지 않는다 (해시 대입 역산 방지).
-    const vc1 = makeBloodVC();
-    const vc2 = makeBloodVC();
+    const vc1 = await makeBloodVC();
+    const vc2 = await makeBloodVC();
     expect(vc1.jws).not.toBe(vc2.jws); // different iat -> different payload/sig too
     const sorted1 = [...vc1.disclosures].sort(([, a], [, b]) => a.localeCompare(b));
     const sorted2 = [...vc2.disclosures].sort(([, a], [, b]) => a.localeCompare(b));
@@ -197,9 +197,9 @@ describe("sdjwt", () => {
     }
   });
 
-  it("[#8] verifyVP throws on revoked credential (jti), even from a trusted issuer", () => {
-    const vc = makeBloodVC();
-    const vp = presentVP({
+  it("[#8] verifyVP throws on revoked credential (jti), even from a trusted issuer", async () => {
+    const vc = await makeBloodVC();
+    const vp = await presentVP({
       vc,
       revealClaimNames: ["bloodType"],
       holderPrivateKey: DEMO_HOLDER.privateKey,
@@ -212,13 +212,13 @@ describe("sdjwt", () => {
       .replace(/-/g, "+")
       .replace(/_/g, "/");
     const payload = JSON.parse(atob(std)) as { jti: string };
-    expect(() =>
+    await expect(
       verifyVP({
         vp: vp.compact,
         trustAnchors: TRUST_ANCHORS, // issuer still trusted
         expectedAudience: DEMO_AUDIENCE,
         revokedCredentialIds: new Set([payload.jti]), // but this one VC is revoked
       }),
-    ).toThrow(/revoked credential/);
+    ).rejects.toThrow(/revoked credential/);
   });
 });

@@ -11,8 +11,8 @@ function bytes(s: string): number {
   return new TextEncoder().encode(s).length;
 }
 
-function main() {
-  const vcs = getPatientVCs();
+async function main() {
+  const vcs = await getPatientVCs();
   const lengths = {
     mDL: bytes(vcs.mDL.compact),
     bloodType: bytes(vcs.bloodType.compact),
@@ -40,3 +40,4 @@ function main() {
 }
 
 main();
+

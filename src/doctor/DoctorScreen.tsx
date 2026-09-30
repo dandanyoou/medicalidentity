@@ -44,18 +44,18 @@ export function DoctorScreen() {
     };
   }, []);
 
-  const verifyText = (text: string) => {
+  const verifyText = async (text: string) => {
     setError(null);
     try {
       const parsed = JSON.parse(text) as PresentationBundle;
-      const blood = verifyVP({
+      const blood = await verifyVP({
         vp: parsed.blood,
         trustAnchors: TRUST_ANCHORS,
         revokedCredentialIds: REVOKED_CREDENTIAL_IDS,
         expectedAudience: DEMO_AUDIENCE,
         expectedNonce: parsed.nonce,
       });
-      const allergy = verifyVP({
+      const allergy = await verifyVP({
         vp: parsed.allergy,
         trustAnchors: TRUST_ANCHORS,
         revokedCredentialIds: REVOKED_CREDENTIAL_IDS,
@@ -63,7 +63,7 @@ export function DoctorScreen() {
         expectedNonce: parsed.nonce,
       });
       const mDL = parsed.mDL
-        ? verifyVP({
+        ? await verifyVP({
             vp: parsed.mDL,
             trustAnchors: TRUST_ANCHORS,
         revokedCredentialIds: REVOKED_CREDENTIAL_IDS,
@@ -72,7 +72,7 @@ export function DoctorScreen() {
           })
         : null;
       const controlledSubstance = parsed.controlledSubstance
-        ? verifyVP({
+        ? await verifyVP({
             vp: parsed.controlledSubstance,
             trustAnchors: TRUST_ANCHORS,
             revokedCredentialIds: REVOKED_CREDENTIAL_IDS,

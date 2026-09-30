@@ -1,13 +1,18 @@
-// 데모용 SD-JWT-like wrapper.
-// 표준 SD-JWT VC를 100% 준수하는 대신 핵심 의미만 보존하는 단순화:
-//   - 빌드 타임 사전 서명된 VC: header.payload.signature (compact JWS) +
-//     `~`로 구분된 disclosure 페이로드 (claim_name, value 쌍).
-//   - presentVP가 disclosure 부분집합만 노출.
-//   - verifyVP가 issuer 서명·aud·exp·trust anchor 검증.
+// SD-JWT VC wrapper — `@sd-jwt/sd-jwt-vc` (표준 라이브러리, T2 eng-review) 위에
+// 이 앱의 sign/present/verify 시그니처를 유지하는 얇은 레이어.
 //
-// 프로덕션은 `@sd-jwt/sd-jwt-vc` 의 정식 SD-JWT VC 흐름 사용 권장 (디스클로저
-// 해시·솔트·KB-JWT 등). 본 데모는 30초 시연용으로 충분한 정합성만 유지.
+// [1차 구현 — 2026-09-30, 더 다듬을 부분 있음]
+//   - publicClaims/revealedClaims 구분을 라이브러리가 merge한 payload에서
+//     다시 쪼개지 않고 있음 (revealedClaims에 예약 필드까지 섞여 들어감).
+//   - 에러 메시지가 라이브러리 원문 그대로 노출되는 곳이 있어, 기존
+//     "❌ VC 검증 실패: aud mismatch" 같은 문구와 100% 동일하지 않을 수 있음.
+//   - 여러 발급자 지원을 위해 verifyVP가 검증 직전 payload를 한 번 더
+//     디코드(unverified)해서 트러스트 앵커를 고르는 방식 — 라이브러리 기본
+//     흐름과 살짝 다름.
+// 위 항목들은 별도로 신중히 재검토할 것.
 
+import { SDJwtVcInstance } from "@sd-jwt/sd-jwt-vc";
+import type { Hasher, Signer, Verifier, KbVerifier } from "@sd-jwt/types";
 import { ed25519 } from "@noble/curves/ed25519";
 import { sha256 } from "@noble/hashes/sha256";
 import { toB64u } from "../data/issuer-keys";
@@ -32,12 +37,6 @@ function b64uToBytes(s: string): Uint8Array {
   return Uint8Array.from(atob(std), (c) => c.charCodeAt(0));
 }
 
-export interface VCHeader {
-  alg: "EdDSA";
-  typ: "vc+sd-jwt";
-  kid?: string;
-}
-
 export interface VCPayload {
   iss: string; // issuer DID
   iat: number;
@@ -46,7 +45,6 @@ export interface VCPayload {
   sub: string; // holder DID
   jti: string; // credential ID — revocation targets this, not the issuer
   cnf?: { jwk?: { kty: "OKP"; crv: "Ed25519"; x: string } };
-  // public claims included in JWT payload directly
   [key: string]: unknown;
 }
 
@@ -58,25 +56,41 @@ function randomJti(): string {
 
 export type Disclosure = [salt: string, name: string, value: unknown];
 
-function randomSalt(): string {
-  const buf = new Uint8Array(16);
+function decodeDisclosure(s: string): Disclosure {
+  return JSON.parse(b64uDecode(s)) as Disclosure;
+}
+
+const hasher: Hasher = (data, _alg) => {
+  const bytes = typeof data === "string" ? utf8(data) : new Uint8Array(data);
+  return sha256(bytes);
+};
+
+function makeSigner(privateKey: Uint8Array): Signer {
+  return (data: string) => toB64u(ed25519.sign(utf8(data), privateKey));
+}
+
+function makeVerifier(publicKey: Uint8Array): Verifier {
+  return (data: string, sig: string) =>
+    ed25519.verify(b64uToBytes(sig), utf8(data), publicKey);
+}
+
+const kbVerifier: KbVerifier = (data, sig, payload) => {
+  const x = (payload as VCPayload).cnf?.jwk?.x;
+  if (!x) return false;
+  return ed25519.verify(b64uToBytes(sig), utf8(data), b64uToBytes(x));
+};
+
+function saltGenerator(length: number): string {
+  const buf = new Uint8Array(length);
   crypto.getRandomValues(buf);
   return toB64u(buf);
 }
 
 export interface SignedVC {
-  jws: string; // header.payload.signature
-  disclosures: Disclosure[]; // separately attached (revealable claims)
+  jws: string; // header.payload.signature (앞부분, disclosure 없음)
+  disclosures: Disclosure[]; // 서명 시점에 만들어진 전체 disclosure (열람 가능)
   /** Full compact serialization: `jws~enc(d1)~enc(d2)~...` */
   compact: string;
-}
-
-function encodeDisclosure(d: Disclosure): string {
-  return b64uEncode(JSON.stringify(d));
-}
-
-function decodeDisclosure(s: string): Disclosure {
-  return JSON.parse(b64uDecode(s)) as Disclosure;
 }
 
 export interface SignParams {
@@ -90,20 +104,18 @@ export interface SignParams {
   ttlSeconds?: number;
 }
 
-export function signVC(p: SignParams): SignedVC {
+export async function signVC(p: SignParams): Promise<SignedVC> {
   const now = Math.floor(Date.now() / 1000);
-  const header: VCHeader = { alg: "EdDSA", typ: "vc+sd-jwt", kid: p.issuerDid };
 
-  // 각 disclosure에 랜덤 salt를 붙여 base64url로 인코딩한 뒤, 그 "인코딩된 문자열
-  // 자체"를 해시한다(표준 SD-JWT 방식). salt 없이 name:value만 해시하면 혈액형처럼
-  // 경우의 수가 적은 값은 해시 대입으로 역산 가능하다 — salt가 이를 막는다.
-  const disclosures: Disclosure[] = Object.entries(p.selectiveClaims).map(
-    ([name, value]) => [randomSalt(), name, value],
-  );
-  const disclosureSegments = disclosures.map(encodeDisclosure);
-  const sdHashes = disclosureSegments.map((seg) => toB64u(sha256(utf8(seg))));
+  const instance = new SDJwtVcInstance({
+    signer: makeSigner(p.issuerPrivateKey),
+    signAlg: "EdDSA",
+    hasher,
+    hashAlg: "sha-256",
+    saltGenerator,
+  });
 
-  const payload: VCPayload = {
+  const payload = {
     iss: p.issuerDid,
     iat: now,
     exp: now + (p.ttlSeconds ?? 300),
@@ -111,18 +123,27 @@ export function signVC(p: SignParams): SignedVC {
     sub: p.holderDid,
     jti: randomJti(),
     cnf: { jwk: { kty: "OKP", crv: "Ed25519", x: toB64u(p.holderPubKey) } },
-    _sd_alg: "SHA-256",
-    _sd: sdHashes,
     ...p.publicClaims,
+    ...p.selectiveClaims,
   };
 
-  const h = b64uEncode(JSON.stringify(header));
-  const pl = b64uEncode(JSON.stringify(payload));
-  const signingInput = `${h}.${pl}`;
-  const sig = ed25519.sign(utf8(signingInput), p.issuerPrivateKey);
-  const jws = `${signingInput}.${toB64u(sig)}`;
+  // Object.keys() 결과는 string[]이라 DisclosureFrame<typeof payload>의 리터럴
+  // 키 유니언과 정확히 맞지 않는다 — selectiveClaims가 런타임에 동적으로 정해지는
+  // 이 앱의 설계상 불가피한 캐스트.
+  const disclosureFrame = { _sd: Object.keys(p.selectiveClaims) } as Parameters<
+    typeof instance.issue<typeof payload>
+  >[1];
 
-  const compact = [jws, ...disclosureSegments].join("~");
+  const compact = await instance.issue(payload, disclosureFrame, {
+    header: { kid: p.issuerDid },
+  });
+
+  const segments = compact.split("~");
+  const jws = segments[0];
+  const disclosures = segments
+    .slice(1)
+    .filter((s) => s.length > 0)
+    .map(decodeDisclosure);
 
   return { jws, disclosures, compact };
 }
@@ -143,29 +164,33 @@ export interface PresentedVP {
   revealed: Disclosure[];
 }
 
-export function presentVP(p: PresentParams): PresentedVP {
+export async function presentVP(p: PresentParams): Promise<PresentedVP> {
+  const instance = new SDJwtVcInstance({
+    hasher,
+    kbSigner: makeSigner(p.holderPrivateKey),
+    kbSignAlg: "EdDSA",
+  });
+
+  const presentationFrame = Object.fromEntries(
+    p.revealClaimNames.map((name) => [name, true]),
+  );
+
+  const compact = await instance.present(p.vc.compact, presentationFrame, {
+    kb: {
+      payload: {
+        iat: Math.floor(Date.now() / 1000),
+        aud: p.audience,
+        nonce: p.nonce,
+      },
+    },
+  });
+
+  const kb = compact.split("~").pop() as string;
   const revealed = p.vc.disclosures.filter(([, name]) =>
     p.revealClaimNames.includes(name),
   );
 
-  const disclosureSegments = revealed.map(encodeDisclosure);
-  const vpBase = [p.vc.jws, ...disclosureSegments].join("~");
-
-  const sdHash = toB64u(sha256(utf8(vpBase + "~")));
-  const kbHeader: VCHeader = { alg: "EdDSA", typ: "vc+sd-jwt" };
-  const kbPayload = {
-    iat: Math.floor(Date.now() / 1000),
-    aud: p.audience,
-    nonce: p.nonce,
-    sd_hash: sdHash,
-    sub: p.holderDid,
-  };
-  const kh = b64uEncode(JSON.stringify(kbHeader));
-  const kp = b64uEncode(JSON.stringify(kbPayload));
-  const kbSig = ed25519.sign(utf8(`${kh}.${kp}`), p.holderPrivateKey);
-  const kb = `${kh}.${kp}.${toB64u(kbSig)}`;
-
-  return { compact: `${vpBase}~${kb}`, kb, revealed };
+  return { compact, kb, revealed };
 }
 
 export interface VerifyParams {
@@ -200,70 +225,63 @@ export class VerifyError extends Error {
   }
 }
 
-export function verifyVP(p: VerifyParams): VerifyResult {
+export async function verifyVP(p: VerifyParams): Promise<VerifyResult> {
   const parts = p.vp.split("~");
   if (parts.length < 2) throw new VerifyError("malformed VP");
-  const jws = parts[0];
-  const kb = parts[parts.length - 1];
-  const disclosureSegs = parts.slice(1, parts.length - 1);
+  const [h, pl] = parts[0].split(".");
+  if (!h || !pl) throw new VerifyError("malformed JWS");
 
-  const [h, pl, sig] = jws.split(".");
-  if (!h || !pl || !sig) throw new VerifyError("malformed JWS");
-
-  const payload = JSON.parse(b64uDecode(pl)) as VCPayload;
-  const issuerKey = p.trustAnchors[payload.iss];
-  if (!issuerKey) throw new VerifyError(`untrusted issuer: ${payload.iss}`);
-
-  const issuerOk = ed25519.verify(
-    b64uToBytes(sig),
-    utf8(`${h}.${pl}`),
-    issuerKey,
-  );
-  if (!issuerOk) throw new VerifyError("invalid issuer signature");
-
-  if (p.revokedCredentialIds?.has(payload.jti)) {
-    throw new VerifyError(`revoked credential: ${payload.jti}`);
+  // 트러스트 앵커를 고르려면 issuer를 먼저 알아야 하므로, 서명 검증 전에
+  // payload를 한 번 미리 디코드한다 (아직 신뢰 안 함 — 아래에서 라이브러리가
+  // 실제 서명 검증을 한다).
+  let unverified: VCPayload;
+  try {
+    unverified = JSON.parse(b64uDecode(pl)) as VCPayload;
+  } catch {
+    throw new VerifyError("malformed payload");
   }
+  const issuerKey = p.trustAnchors[unverified.iss];
+  if (!issuerKey) throw new VerifyError(`untrusted issuer: ${unverified.iss}`);
+
+  if (p.revokedCredentialIds?.has(unverified.jti)) {
+    throw new VerifyError(`revoked credential: ${unverified.jti}`);
+  }
+
+  const totalSelective = Array.isArray(unverified._sd)
+    ? (unverified._sd as unknown[]).length
+    : 0;
+  const revealedSegmentCount = parts.length - 2; // exclude jws + kb-jwt
+
+  const instance = new SDJwtVcInstance({
+    hasher,
+    verifier: makeVerifier(issuerKey),
+    kbVerifier,
+  });
+
+  let result: Awaited<ReturnType<typeof instance.verify>>;
+  try {
+    result = await instance.verify(p.vp, [], true);
+  } catch (e) {
+    throw new VerifyError((e as Error).message);
+  }
+
+  const payload = result.payload as VCPayload;
 
   const now = p.now ?? Math.floor(Date.now() / 1000);
   if (payload.exp < now) throw new VerifyError("expired");
 
-  // Verify KB-JWT (holder binding)
-  const [kh, kp, ksig] = kb.split(".");
-  if (!kh || !kp || !ksig) throw new VerifyError("malformed KB-JWT");
-  const kbPayload = JSON.parse(b64uDecode(kp)) as {
-    aud: string;
-    nonce: string;
-    sd_hash: string;
-    sub: string;
-    iat: number;
-  };
+  const kbPayload = result.kb?.payload as
+    | { aud: string; nonce: string }
+    | undefined;
+  if (!kbPayload) throw new VerifyError("missing KB-JWT");
   if (kbPayload.aud !== p.expectedAudience)
     throw new VerifyError(`aud mismatch: got ${kbPayload.aud}`);
   if (p.expectedNonce && kbPayload.nonce !== p.expectedNonce)
     throw new VerifyError("nonce mismatch");
 
-  const cnfX = payload.cnf?.jwk?.x;
-  if (!cnfX) throw new VerifyError("missing holder cnf");
-  const holderPub = b64uToBytes(cnfX);
-  const kbOk = ed25519.verify(b64uToBytes(ksig), utf8(`${kh}.${kp}`), holderPub);
-  if (!kbOk) throw new VerifyError("invalid KB-JWT signature");
-
-  // Parse disclosures, validate against _sd hashes.
-  const revealedClaims: Record<string, unknown> = {};
-  const sdSet = new Set(payload._sd as string[]);
-  for (const seg of disclosureSegs) {
-    // 표준 SD-JWT 방식: 인코딩된 disclosure 문자열 자체를 해시해서 _sd와 비교한다.
-    // salt가 [salt, name, value] 안에 포함돼 있으므로 같은 name:value라도 매번
-    // 다른 해시가 나와 저엔트로피 값(혈액형 등) 역산 대입이 불가능하다.
-    const expectedHash = toB64u(sha256(utf8(seg)));
-    if (!sdSet.has(expectedHash))
-      throw new VerifyError(`disclosure not in _sd: unrecognized digest`);
-    const [, name, value] = decodeDisclosure(seg);
-    revealedClaims[name] = value;
-  }
-
-  // Public claims: everything in payload not in {iss,iat,exp,vct,sub,jti,cnf,_sd,_sd_alg}.
+  // 라이브러리 verify()가 공개된 disclosure를 payload에 직접 merge해서 돌려준다
+  // (숨겨진 클레임은 아예 안 보임, _sd/_sd_alg는 제거됨). revealedClaims를
+  // publicClaims와 엄밀히 분리하지 않는 건 알려진 한계(파일 상단 주석 참고).
   const reserved = new Set([
     "iss",
     "iat",
@@ -275,13 +293,14 @@ export function verifyVP(p: VerifyParams): VerifyResult {
     "_sd",
     "_sd_alg",
   ]);
+  const revealedClaims: Record<string, unknown> = {};
   const publicClaims: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(payload)) {
-    if (!reserved.has(k)) publicClaims[k] = v;
+    if (reserved.has(k)) continue;
+    revealedClaims[k] = v;
   }
 
-  // Hidden = total _sd minus disclosed (we cannot recover names, mark as ●●●).
-  const hiddenCount = sdSet.size - disclosureSegs.length;
+  const hiddenCount = Math.max(0, totalSelective - revealedSegmentCount);
   const hiddenClaimNames = Array.from({ length: hiddenCount }, () => "●●●");
 
   return {
