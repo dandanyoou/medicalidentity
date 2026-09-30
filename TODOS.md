@@ -27,3 +27,26 @@
 **Depends on**: 해커톤 결과 후 다음 단계 결정 (회사화/오픈소스/논문 중 하나).
 
 ---
+
+## [TODO-2] 검증자(의사) 측 nonce challenge-response 재설계
+
+**What**: `/plan-eng-review`(2026-09-30)에서 1주일 스프린트 범위 산정 중 컷된 항목. `src/wallet/WalletScreen.tsx`가 `randomNonce()`로 자체 nonce를 생성하는 현재 구조(`src/lib/sdjwt.ts:274-278`)를, 검증자(의사)가 먼저 challenge QR을 발급하고 wallet이 그걸 스캔해 응답하는 양방향 구조로 바꾸는 작업.
+
+**Why**: 현재 구조는 QR replay 공격에 취약 (`docs/designs/ibel-3month-plan-compression.md` 전제 #2 참고). 하지만 이 fix 자체가 wallet에 QR 스캔 기능(현재 없음 — `WalletScreen.tsx`는 표시만 하고 `Html5Qrcode`는 `DoctorScreen.tsx`에만 있음)을 요구하며, 환자가 의식 없는 응급 상황에서 환자 디바이스가 능동적으로 스캔해야 하는 구조는 이 제품의 존재 이유(응급 상황 지원)와 충돌한다는 게 outside voice 리뷰에서 지적됨.
+
+**Pros**:
+- 어제 승인된 연구 design doc(1개월+2개월 압축안)의 Month-1 범위와 일치 — 연구 트랙에서는 계속 필요
+- QR replay 공격 실제 차단
+
+**Cons**:
+- worst-case 10 영업일 — 1주일 스프린트 전체를 이 항목 하나로 다 쓸 수 있음
+- 응급 시나리오(환자 의식 없음)와 설계상 충돌 — 대안 메커니즘(NFC/BLE 등) 필요할 수 있음, TODO-1과 연관
+- wallet 측에 신규 스캔 UI·카메라 권한 추가 필요
+
+**Context** (3개월 후에 본인이 다시 찾을 수 있게):
+- `/plan-eng-review` 2026-09-30 세션에서 D7로 컷 결정. 1주일 스프린트는 wallet측 nonce를 유지하되 한계를 명시(`src/lib/sdjwt.ts` 주석 또는 슬라이드 1줄)하는 걸로 대체.
+- 두 차례 독립 리뷰(office-hours 세션 second opinion + 이번 plan-eng-review outside voice)가 모두 이 항목을 "가장 위험한 단일 항목"으로 지목.
+
+**Depends on**: TODO-1(역방향 호출)과 함께 검토 — NFC/BLE 기반 접근이 QR 재스캔보다 응급 시나리오에 더 잘 맞을 수 있음.
+
+---

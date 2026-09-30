@@ -7,11 +7,13 @@ import {
   MDL_ISSUER,
 } from "./issuer-keys";
 import { signVC, type SignedVC } from "../lib/sdjwt";
+import { SEED_PRIOR_VISITS } from "../controlled-substance";
 
 export interface PatientVCs {
   mDL: SignedVC;
   bloodType: SignedVC;
   allergy: SignedVC;
+  controlledSubstance: SignedVC;
 }
 
 let cached: PatientVCs | null = null;
@@ -70,6 +72,21 @@ export function getPatientVCs(): PatientVCs {
     ttlSeconds: 60 * 60 * 24,
   });
 
-  cached = { mDL, bloodType, allergy };
+  const controlledSubstance = signVC({
+    issuerPrivateKey: HOSPITAL_ISSUER.privateKey,
+    issuerDid: HOSPITAL_ISSUER.did,
+    holderDid,
+    holderPubKey,
+    vct: "https://demo.medicalidentity.kr/controlled-substance/v1",
+    publicClaims: { issuerLabel: "Demo Hospital Issuer" },
+    selectiveClaims: {
+      // D4: 실제 병원 연동 없이 빌드타임 시드 — 여러 병원의 과거 방문 이력을
+      // 환자 VC 안에 미리 넣어, 백엔드 없이도 같은 UI·검증 로직을 시연.
+      priorVisits: SEED_PRIOR_VISITS,
+    },
+    ttlSeconds: 60 * 60 * 24,
+  });
+
+  cached = { mDL, bloodType, allergy, controlledSubstance };
   return cached;
 }

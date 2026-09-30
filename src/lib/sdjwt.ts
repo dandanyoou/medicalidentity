@@ -44,12 +44,25 @@ export interface VCPayload {
   exp: number;
   vct: string; // vc type
   sub: string; // holder DID
+  jti: string; // credential ID — revocation targets this, not the issuer
   cnf?: { jwk?: { kty: "OKP"; crv: "Ed25519"; x: string } };
   // public claims included in JWT payload directly
   [key: string]: unknown;
 }
 
-export type Disclosure = [name: string, value: unknown];
+function randomJti(): string {
+  const buf = new Uint8Array(16);
+  crypto.getRandomValues(buf);
+  return toB64u(buf);
+}
+
+export type Disclosure = [salt: string, name: string, value: unknown];
+
+function randomSalt(): string {
+  const buf = new Uint8Array(16);
+  crypto.getRandomValues(buf);
+  return toB64u(buf);
+}
 
 export interface SignedVC {
   jws: string; // header.payload.signature
@@ -81,9 +94,14 @@ export function signVC(p: SignParams): SignedVC {
   const now = Math.floor(Date.now() / 1000);
   const header: VCHeader = { alg: "EdDSA", typ: "vc+sd-jwt", kid: p.issuerDid };
 
-  const sdHashes = Object.keys(p.selectiveClaims).map((k) =>
-    toB64u(sha256(utf8(`${k}:${JSON.stringify(p.selectiveClaims[k])}`))),
+  // 각 disclosure에 랜덤 salt를 붙여 base64url로 인코딩한 뒤, 그 "인코딩된 문자열
+  // 자체"를 해시한다(표준 SD-JWT 방식). salt 없이 name:value만 해시하면 혈액형처럼
+  // 경우의 수가 적은 값은 해시 대입으로 역산 가능하다 — salt가 이를 막는다.
+  const disclosures: Disclosure[] = Object.entries(p.selectiveClaims).map(
+    ([name, value]) => [randomSalt(), name, value],
   );
+  const disclosureSegments = disclosures.map(encodeDisclosure);
+  const sdHashes = disclosureSegments.map((seg) => toB64u(sha256(utf8(seg))));
 
   const payload: VCPayload = {
     iss: p.issuerDid,
@@ -91,6 +109,7 @@ export function signVC(p: SignParams): SignedVC {
     exp: now + (p.ttlSeconds ?? 300),
     vct: p.vct,
     sub: p.holderDid,
+    jti: randomJti(),
     cnf: { jwk: { kty: "OKP", crv: "Ed25519", x: toB64u(p.holderPubKey) } },
     _sd_alg: "SHA-256",
     _sd: sdHashes,
@@ -103,8 +122,6 @@ export function signVC(p: SignParams): SignedVC {
   const sig = ed25519.sign(utf8(signingInput), p.issuerPrivateKey);
   const jws = `${signingInput}.${toB64u(sig)}`;
 
-  const disclosures: Disclosure[] = Object.entries(p.selectiveClaims);
-  const disclosureSegments = disclosures.map(encodeDisclosure);
   const compact = [jws, ...disclosureSegments].join("~");
 
   return { jws, disclosures, compact };
@@ -127,7 +144,7 @@ export interface PresentedVP {
 }
 
 export function presentVP(p: PresentParams): PresentedVP {
-  const revealed = p.vc.disclosures.filter(([name]) =>
+  const revealed = p.vc.disclosures.filter(([, name]) =>
     p.revealClaimNames.includes(name),
   );
 
@@ -157,6 +174,10 @@ export interface VerifyParams {
   expectedAudience: string;
   expectedNonce?: string;
   now?: number;
+  /** Revoked individual credential IDs (jti) — distinct from trustAnchors
+   * (issuer allow-list). An issuer can stay trusted while one of its VCs
+   * is individually revoked. */
+  revokedCredentialIds?: ReadonlySet<string>;
 }
 
 export interface VerifyResult {
@@ -200,6 +221,10 @@ export function verifyVP(p: VerifyParams): VerifyResult {
   );
   if (!issuerOk) throw new VerifyError("invalid issuer signature");
 
+  if (p.revokedCredentialIds?.has(payload.jti)) {
+    throw new VerifyError(`revoked credential: ${payload.jti}`);
+  }
+
   const now = p.now ?? Math.floor(Date.now() / 1000);
   if (payload.exp < now) throw new VerifyError("expired");
 
@@ -228,22 +253,24 @@ export function verifyVP(p: VerifyParams): VerifyResult {
   const revealedClaims: Record<string, unknown> = {};
   const sdSet = new Set(payload._sd as string[]);
   for (const seg of disclosureSegs) {
-    const [name, value] = decodeDisclosure(seg);
-    const expectedHash = toB64u(
-      sha256(utf8(`${name}:${JSON.stringify(value)}`)),
-    );
+    // 표준 SD-JWT 방식: 인코딩된 disclosure 문자열 자체를 해시해서 _sd와 비교한다.
+    // salt가 [salt, name, value] 안에 포함돼 있으므로 같은 name:value라도 매번
+    // 다른 해시가 나와 저엔트로피 값(혈액형 등) 역산 대입이 불가능하다.
+    const expectedHash = toB64u(sha256(utf8(seg)));
     if (!sdSet.has(expectedHash))
-      throw new VerifyError(`disclosure not in _sd: ${name}`);
+      throw new VerifyError(`disclosure not in _sd: unrecognized digest`);
+    const [, name, value] = decodeDisclosure(seg);
     revealedClaims[name] = value;
   }
 
-  // Public claims: everything in payload not in {iss,iat,exp,vct,sub,cnf,_sd,_sd_alg}.
+  // Public claims: everything in payload not in {iss,iat,exp,vct,sub,jti,cnf,_sd,_sd_alg}.
   const reserved = new Set([
     "iss",
     "iat",
     "exp",
     "vct",
     "sub",
+    "jti",
     "cnf",
     "_sd",
     "_sd_alg",
@@ -271,6 +298,15 @@ export function verifyVP(p: VerifyParams): VerifyResult {
   };
 }
 
+// 알려진 한계 (eng-review 2026-09-30, D7 — 의도적으로 컷됨, TODOS.md TODO-2):
+// nonce를 검증자(의사) 쪽이 아니라 wallet(환자) 쪽에서 생성한다. 표준 SD-JWT
+// 흐름이라면 verifier가 challenge를 먼저 발급해야 QR 재사용(replay) 공격을
+// 막을 수 있지만, 그러려면 wallet에 QR 스캔 기능이 새로 필요해 "환자가 의식
+// 없는 응급 상황"이라는 이 제품의 핵심 시나리오와 설계상 충돌한다 (wallet이
+// 능동적으로 스캔해야 하므로). 1주일 스프린트에서는 이 트레이드오프를 그대로
+// 받아들이고, challenge-response 재설계는 별도 연구 트랙(TODO-2)으로 이관했다.
+// 프로덕션에서는 NFC/BLE 등 환자 능동 조작이 필요 없는 채널로 challenge를
+// 전달하는 방식을 우선 검토할 것 (TODOS.md TODO-1 참고).
 export function randomNonce(): string {
   const buf = new Uint8Array(16);
   crypto.getRandomValues(buf);

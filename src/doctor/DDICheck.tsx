@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import durLookup from "../data/dur-lookup.json";
+import { existsInLookup, firstMatchingKey } from "../lib/lookup";
 
 const EMERGENCY_DRUGS = [
   "Amoxicillin",
@@ -26,20 +27,12 @@ export function DDICheck({ allergens, severity }: Props) {
 
   const drugInLookup = useMemo(() => {
     if (!selected) return null;
-    return Object.values(durLookup as DurMap).some((drugs) =>
-      drugs.includes(selected),
-    );
+    return existsInLookup(selected, durLookup as DurMap);
   }, [selected]);
 
   const conflict = useMemo(() => {
     if (!selected) return null;
-    for (const allergen of allergens) {
-      const drugs = (durLookup as DurMap)[allergen];
-      if (drugs && drugs.includes(selected)) {
-        return allergen;
-      }
-    }
-    return null;
+    return firstMatchingKey(selected, allergens, durLookup as DurMap);
   }, [selected, allergens]);
 
   return (

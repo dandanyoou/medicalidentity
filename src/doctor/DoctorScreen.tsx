@@ -1,14 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Html5Qrcode } from "html5-qrcode";
-import { TRUST_ANCHORS, DEMO_AUDIENCE, MDL_ISSUER } from "../data/issuer-keys";
+import {
+  TRUST_ANCHORS,
+  DEMO_AUDIENCE,
+  MDL_ISSUER,
+  REVOKED_CREDENTIAL_IDS,
+} from "../data/issuer-keys";
 import { verifyVP, VerifyError, type VerifyResult } from "../lib/sdjwt";
 import { DDICheck } from "./DDICheck";
+import { ControlledSubstancePanel } from "./ControlledSubstancePanel";
 
 interface PresentationBundle {
   blood: string;
   allergy: string;
   mDL?: string; // optional — dropped from QR path to fit ~2,953-byte limit
+  controlledSubstance?: string; // optional — same reason as mDL, paste-only
   nonce: string;
 }
 
@@ -17,7 +24,10 @@ interface VerifiedBundle {
   allergy: VerifyResult;
   mDL: VerifyResult | null;
   mDLTrusted: boolean;
+  controlledSubstance: VerifyResult | null;
 }
+
+type DoctorMode = "emergency" | "controlled";
 
 export function DoctorScreen() {
   const [pasteValue, setPasteValue] = useState("");
@@ -25,6 +35,8 @@ export function DoctorScreen() {
   const [error, setError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [scanActive, setScanActive] = useState(false);
+  // D6 REGRESSION: 기본값은 항상 "emergency" — 관리약물 모드는 명시적으로 켜야 함.
+  const [mode, setMode] = useState<DoctorMode>("emergency");
 
   useEffect(() => {
     return () => {
@@ -39,12 +51,14 @@ export function DoctorScreen() {
       const blood = verifyVP({
         vp: parsed.blood,
         trustAnchors: TRUST_ANCHORS,
+        revokedCredentialIds: REVOKED_CREDENTIAL_IDS,
         expectedAudience: DEMO_AUDIENCE,
         expectedNonce: parsed.nonce,
       });
       const allergy = verifyVP({
         vp: parsed.allergy,
         trustAnchors: TRUST_ANCHORS,
+        revokedCredentialIds: REVOKED_CREDENTIAL_IDS,
         expectedAudience: DEMO_AUDIENCE,
         expectedNonce: parsed.nonce,
       });
@@ -52,6 +66,16 @@ export function DoctorScreen() {
         ? verifyVP({
             vp: parsed.mDL,
             trustAnchors: TRUST_ANCHORS,
+        revokedCredentialIds: REVOKED_CREDENTIAL_IDS,
+            expectedAudience: DEMO_AUDIENCE,
+            expectedNonce: parsed.nonce,
+          })
+        : null;
+      const controlledSubstance = parsed.controlledSubstance
+        ? verifyVP({
+            vp: parsed.controlledSubstance,
+            trustAnchors: TRUST_ANCHORS,
+            revokedCredentialIds: REVOKED_CREDENTIAL_IDS,
             expectedAudience: DEMO_AUDIENCE,
             expectedNonce: parsed.nonce,
           })
@@ -61,6 +85,7 @@ export function DoctorScreen() {
         allergy,
         mDL,
         mDLTrusted: mDL?.issuer === MDL_ISSUER.did,
+        controlledSubstance,
       });
     } catch (e) {
       if (e instanceof VerifyError) {
@@ -185,17 +210,60 @@ export function DoctorScreen() {
             </div>
           )}
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <PatientPanel bundle={bundle} />
-            <DDICheck
-              allergens={
-                (bundle.allergy.revealedClaims.allergens as string[]) ?? []
-              }
-              severity={bundle.allergy.revealedClaims.severity as
-                | string
-                | undefined}
-            />
+          <div className="flex gap-2">
+            <button
+              onClick={() => setMode("emergency")}
+              className={`px-3 py-1.5 rounded text-sm font-medium ${
+                mode === "emergency"
+                  ? "bg-slate-800 text-white"
+                  : "bg-slate-100 text-slate-600"
+              }`}
+            >
+              응급 모드
+            </button>
+            <button
+              onClick={() => setMode("controlled")}
+              className={`px-3 py-1.5 rounded text-sm font-medium ${
+                mode === "controlled"
+                  ? "bg-slate-800 text-white"
+                  : "bg-slate-100 text-slate-600"
+              }`}
+            >
+              관리약물 모드
+            </button>
           </div>
+
+          {mode === "emergency" && (
+            <div className="grid md:grid-cols-2 gap-4">
+              <PatientPanel bundle={bundle} />
+              <DDICheck
+                allergens={
+                  (bundle.allergy.revealedClaims.allergens as string[]) ?? []
+                }
+                severity={bundle.allergy.revealedClaims.severity as
+                  | string
+                  | undefined}
+              />
+            </div>
+          )}
+
+          {mode === "controlled" &&
+            (bundle.controlledSubstance ? (
+              <ControlledSubstancePanel
+                priorVisits={
+                  (bundle.controlledSubstance.revealedClaims.priorVisits as {
+                    hospital: string;
+                    drug: string;
+                    date: string;
+                  }[]) ?? []
+                }
+              />
+            ) : (
+              <div className="bg-amber-50 border border-amber-300 rounded p-3 text-xs text-amber-900">
+                관리약물 이력은 QR fast-path에 포함되지 않습니다. 환자 wallet에서
+                페이로드 복사 후 페이스트로 full bundle을 검증하세요.
+              </div>
+            ))}
 
           <details className="bg-slate-50 border border-slate-200 rounded p-3">
             <summary className="text-sm font-medium text-slate-700 cursor-pointer">
@@ -223,6 +291,14 @@ export function DoctorScreen() {
                         vct: bundle.mDL.vct,
                         revealed: bundle.mDL.revealedClaims,
                         hiddenCount: bundle.mDL.hiddenClaimNames.length,
+                      }
+                    : "(not provided in QR fast-path)",
+                  controlledSubstance: bundle.controlledSubstance
+                    ? {
+                        issuer: bundle.controlledSubstance.issuer,
+                        vct: bundle.controlledSubstance.vct,
+                        hiddenCount:
+                          bundle.controlledSubstance.hiddenClaimNames.length,
                       }
                     : "(not provided in QR fast-path)",
                 },

@@ -67,3 +67,9 @@ export const TRUST_ANCHORS: Record<string, Uint8Array> = {
 };
 
 export const DEMO_AUDIENCE = "hackathon-demo-2026";
+
+// Registry(발급자 allow-list) ≠ revocation(개별 VC 폐기) — TRUST_ANCHORS가 신뢰하는
+// 발급자라도, 유출/오발급된 VC 1건만 개별적으로 폐기할 수 있어야 한다. jti(credential
+// ID) 기준으로 관리. 데모용으로 빈 목록 — revoke하려면 signVC가 반환한 VC의
+// payload.jti를 여기 추가.
+export const REVOKED_CREDENTIAL_IDS: Set<string> = new Set([]);

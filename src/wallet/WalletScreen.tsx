@@ -275,12 +275,18 @@ function buildBundle(vcs: ReturnType<typeof getPatientVCs>) {
     revealClaimNames: [],
     ...presentArgs,
   });
-  // Full bundle (paste path) includes mDL identity anchor.
-  // QR bundle (scan path) drops mDL — payload exceeds QR v40 (~2,953 bytes) otherwise.
+  const controlledSubstanceVP = presentVP({
+    vc: vcs.controlledSubstance,
+    revealClaimNames: ["priorVisits"],
+    ...presentArgs,
+  });
+  // Full bundle (paste path) includes mDL identity anchor + 관리약물 이력.
+  // QR bundle (scan path) drops both — payload exceeds QR v40 (~2,953 bytes) otherwise.
   const fullCompact = JSON.stringify({
     blood: bloodVP.compact,
     allergy: allergyVP.compact,
     mDL: mDLVP.compact,
+    controlledSubstance: controlledSubstanceVP.compact,
     nonce,
   });
   const qrCompact = JSON.stringify({
