@@ -399,3 +399,70 @@ DID의 핵심은:
 을 가능하게 하는 핵심 기술이다.
 
 특히 여러 병원과 약국이 동일한 처방 신뢰 체계를 공유해야 하기 때문에 중앙 서버 기반 방식보다 블록체인 기반 탈중앙 구조가 더 적합하다.
+
+---
+
+# 로컬 실행 방법
+
+## 요구 사항
+
+- Node.js 18 이상 (권장: 20 LTS)
+- npm (저장소에 `package-lock.json` 포함, `npm ci` 권장)
+
+## 설치 및 실행
+
+```bash
+git clone https://github.com/dandanyoou/medicalidentity.git
+cd medicalidentity
+npm install
+
+npm run dev       # http://localhost:5173/wallet 및 /doctor
+```
+
+브라우저에서 두 경로를 각각 새 탭으로 열어 시연합니다:
+
+- `http://localhost:5173/wallet` — 환자 지갑
+- `http://localhost:5173/doctor` — 의사 화면
+
+## 테스트 · 빌드
+
+```bash
+npm test           # vitest 전체 실행 (sdjwt / controlled-substance / DoctorScreen)
+npm run build      # tsc -b && vite build → dist/
+npm run preview    # 빌드된 dist/를 로컬에서 정적 서빙하여 확인
+```
+
+## Apple Silicon(M1/M2/M3)에서 `npm run dev` 또는 `npm test`가 esbuild 에러로 실패할 때
+
+```
+Error: You installed esbuild for another platform than the one you're currently using.
+Specifically the "@esbuild/darwin-x64" package is present but this platform
+needs the "@esbuild/darwin-arm64" package instead.
+```
+
+`npm install`을 Rosetta(x64) 환경에서 한 번이라도 실행한 적이 있으면 발생합니다. 아래 한 줄로 해결됩니다:
+
+```bash
+npm install --no-save @esbuild/darwin-arm64
+```
+
+(재발 방지하려면 `node -p process.arch`로 터미널이 arm64로 실행 중인지 먼저 확인하세요.)
+
+## 트러블슈팅
+
+| 증상 | 원인 · 해결 |
+|---|---|
+| `npm run dev`/`npm test`에서 esbuild 플랫폼 에러 | 위 "Apple Silicon" 항목 참고 |
+| wallet에서 QR이 안 뜨고 "QR 인코딩 실패" 문구만 보임 | 정상 동작 — payload가 QR v40 한계(2,953바이트)를 넘으면 자동으로 클립보드 복사 + 페이스트 fallback으로 전환됩니다. doctor 화면 textarea에 붙여넣으세요. |
+| doctor 화면 카메라 스캔이 안 됨 | 카메라 권한을 거부했거나 HTTPS가 아닌 환경(일부 브라우저는 `localhost`는 예외로 허용). "페이스트 검증" 경로는 카메라 없이도 항상 동작합니다. |
+| `관리약물 모드`에서 "QR fast-path에 포함되지 않습니다" 경고 | 의도된 동작 — 관리약물 이력 VC는 QR에는 안 담기고 페이스트 전체 번들에만 포함됩니다(QR 크기 제한, `src/wallet/WalletScreen.tsx` 참고). wallet에서 "VP 페이로드 클립보드 복사" 버튼으로 복사 후 doctor의 textarea에 붙여넣으세요. |
+
+## 관리약물 모드(신규) 시연
+
+`/doctor`에서 페이스트로 전체 번들을 검증한 뒤 상단 "관리약물 모드" 토글을 누르면:
+
+1. 빌드타임 시드 데이터(3개 병원, Oxycodone 처방 이력)가 표시됩니다.
+2. "Oxycodone"을 선택하면 정적 룰 기반 중복처방 경고가 뜹니다.
+3. "이 처방을 위변조방지 로그에 기록" 버튼으로 간이 해시체인에 기록하고, "변조 시뮬레이션" 체크박스로 위변조 탐지 동작을 확인할 수 있습니다.
+
+(실제 병원 연동·블록체인·AI 모델이 아니라 정적 룰과 시드 데이터로 같은 UI·검증 로직을 시연하는 축소 구현입니다 — 자세한 내용은 `TODOS.md`와 `docs/designs/` 참고.)
