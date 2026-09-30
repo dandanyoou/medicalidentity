@@ -24,7 +24,13 @@
 - `auth-policy` VC (환자 self-issued), `doctor verifier role VC` (병원 issuer 서명) 두 개념이 핵심
 - D8 결정 사유: 30초 데모 압축 + 12시간 LockScreen UX 디자인 부담 + iframe 시뮬레이션이 실제 다른 디바이스 통신 아님
 
-**Depends on**: 해커톤 결과 후 다음 단계 결정 (회사화/오픈소스/논문 중 하나).
+**진행 상황 (2026-09-30 eng-review, D1-D5)**:
+- Policy 매칭 + role VC 검증(서명·신뢰앵커·jti 폐기·nonce) 순수 로직은 `src/emergency-call/index.ts` + 4개 테스트로 **구현·검증 완료**. `verifyVP`/`REVOKED_CREDENTIAL_IDS` 그대로 재사용 — role VC 도난 시 개별 폐기 가능함을 테스트로 증명.
+- **UI·전송 계층(iframe+postMessage 시뮬레이션 포함)은 의도적으로 안 만듦.** 환자폰이 아이폰이라 Web NFC(NDEFReader)·Web Bluetooth 둘 다 Safari에 API 자체가 없어 실제 무선은 원천 불가능. Same-tab iframe 시뮬레이션은 D8이 이미 한 번 "실제 다른 기기 통신이 아니다"로 반려한 것과 동일한 문제라 outside voice 검토에서 재반려됨.
+- **새로 발견된 위험 (outside voice)**: "지금 postMessage로 만들고 나중에 진짜 NFC/BLE로 바꾸면 된다"는 가정 자체가 틀렸을 가능성 높음 — iOS는 잠금·백그라운드 상태의 PWA가 지속 리스너를 못 돌림. 실제 구현은 네이티브 앱(CoreNFC 등)이 필요해 **아키텍처가 통째로 다를 수 있음**. "오늘 코드가 나중에 재사용될 뼈대"라는 전제를 검증 없이 깔면 안 됨.
+- 아래 "Depends on"의 "해커톤 이후 결정" 게이트는 여전히 안 넘음 — 실제 전송 계층 착수 전에 재확인 필요.
+
+**Depends on**: 해커톤 결과 후 다음 단계 결정 (회사화/오픈소스/논문 중 하나). 전송 계층(NFC/BLE) 착수 전 네이티브 앱 전환 여부부터 별도 결정 필요 (웹 PWA로는 iOS에서 구조적으로 불가능할 수 있음).
 
 ---
 

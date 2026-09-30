@@ -26,6 +26,8 @@ const HOSP_SK_HEX =
   "414243444546474849505152535455565758596061626364656667686970713b";
 const HOLDER_SK_HEX =
   "818283848586878889909192939495969798990001020304050607080910113c";
+const DOCTOR_SK_HEX =
+  "919293949596979899a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6";
 
 export interface DemoKey {
   id: string;
@@ -59,6 +61,14 @@ export const DEMO_HOLDER = makeKey(
   "holder",
   "Demo Patient Holder",
   HOLDER_SK_HEX,
+);
+// 응급 호출 시뮬레이션(emergency-call)용 데모 의사 디바이스 키. 이 키에 hospital이
+// verifier role VC를 발급한다 — TODO-1 참고, UI/전송 계층 없이 정책 매칭·폐기
+// 로직만 순수함수로 증명하는 범위.
+export const DEMO_DOCTOR = makeKey(
+  "doctor",
+  "Demo Emergency Physician Device",
+  DOCTOR_SK_HEX,
 );
 
 export const TRUST_ANCHORS: Record<string, Uint8Array> = {
