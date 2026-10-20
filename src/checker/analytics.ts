@@ -46,7 +46,8 @@ function markFired(eventName: string): void {
 export type CheckerEventName =
   | "checker_completed"
   | "checker_ics_downloaded"
-  | "checker_payment_intent_clicked";
+  | "checker_payment_intent_clicked"
+  | "checker_shared";
 
 /**
  * 브라우저당(localStorage) 이벤트 1회만 전송한다 — 중복 클릭·자체 QA가
