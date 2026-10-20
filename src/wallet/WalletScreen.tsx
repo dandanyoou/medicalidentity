@@ -20,6 +20,10 @@ import { presentVP, randomNonce, type SignedVC } from "../lib/sdjwt";
  *   알레르기 VC → allergens, severity
  */
 export function WalletScreen() {
+  useEffect(() => {
+    document.title = "DID 응급 의료 신원 인증 데모";
+  }, []);
+
   const [vcs, setVCs] = useState<PatientVCs | null>(null);
   const [emergencyOn, setEmergencyOn] = useState(false);
   const [qrDataUrl, setQRDataUrl] = useState<string | null>(null);

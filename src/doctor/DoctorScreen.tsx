@@ -30,6 +30,10 @@ interface VerifiedBundle {
 type DoctorMode = "emergency" | "controlled";
 
 export function DoctorScreen() {
+  useEffect(() => {
+    document.title = "DID 응급 의료 신원 인증 데모 — 의사용";
+  }, []);
+
   const [pasteValue, setPasteValue] = useState("");
   const [bundle, setBundle] = useState<VerifiedBundle | null>(null);
   const [error, setError] = useState<string | null>(null);

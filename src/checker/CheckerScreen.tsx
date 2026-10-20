@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckerInputError, computeOverage, type IncomeTier, type OverageResult } from "./calc";
 import { buildIcsEvent, triggerIcsDownload } from "./ics";
@@ -24,12 +24,17 @@ function formatMoneyInput(digits: string): string {
 }
 
 export function CheckerScreen() {
+  useEffect(() => {
+    document.title = "의료비 체커 — 본인부담상한제 환급 확인";
+  }, []);
+
   const [medicalCostDigits, setMedicalCostDigits] = useState("");
   const [incomeTier, setIncomeTier] = useState<IncomeTier | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<OverageResult | null>(null);
   const [icsAttempted, setIcsAttempted] = useState(false);
-  const [paymentClicked, setPaymentClicked] = useState(false);
+  const [paymentStage, setPaymentStage] = useState<"idle" | "collecting" | "submitted">("idle");
+  const [waitlistEmail, setWaitlistEmail] = useState("");
   const [shareStatus, setShareStatus] = useState<"idle" | "shared" | "copied">("idle");
 
   const canSubmit = medicalCostDigits.length > 0 && incomeTier !== null;
@@ -47,7 +52,8 @@ export function CheckerScreen() {
     setError(null);
     setResult(null);
     setIcsAttempted(false);
-    setPaymentClicked(false);
+    setPaymentStage("idle");
+    setWaitlistEmail("");
     setShareStatus("idle");
 
     try {
@@ -101,7 +107,21 @@ export function CheckerScreen() {
 
   function handlePaymentIntentClick() {
     trackCheckerEvent("checker_payment_intent_clicked");
-    setPaymentClicked(true);
+    setPaymentStage("collecting");
+  }
+
+  function handleWaitlistSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!waitlistEmail.includes("@")) return;
+
+    trackCheckerEvent("checker_waitlist_submitted");
+    // 백엔드가 없으므로(Constraints) 이메일을 서버에 저장하지 않는다 — 사용자의
+    // 메일 앱으로 직접 창업자에게 신청 메일을 보내게 한다(사용자 동의하에 전송,
+    // founder가 본인 메일함에서 바로 확인 가능).
+    const subject = encodeURIComponent("체커 플러스 사전 신청");
+    const body = encodeURIComponent(`신청 이메일: ${waitlistEmail}`);
+    window.location.href = `mailto:gimdanyu94@gmail.com?subject=${subject}&body=${body}`;
+    setPaymentStage("submitted");
   }
 
   const step = result ? 2 : 1;
@@ -292,10 +312,27 @@ export function CheckerScreen() {
                     매년 자동으로 재계산해서 알려드리고, 가족 구성원도 한 번에 관리할
                     수 있어요. 월 1,900원.
                   </p>
-                  {paymentClicked ? (
+                  {paymentStage === "submitted" ? (
                     <p className="text-sm font-medium text-green-700">
-                      관심 등록 완료 · 출시되면 가장 먼저 알려드릴게요
+                      신청 완료 · 출시되면 가장 먼저 알려드릴게요
                     </p>
+                  ) : paymentStage === "collecting" ? (
+                    <form onSubmit={handleWaitlistSubmit} className="flex flex-col gap-2">
+                      <input
+                        type="email"
+                        required
+                        value={waitlistEmail}
+                        onChange={(event) => setWaitlistEmail(event.target.value)}
+                        placeholder="이메일 주소"
+                        className="rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-600"
+                      />
+                      <button
+                        type="submit"
+                        className="w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:bg-slate-800"
+                      >
+                        신청 완료
+                      </button>
+                    </form>
                   ) : (
                     <button
                       type="button"

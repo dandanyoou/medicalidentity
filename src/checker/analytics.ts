@@ -47,7 +47,8 @@ export type CheckerEventName =
   | "checker_completed"
   | "checker_ics_downloaded"
   | "checker_payment_intent_clicked"
-  | "checker_shared";
+  | "checker_shared"
+  | "checker_waitlist_submitted";
 
 /**
  * 브라우저당(localStorage) 이벤트 1회만 전송한다 — 중복 클릭·자체 QA가
