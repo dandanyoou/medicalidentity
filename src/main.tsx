@@ -16,10 +16,20 @@ const DoctorScreen = lazy(() =>
   import("./doctor/DoctorScreen").then((m) => ({ default: m.DoctorScreen })),
 );
 
+// VC 루프 iter 4: fallback={null}이었을 때 /wallet·/doctor 진입 시 청크
+// 로딩 중 흰 화면이 깜빡였다(특히 느린 회선) — 최소한의 로딩 표시로 교체.
+function RouteLoadingFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600" />
+    </div>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <Suspense fallback={null}>
+      <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           <Route path="/" element={<Navigate to="/wallet" replace />} />
           <Route path="/wallet" element={<WalletScreen />} />

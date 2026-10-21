@@ -9,6 +9,7 @@ const OFFICIAL_APPLICATION_URL = "https://www.nhis.or.kr/nhis/minwon/wbhada01000
 const INCOME_TIER_INFO_URL =
   "https://www.nhis.or.kr/nhis/minwon/wbhapa01000m01.do?mode=view&articleNo=10946900";
 const TIERS: IncomeTier[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const WAITLIST_CONTACT_EMAIL = "gimdanyu94@gmail.com";
 
 function formatWon(amount: number): string {
   return `${amount.toLocaleString("ko-KR")}원`;
@@ -110,7 +111,7 @@ export function CheckerScreen() {
     setPaymentStage("collecting");
   }
 
-  function handleWaitlistSubmit(event: React.FormEvent) {
+  async function handleWaitlistSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!waitlistEmail.includes("@")) return;
 
@@ -118,9 +119,20 @@ export function CheckerScreen() {
     // 백엔드가 없으므로(Constraints) 이메일을 서버에 저장하지 않는다 — 사용자의
     // 메일 앱으로 직접 창업자에게 신청 메일을 보내게 한다(사용자 동의하에 전송,
     // founder가 본인 메일함에서 바로 확인 가능).
-    const subject = encodeURIComponent("체커 플러스 사전 신청");
-    const body = encodeURIComponent(`신청 이메일: ${waitlistEmail}`);
-    window.location.href = `mailto:gimdanyu94@gmail.com?subject=${subject}&body=${body}`;
+    //
+    // 주의(VC 루프 iter 4): 데스크톱 등 메일 앱이 설정 안 된 환경에서는
+    // mailto:가 조용히 아무 일도 안 할 수 있다(.ics 다운로드와 같은 종류의
+    // 실패 양상) — 성공 여부를 알 수 없으니 클립보드 복사를 항상 함께 해서
+    // 수동으로라도 보낼 수 있게 한다.
+    const subject = "체커 플러스 사전 신청";
+    const bodyText = `신청 이메일: ${waitlistEmail}`;
+    window.location.href = `mailto:${WAITLIST_CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyText)}`;
+    try {
+      await navigator.clipboard.writeText(`${WAITLIST_CONTACT_EMAIL} / ${subject} / ${bodyText}`);
+    } catch {
+      // 클립보드 접근 불가 — 메일 앱이 열렸다면 어차피 문제 없음, 둘 다 실패해도
+      // 아래 안내 문구에 이메일 주소가 그대로 노출되어 있다.
+    }
     setPaymentStage("submitted");
   }
 
@@ -313,9 +325,16 @@ export function CheckerScreen() {
                     수 있어요. 월 1,900원.
                   </p>
                   {paymentStage === "submitted" ? (
-                    <p className="text-sm font-medium text-green-700">
-                      신청 완료 · 출시되면 가장 먼저 알려드릴게요
-                    </p>
+                    <div>
+                      <p className="text-sm font-medium text-green-700">
+                        신청 완료 · 출시되면 가장 먼저 알려드릴게요
+                      </p>
+                      <p className="mt-1.5 text-xs text-slate-400">
+                        메일 앱이 안 열렸다면 신청 내용이 클립보드에 복사돼 있어요 —{" "}
+                        <strong className="text-slate-500">{WAITLIST_CONTACT_EMAIL}</strong>로
+                        붙여넣어 보내주세요.
+                      </p>
+                    </div>
                   ) : paymentStage === "collecting" ? (
                     <form onSubmit={handleWaitlistSubmit} className="flex flex-col gap-2">
                       <input
