@@ -119,7 +119,7 @@ export function WalletScreen() {
           </Link>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 pb-8 pt-5">
+        <main className="flex-1 overflow-y-auto px-4 pb-28 pt-5">
           <div className="mb-5 flex flex-col gap-3">
             <VCCard
               title="모바일 운전면허증 (mDL)"
@@ -154,31 +154,16 @@ export function WalletScreen() {
             />
           </div>
 
-          <section className="overflow-hidden rounded-3xl bg-white shadow-sm">
-            <div className="flex items-center justify-between px-5 py-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-800">응급 모드</p>
-                <p className="mt-0.5 text-xs text-slate-400">
-                  켜면 혈액형·알레르기만 의료진에게 공개
-                </p>
-              </div>
-              <button
-                onClick={() => setEmergencyOn((v) => !v)}
-                aria-pressed={emergencyOn}
-                className={`relative h-8 w-14 flex-none rounded-full transition ${
-                  emergencyOn ? "bg-rose-600" : "bg-slate-200"
-                }`}
-              >
-                <span
-                  className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-transform ${
-                    emergencyOn ? "translate-x-7" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
+          {!emergencyOn && (
+            <p className="mb-4 px-1 text-xs leading-relaxed text-slate-400">
+              응급 상황에서 아래 버튼을 누르면 혈액형 + 알레르기 정보만
+              선택적으로 공개합니다. 이름·주민번호·주소는 공개되지 않습니다.
+            </p>
+          )}
 
-            <div className="px-5 pb-5">
-              {emergencyOn && qrDataUrl && (
+          {emergencyOn && (
+            <section className="overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
+              {qrDataUrl && (
                 <div>
                   <p className="mb-3 text-xs text-slate-500">
                     의료진에게 QR을 보여주거나 아래 페이로드를 복사해서 의사
@@ -210,7 +195,7 @@ export function WalletScreen() {
                 </div>
               )}
 
-              {emergencyOn && !qrDataUrl && qrError && vpCompact && (
+              {!qrDataUrl && qrError && vpCompact && (
                 <div className="flex flex-col gap-2">
                   <p className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-xs text-rose-700">
                     {qrError}
@@ -232,19 +217,27 @@ export function WalletScreen() {
                 </div>
               )}
 
-              {emergencyOn && !qrDataUrl && !qrError && (
+              {!qrDataUrl && !qrError && (
                 <p className="text-xs text-slate-400">QR 생성 중...</p>
               )}
-
-              {!emergencyOn && (
-                <p className="text-xs leading-relaxed text-slate-400">
-                  응급 상황에서 토글을 켜면 혈액형 + 알레르기 정보만 선택적으로
-                  공개합니다. 이름·주민번호·주소는 공개되지 않습니다.
-                </p>
-              )}
-            </div>
-          </section>
+            </section>
+          )}
         </main>
+
+        {/* 응급 모드 — 실제 응급 상황에서 바로 찾을 수 있게 하단 고정, 큰 터치 영역 */}
+        <div className="pointer-events-none fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2">
+          <div className="pointer-events-auto border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur">
+            <button
+              onClick={() => setEmergencyOn((v) => !v)}
+              aria-pressed={emergencyOn}
+              className={`w-full rounded-2xl py-3.5 text-base font-semibold text-white transition ${
+                emergencyOn ? "bg-rose-600 active:bg-rose-700" : "bg-slate-900 active:bg-slate-800"
+              }`}
+            >
+              {emergencyOn ? "응급 모드 끄기" : "응급 모드 켜기"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
