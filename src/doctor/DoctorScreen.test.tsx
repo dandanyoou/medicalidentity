@@ -78,3 +78,19 @@ describe("DoctorScreen — D6 regression coverage (관리약물 모드 토글 �
     expect(screen.getByText("처방 예정 약물 (DDI)")).toBeTruthy();
   });
 });
+
+describe("DoctorScreen — 로직 견고화 (필드 누락 입력)", () => {
+  afterEach(() => cleanup());
+
+  it("blood/allergy/nonce가 빠진 JSON은 저수준 라이브러리 에러 대신 명확한 안내를 보여준다", async () => {
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    const textarea = screen.getByPlaceholderText(/wallet에서 복사한 JSON/);
+    fireEvent.change(textarea, { target: { value: JSON.stringify({ blood: "x" }) } });
+    fireEvent.click(screen.getByText("페이스트 검증"));
+    expect(await screen.findByText(/필수 항목\(blood, allergy, nonce\)이 빠져 있습니다/)).toBeTruthy();
+  });
+});

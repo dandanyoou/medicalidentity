@@ -14,6 +14,9 @@
 //   검증하지, 금액이 실제 고시와 일치하는지는 검증하지 않는다.
 
 export const SUPPORTED_YEARS = [2026] as const;
+// 10분위 상한액(843만원)의 100배 이상 — 1년 본인부담금이 이걸 넘는 입력은
+// 현실적으로 자릿수 오타다(Open Questions의 자가입력 신뢰도 문제와 같은 결).
+const MAX_PLAUSIBLE_MEDICAL_COST_WON = 1_000_000_000;
 export type SupportedYear = (typeof SUPPORTED_YEARS)[number];
 
 export type IncomeTier = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
@@ -71,6 +74,14 @@ export function computeOverage(
 ): OverageResult {
   if (!Number.isFinite(medicalCostWon) || medicalCostWon < 0) {
     throw new CheckerInputError("의료비는 0 이상의 숫자로 입력해주세요.");
+  }
+  if (medicalCostWon > MAX_PLAUSIBLE_MEDICAL_COST_WON) {
+    // 1년 본인부담금이 10억 원을 넘는 건 거의 항상 자릿수 오타다 — 그대로
+    // 계산하면 "9,999,999,990원 환급 가능" 같은 터무니없는 숫자를 보여줘
+    // 신뢰를 잃는다. 조용히 틀린 값을 보여주는 것보다 입력을 막는다.
+    throw new CheckerInputError(
+      "입력하신 금액이 너무 큽니다 — 자릿수를 다시 확인해주세요.",
+    );
   }
   if (!Number.isInteger(incomeTier) || incomeTier < 1 || incomeTier > 10) {
     throw new CheckerInputError("소득분위는 1~10 사이의 정수여야 합니다.");

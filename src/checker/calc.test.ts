@@ -48,6 +48,14 @@ describe("computeOverage", () => {
     expect(() => computeOverage(Number.NaN, 1, 2026)).toThrow(CheckerInputError);
   });
 
+  it("비현실적으로 큰 의료비(자릿수 오타 의심)는 CheckerInputError를 던진다", () => {
+    expect(() => computeOverage(10_000_000_000, 1, 2026)).toThrow(CheckerInputError);
+  });
+
+  it("10억 원은 아직 허용 범위(경계값)다", () => {
+    expect(() => computeOverage(1_000_000_000, 1, 2026)).not.toThrow();
+  });
+
   it("지원하지 않는 연도는 CheckerInputError를 던진다", () => {
     expect(() => computeOverage(1_000_000, 1, 2020)).toThrow(CheckerInputError);
     expect(() => computeOverage(1_000_000, 1, 2030)).toThrow(CheckerInputError);

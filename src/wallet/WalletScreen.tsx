@@ -45,27 +45,38 @@ export function WalletScreen() {
       setQrError(null);
       return;
     }
+    // 토글을 빠르게 켬/끔/켬 하면 이전 비동기 VP 생성이 나중에 끝나면서
+    // 최신 상태를 덮어쓸 수 있다 — 이 effect 실행이 더 이상 "최신"이
+    // 아니게 되면 결과를 반영하지 않는다.
+    let cancelled = false;
     (async () => {
       try {
         const { qr, compact } = await buildEmergencyQR(vcs);
+        if (cancelled) return;
         setQRDataUrl(qr);
         setVpCompact(compact);
         setQrError(null);
         navigator.clipboard?.writeText(compact).catch(() => {});
       } catch (e) {
+        if (cancelled) return;
         const msg = (e as Error)?.message ?? String(e);
         // QR overflow is recoverable — keep paste path alive.
         try {
           const compact = await buildVPPayload(vcs);
+          if (cancelled) return;
           setVpCompact(compact);
           setQRDataUrl(null);
           setQrError(`QR 인코딩 실패: ${msg}. 페이로드 복사로 의사 화면에 붙여넣으세요.`);
           navigator.clipboard?.writeText(compact).catch(() => {});
         } catch (inner) {
+          if (cancelled) return;
           setQrError(`VP 생성 실패: ${(inner as Error).message}`);
         }
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [emergencyOn, vcs]);
 
   const copy = () => {

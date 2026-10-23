@@ -52,6 +52,14 @@ export function DoctorScreen() {
     setError(null);
     try {
       const parsed = JSON.parse(text) as PresentationBundle;
+      // ER에서 급하게 붙여넣다 보면 복사가 중간에 잘리거나 필수 필드가
+      // 빠지기 쉽다 — 그 경우 검증 라이브러리의 저수준 에러 대신 바로
+      // 원인을 알 수 있는 메시지를 준다.
+      if (typeof parsed.blood !== "string" || typeof parsed.allergy !== "string" || typeof parsed.nonce !== "string") {
+        throw new Error(
+          '필수 항목(blood, allergy, nonce)이 빠져 있습니다 — wallet에서 복사한 전체 JSON인지 확인해주세요.',
+        );
+      }
       const blood = await verifyVP({
         vp: parsed.blood,
         trustAnchors: TRUST_ANCHORS,
@@ -112,7 +120,12 @@ export function DoctorScreen() {
         { fps: 10, qrbox: { width: 240, height: 240 } },
         (decoded) => {
           verifyText(decoded);
-          void scannerRef.current?.stop().then(() => setScanActive(false));
+          // stop()이 실패해도(이미 멈춰있는 등) 버튼이 "스캔 중..."에
+          // 영원히 멈춰있지 않게 — 두 경우 모두 scanActive를 해제한다.
+          void scannerRef.current
+            ?.stop()
+            .then(() => setScanActive(false))
+            .catch(() => setScanActive(false));
         },
         () => {},
       );

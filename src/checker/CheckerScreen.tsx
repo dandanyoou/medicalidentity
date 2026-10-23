@@ -96,13 +96,20 @@ export function CheckerScreen() {
 
   function handleIcsDownload() {
     if (!result) return;
-    const ics = buildIcsEvent({
-      summary: "본인부담상한제 환급 신청 기한(추정)",
-      description: "의료비·시효 체커에서 계산한 추정 신청 기한입니다. 정확한 기한은 공식 안내로 확인하세요.",
-      date: result.estimatedApplicationDeadline,
-    });
-    triggerIcsDownload("환급신청기한.ics", ics);
-    trackCheckerEvent("checker_ics_downloaded");
+    // Blob/DOM API가 막힌 드문 환경에서도 조용히 죽지 않게 — 실패해도
+    // "다운로드가 시작되지 않았다면 직접 추가해주세요" 폴백 문구가 바로
+    // 뜨게 한다(사용자 입장에선 느렸다/실패했다를 구분할 필요 없음).
+    try {
+      const ics = buildIcsEvent({
+        summary: "본인부담상한제 환급 신청 기한(추정)",
+        description: "의료비·시효 체커에서 계산한 추정 신청 기한입니다. 정확한 기한은 공식 안내로 확인하세요.",
+        date: result.estimatedApplicationDeadline,
+      });
+      triggerIcsDownload("환급신청기한.ics", ics);
+      trackCheckerEvent("checker_ics_downloaded");
+    } catch {
+      // 다운로드 자체는 실패해도 아래 수동 추가 안내는 그대로 보여준다.
+    }
     setIcsAttempted(true);
   }
 
