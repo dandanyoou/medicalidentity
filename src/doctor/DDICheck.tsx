@@ -36,18 +36,18 @@ export function DDICheck({ allergens, severity }: Props) {
   }, [selected, allergens]);
 
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-      <h2 className="font-semibold text-slate-800 mb-3">처방 예정 약물 (DDI)</h2>
+    <div className="rounded-3xl bg-white p-4 shadow-sm">
+      <h2 className="font-semibold text-slate-800 mb-3 text-sm">처방 예정 약물 (DDI)</h2>
 
-      <div className="grid grid-cols-2 gap-1 mb-3">
+      <div className="grid grid-cols-2 gap-1.5 mb-3">
         {EMERGENCY_DRUGS.map((drug) => (
           <button
             key={drug}
             onClick={() => setSelected(drug)}
-            className={`text-xs px-2 py-1.5 rounded border ${
+            className={`text-xs px-2 py-1.5 rounded-xl border transition ${
               selected === drug
-                ? "bg-slate-800 text-white border-slate-800"
-                : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
+                ? "bg-slate-900 text-white border-slate-900"
+                : "bg-slate-50 text-slate-700 border-slate-100 hover:bg-slate-100"
             }`}
           >
             {drug}
@@ -62,7 +62,7 @@ export function DDICheck({ allergens, severity }: Props) {
       )}
 
       {selected && conflict && (
-        <div className="bg-rose-100 border-2 border-rose-500 rounded p-3">
+        <div className="bg-rose-100 border-2 border-rose-500 rounded-2xl p-3">
           <div className="font-bold text-rose-900">
             ⚠ {conflict.toUpperCase()}계 알레르기 환자 — 충돌
           </div>
@@ -79,7 +79,7 @@ export function DDICheck({ allergens, severity }: Props) {
       )}
 
       {selected && !conflict && drugInLookup && (
-        <div className="bg-emerald-50 border border-emerald-400 rounded p-3">
+        <div className="bg-emerald-50 border border-emerald-400 rounded-2xl p-3">
           <div className="font-medium text-emerald-900">
             ✅ 알려진 충돌 없음
           </div>
@@ -90,7 +90,7 @@ export function DDICheck({ allergens, severity }: Props) {
       )}
 
       {selected && !conflict && !drugInLookup && (
-        <div className="bg-slate-100 border border-slate-400 rounded p-3">
+        <div className="bg-slate-100 border border-slate-400 rounded-2xl p-3">
           <div className="font-medium text-slate-700">
             ⚠️ 데모 룩업에 등록 안 된 약물
           </div>

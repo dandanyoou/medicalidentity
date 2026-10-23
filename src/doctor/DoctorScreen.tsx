@@ -93,9 +93,9 @@ export function DoctorScreen() {
       });
     } catch (e) {
       if (e instanceof VerifyError) {
-        setError(`❌ VC 검증 실패: ${e.reason}`);
+        setError(`VC 검증 실패: ${e.reason}`);
       } else {
-        setError(`❌ 검증 오류: ${(e as Error).message}`);
+        setError(`검증 오류: ${(e as Error).message}`);
       }
       setBundle(null);
     }
@@ -123,206 +123,220 @@ export function DoctorScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-white p-6">
-      <header className="mb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">의사 화면</h1>
-          <p className="text-xs text-slate-500">
-            응급실 / Demo General Hospital
-          </p>
-        </div>
-        <Link
-          to="/wallet"
-          className="text-sm text-blue-600 underline"
-          target="_blank"
-        >
-          ← 환자 wallet
-        </Link>
-      </header>
-
-      {!bundle && (
-        <section className="mb-6 bg-slate-50 border border-slate-200 rounded-lg p-4">
-          <h2 className="font-semibold text-slate-700 mb-2">
-            환자 VP 입력
-          </h2>
-          <p className="text-xs text-slate-500 mb-3">
-            환자 wallet의 QR을 스캔하거나, 클립보드에서 ⌘V로 페이로드를 붙여넣으세요.
-          </p>
-
-          <div className="flex gap-2 mb-3">
-            <button
-              onClick={startScan}
-              disabled={scanActive}
-              className="bg-slate-800 text-white px-4 py-2 rounded text-sm disabled:opacity-40"
-            >
-              {scanActive ? "스캔 중..." : "QR 스캔 시작"}
-            </button>
-            <button
-              onClick={() => verifyText(pasteValue)}
-              disabled={!pasteValue}
-              className="bg-blue-600 text-white px-4 py-2 rounded text-sm disabled:opacity-40"
-            >
-              페이스트 검증
-            </button>
+    <div className="min-h-screen bg-slate-100">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-lg flex-col bg-slate-50 shadow-xl">
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur">
+          <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-slate-100 text-base">
+            🩺
           </div>
-
-          <div id="qr-reader" className="mb-3 max-w-sm" />
-
-          <textarea
-            value={pasteValue}
-            onChange={(e) => setPasteValue(e.target.value)}
-            placeholder='wallet에서 복사한 JSON ({"blood":"...","allergy":"...","nonce":"..."[,"mDL":"..."]})'
-            className="w-full h-24 border border-slate-300 rounded p-2 text-xs font-mono"
-          />
-        </section>
-      )}
-
-      {error && (
-        <div className="mb-4 bg-rose-50 border border-rose-300 text-rose-800 p-3 rounded">
-          {error}
-          <button
-            onClick={() => {
-              setError(null);
-              setPasteValue("");
-            }}
-            className="ml-3 underline text-xs"
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base font-semibold text-slate-900">의사 화면</h1>
+            <p className="truncate text-[11px] text-slate-400">응급실 / Demo General Hospital</p>
+          </div>
+          <Link
+            to="/wallet"
+            target="_blank"
+            className="flex-none rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 active:bg-slate-200"
           >
-            다시
-          </button>
-        </div>
-      )}
+            ← 환자 wallet
+          </Link>
+        </header>
 
-      {bundle && (
-        <section className="space-y-4">
-          {bundle.mDLTrusted && (
-            <div className="bg-blue-50 border-2 border-blue-400 rounded-lg p-3 flex items-center gap-3">
-              <span className="text-2xl">✓</span>
-              <div>
-                <div className="font-semibold text-blue-900">
-                  Korean mDL Reference Issuer 서명 검증됨
-                </div>
-                <div className="text-xs text-blue-700">
-                  환자 신원이 한국 mDL 표준 reference issuer로 anchor됨
-                  (demo). 식별 정보는 환자 동의 하에 마스킹.
-                </div>
+        <main className="flex-1 overflow-y-auto px-4 pb-8 pt-5">
+          {!bundle && (
+            <section className="rounded-3xl bg-white p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-slate-800">환자 VP 입력</h2>
+              <p className="mt-1 mb-4 text-xs text-slate-400">
+                환자 wallet의 QR을 스캔하거나, 클립보드에서 ⌘V로 페이로드를 붙여넣으세요.
+              </p>
+
+              <div className="mb-4 flex gap-2">
+                <button
+                  onClick={startScan}
+                  disabled={scanActive}
+                  className="flex-1 rounded-full bg-slate-900 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+                >
+                  {scanActive ? "스캔 중..." : "QR 스캔 시작"}
+                </button>
+                <button
+                  onClick={() => verifyText(pasteValue)}
+                  disabled={!pasteValue}
+                  className="flex-1 rounded-full bg-blue-600 py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+                >
+                  페이스트 검증
+                </button>
+              </div>
+
+              <div id="qr-reader" className="mb-4 overflow-hidden rounded-2xl" />
+
+              <textarea
+                value={pasteValue}
+                onChange={(e) => setPasteValue(e.target.value)}
+                placeholder='wallet에서 복사한 JSON ({"blood":"...","allergy":"...","nonce":"..."[,"mDL":"..."]})'
+                className="h-24 w-full rounded-2xl border border-slate-200 p-3 font-mono text-xs outline-none focus:border-blue-600"
+              />
+            </section>
+          )}
+
+          {error && (
+            <div
+              role="alert"
+              className="mt-4 flex items-start gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+            >
+              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">
+                !
+              </span>
+              <div className="flex-1">
+                {error}
+                <button
+                  onClick={() => {
+                    setError(null);
+                    setPasteValue("");
+                  }}
+                  className="ml-2 text-xs font-medium underline"
+                >
+                  다시
+                </button>
               </div>
             </div>
           )}
-          {!bundle.mDL && (
-            <div className="bg-amber-50 border border-amber-300 rounded p-2 text-xs text-amber-900">
-              ID anchor: QR fast-path (mDL 미포함). 신원 확인이 필요하면 환자 wallet에서 페이로드 복사 후 페이스트로 mDL 포함된 full bundle 검증.
-            </div>
-          )}
 
-          <div className="flex gap-2">
-            <button
-              onClick={() => setMode("emergency")}
-              className={`px-3 py-1.5 rounded text-sm font-medium ${
-                mode === "emergency"
-                  ? "bg-slate-800 text-white"
-                  : "bg-slate-100 text-slate-600"
-              }`}
-            >
-              응급 모드
-            </button>
-            <button
-              onClick={() => setMode("controlled")}
-              className={`px-3 py-1.5 rounded text-sm font-medium ${
-                mode === "controlled"
-                  ? "bg-slate-800 text-white"
-                  : "bg-slate-100 text-slate-600"
-              }`}
-            >
-              관리약물 모드
-            </button>
-          </div>
-
-          {mode === "emergency" && (
-            <div className="grid md:grid-cols-2 gap-4">
-              <PatientPanel bundle={bundle} />
-              <DDICheck
-                allergens={
-                  (bundle.allergy.revealedClaims.allergens as string[]) ?? []
-                }
-                severity={bundle.allergy.revealedClaims.severity as
-                  | string
-                  | undefined}
-              />
-            </div>
-          )}
-
-          {mode === "controlled" &&
-            (bundle.controlledSubstance ? (
-              <ControlledSubstancePanel
-                priorVisits={
-                  (bundle.controlledSubstance.revealedClaims.priorVisits as {
-                    hospital: string;
-                    drug: string;
-                    date: string;
-                  }[]) ?? []
-                }
-              />
-            ) : (
-              <div className="bg-amber-50 border border-amber-300 rounded p-3 text-xs text-amber-900">
-                관리약물 이력은 QR fast-path에 포함되지 않습니다. 환자 wallet에서
-                페이로드 복사 후 페이스트로 full bundle을 검증하세요.
-              </div>
-            ))}
-
-          <details className="bg-slate-50 border border-slate-200 rounded p-3">
-            <summary className="text-sm font-medium text-slate-700 cursor-pointer">
-              검증 메타데이터 (dev tools 시연용)
-            </summary>
-            <pre className="text-[10px] mt-2 whitespace-pre-wrap break-all">
-              {JSON.stringify(
-                {
-                  blood: {
-                    issuer: bundle.blood.issuer,
-                    vct: bundle.blood.vct,
-                    revealed: bundle.blood.revealedClaims,
-                    hiddenCount: bundle.blood.hiddenClaimNames.length,
-                    aud: bundle.blood.kbAudience,
-                    nonce: bundle.blood.kbNonce,
-                  },
-                  allergy: {
-                    issuer: bundle.allergy.issuer,
-                    revealed: bundle.allergy.revealedClaims,
-                    hiddenCount: bundle.allergy.hiddenClaimNames.length,
-                  },
-                  mDL: bundle.mDL
-                    ? {
-                        issuer: bundle.mDL.issuer,
-                        vct: bundle.mDL.vct,
-                        revealed: bundle.mDL.revealedClaims,
-                        hiddenCount: bundle.mDL.hiddenClaimNames.length,
-                      }
-                    : "(not provided in QR fast-path)",
-                  controlledSubstance: bundle.controlledSubstance
-                    ? {
-                        issuer: bundle.controlledSubstance.issuer,
-                        vct: bundle.controlledSubstance.vct,
-                        hiddenCount:
-                          bundle.controlledSubstance.hiddenClaimNames.length,
-                      }
-                    : "(not provided in QR fast-path)",
-                },
-                null,
-                2,
+          {bundle && (
+            <section className="flex flex-col gap-4">
+              {bundle.mDLTrusted && (
+                <div className="flex items-center gap-3 rounded-3xl bg-blue-50 p-4">
+                  <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-blue-600 text-base text-white">
+                    ✓
+                  </span>
+                  <div>
+                    <div className="text-sm font-semibold text-blue-900">
+                      Korean mDL Reference Issuer 서명 검증됨
+                    </div>
+                    <div className="mt-0.5 text-xs text-blue-700">
+                      환자 신원이 한국 mDL 표준 reference issuer로 anchor됨 (demo). 식별
+                      정보는 환자 동의 하에 마스킹.
+                    </div>
+                  </div>
+                </div>
               )}
-            </pre>
-          </details>
+              {!bundle.mDL && (
+                <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                  ID anchor: QR fast-path (mDL 미포함). 신원 확인이 필요하면 환자
+                  wallet에서 페이로드 복사 후 페이스트로 mDL 포함된 full bundle 검증.
+                </div>
+              )}
 
-          <button
-            onClick={() => {
-              setBundle(null);
-              setPasteValue("");
-            }}
-            className="text-sm text-slate-600 underline"
-          >
-            다시 입력
-          </button>
-        </section>
-      )}
+              <div className="flex gap-2 rounded-full bg-slate-100 p-1">
+                <button
+                  onClick={() => setMode("emergency")}
+                  className={`flex-1 rounded-full py-2 text-sm font-semibold transition ${
+                    mode === "emergency"
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-500"
+                  }`}
+                >
+                  응급 모드
+                </button>
+                <button
+                  onClick={() => setMode("controlled")}
+                  className={`flex-1 rounded-full py-2 text-sm font-semibold transition ${
+                    mode === "controlled"
+                      ? "bg-slate-900 text-white"
+                      : "text-slate-500"
+                  }`}
+                >
+                  관리약물 모드
+                </button>
+              </div>
+
+              {mode === "emergency" && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <PatientPanel bundle={bundle} />
+                  <DDICheck
+                    allergens={
+                      (bundle.allergy.revealedClaims.allergens as string[]) ?? []
+                    }
+                    severity={
+                      bundle.allergy.revealedClaims.severity as string | undefined
+                    }
+                  />
+                </div>
+              )}
+
+              {mode === "controlled" &&
+                (bundle.controlledSubstance ? (
+                  <ControlledSubstancePanel
+                    priorVisits={
+                      (bundle.controlledSubstance.revealedClaims.priorVisits as {
+                        hospital: string;
+                        drug: string;
+                        date: string;
+                      }[]) ?? []
+                    }
+                  />
+                ) : (
+                  <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                    관리약물 이력은 QR fast-path에 포함되지 않습니다. 환자 wallet에서
+                    페이로드 복사 후 페이스트로 full bundle을 검증하세요.
+                  </div>
+                ))}
+
+              <details className="rounded-2xl bg-white p-4 text-xs shadow-sm">
+                <summary className="cursor-pointer select-none text-sm font-medium text-slate-700">
+                  검증 메타데이터 (dev tools 시연용)
+                </summary>
+                <pre className="mt-2 whitespace-pre-wrap break-all rounded-xl bg-slate-50 p-3 text-[10px]">
+                  {JSON.stringify(
+                    {
+                      blood: {
+                        issuer: bundle.blood.issuer,
+                        vct: bundle.blood.vct,
+                        revealed: bundle.blood.revealedClaims,
+                        hiddenCount: bundle.blood.hiddenClaimNames.length,
+                        aud: bundle.blood.kbAudience,
+                        nonce: bundle.blood.kbNonce,
+                      },
+                      allergy: {
+                        issuer: bundle.allergy.issuer,
+                        revealed: bundle.allergy.revealedClaims,
+                        hiddenCount: bundle.allergy.hiddenClaimNames.length,
+                      },
+                      mDL: bundle.mDL
+                        ? {
+                            issuer: bundle.mDL.issuer,
+                            vct: bundle.mDL.vct,
+                            revealed: bundle.mDL.revealedClaims,
+                            hiddenCount: bundle.mDL.hiddenClaimNames.length,
+                          }
+                        : "(not provided in QR fast-path)",
+                      controlledSubstance: bundle.controlledSubstance
+                        ? {
+                            issuer: bundle.controlledSubstance.issuer,
+                            vct: bundle.controlledSubstance.vct,
+                            hiddenCount:
+                              bundle.controlledSubstance.hiddenClaimNames.length,
+                          }
+                        : "(not provided in QR fast-path)",
+                    },
+                    null,
+                    2,
+                  )}
+                </pre>
+              </details>
+
+              <button
+                onClick={() => {
+                  setBundle(null);
+                  setPasteValue("");
+                }}
+                className="self-start text-sm font-medium text-slate-500 underline"
+              >
+                다시 입력
+              </button>
+            </section>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
@@ -338,8 +352,8 @@ function PatientPanel({ bundle }: { bundle: VerifiedBundle }) {
     | undefined;
 
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-      <h2 className="font-semibold text-slate-800 mb-3">환자 정보 (마스킹됨)</h2>
+    <div className="rounded-3xl bg-white p-4 shadow-sm">
+      <h2 className="mb-3 text-sm font-semibold text-slate-800">환자 정보 (마스킹됨)</h2>
 
       <dl className="space-y-2 text-sm">
         <Row label="이름" value={<Masked />} />
@@ -350,19 +364,21 @@ function PatientPanel({ bundle }: { bundle: VerifiedBundle }) {
           label="알레르기"
           value={
             allergens && allergens.length > 0 ? (
-              <strong className="text-rose-700">
+              <strong className="text-rose-600">
                 {allergens.join(", ")}
                 {severity && (
-                  <span className="ml-2 text-xs">({severity})</span>
+                  <span className="ml-2 text-xs font-normal text-rose-400">
+                    ({severity})
+                  </span>
                 )}
               </strong>
             ) : (
-              <span className="text-slate-500">정보 없음</span>
+              <span className="text-slate-400">정보 없음</span>
             )
           }
         />
       </dl>
-      <p className="mt-3 text-[10px] text-slate-500">
+      <p className="mt-3 text-[10px] text-slate-400">
         ●●● = SD-JWT undisclosed digest (실제 데이터는 wallet에 보관됨, presentation에 포함되지 않음)
       </p>
     </div>
@@ -372,12 +388,12 @@ function PatientPanel({ bundle }: { bundle: VerifiedBundle }) {
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-baseline gap-3">
-      <dt className="w-20 text-slate-500 text-xs">{label}</dt>
+      <dt className="w-20 flex-none text-xs text-slate-400">{label}</dt>
       <dd className="text-slate-800">{value}</dd>
     </div>
   );
 }
 
 function Masked() {
-  return <span className="font-mono text-slate-400">●●●</span>;
+  return <span className="font-mono text-slate-300">●●●</span>;
 }

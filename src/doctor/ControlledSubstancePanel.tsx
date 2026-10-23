@@ -44,7 +44,7 @@ export function ControlledSubstancePanel({ priorVisits }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+      <div className="rounded-3xl bg-white p-4 shadow-sm">
         <h2 className="font-semibold text-slate-800 mb-1">
           관리약물 처방 이력 (시드 데이터)
         </h2>
@@ -66,15 +66,15 @@ export function ControlledSubstancePanel({ priorVisits }: Props) {
         <h3 className="font-medium text-slate-700 mb-2 text-sm">
           처방 예정 관리약물
         </h3>
-        <div className="grid grid-cols-2 gap-1 mb-3">
+        <div className="grid grid-cols-2 gap-1.5 mb-3">
           {CONTROLLED_SUBSTANCES.map((drug) => (
             <button
               key={drug}
               onClick={() => setSelected(drug)}
-              className={`text-xs px-2 py-1.5 rounded border ${
+              className={`text-xs px-2 py-1.5 rounded-xl border transition ${
                 selected === drug
-                  ? "bg-slate-800 text-white border-slate-800"
-                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-slate-50 text-slate-700 border-slate-100 hover:bg-slate-100"
               }`}
             >
               {drug}
@@ -89,7 +89,7 @@ export function ControlledSubstancePanel({ priorVisits }: Props) {
         )}
 
         {selected && result && result.flagged && (
-          <div className="bg-rose-100 border-2 border-rose-500 rounded p-3">
+          <div className="bg-rose-100 border-2 border-rose-500 rounded-2xl p-3">
             <div className="font-bold text-rose-900">
               ⚠ 중복처방 의심 — {selected}
             </div>
@@ -106,7 +106,7 @@ export function ControlledSubstancePanel({ priorVisits }: Props) {
         )}
 
         {selected && result && !result.flagged && (
-          <div className="bg-emerald-50 border border-emerald-400 rounded p-3">
+          <div className="bg-emerald-50 border border-emerald-400 rounded-2xl p-3">
             <div className="font-medium text-emerald-900">
               ✅ 중복처방 의심 없음
             </div>
@@ -117,7 +117,7 @@ export function ControlledSubstancePanel({ priorVisits }: Props) {
         {selected && (
           <button
             onClick={recordPrescription}
-            className="mt-3 w-full bg-slate-800 text-white py-2 rounded text-sm font-medium"
+            className="mt-3 w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:bg-slate-800"
           >
             이 처방을 위변조방지 로그에 기록
           </button>
@@ -125,7 +125,7 @@ export function ControlledSubstancePanel({ priorVisits }: Props) {
       </div>
 
       {chain.length > 0 && (
-        <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+        <div className="rounded-3xl bg-white p-4 shadow-sm">
           <h3 className="font-semibold text-slate-800 mb-2">
             위변조 방지 로그 (간이 해시체인)
           </h3>
@@ -151,11 +151,11 @@ export function ControlledSubstancePanel({ priorVisits }: Props) {
           </label>
 
           {chainVerify.ok ? (
-            <div className="bg-emerald-50 border border-emerald-400 rounded p-2 text-xs text-emerald-900">
+            <div className="bg-emerald-50 border border-emerald-400 rounded-2xl p-2 text-xs text-emerald-900">
               ✅ 체인 무결성 검증 통과
             </div>
           ) : (
-            <div className="bg-rose-100 border-2 border-rose-500 rounded p-2 text-xs text-rose-900 font-bold">
+            <div className="bg-rose-100 border-2 border-rose-500 rounded-2xl p-2 text-xs text-rose-900 font-bold">
               ❌ 위변조 탐지됨 — entry #{chainVerify.brokenAtSeq}부터 해시 불일치
             </div>
           )}

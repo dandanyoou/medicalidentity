@@ -78,139 +78,162 @@ export function WalletScreen() {
 
   if (seedError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-rose-50 p-6">
-        <div className="text-rose-700">{seedError}</div>
+      <div className="flex min-h-screen items-center justify-center bg-rose-50 p-6">
+        <div className="rounded-2xl bg-white px-5 py-4 text-sm text-rose-700 shadow-sm">
+          {seedError}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 max-w-md mx-auto">
-      <header className="mb-4">
-        <h1 className="text-xl font-bold text-slate-800">환자 지갑 (Wallet)</h1>
-        <p className="text-xs text-slate-500">
-          holder: {DEMO_HOLDER.did.slice(0, 24)}…
-        </p>
-        <Link
-          to="/doctor"
-          className="text-xs text-blue-600 underline"
-          target="_blank"
-        >
-          → 의사 화면 새 탭에서 열기
-        </Link>
-      </header>
-
-      <div className="space-y-3 mb-6">
-        <VCCard
-          title="모바일 운전면허증 (mDL)"
-          issuerLabel="🇰🇷 Korean mDL Reference Issuer (Demo)"
-          subtitle="reference implementation, not gov-signed"
-          claims={[
-            ["이름", "김단유"],
-            ["주민번호", "940123-1******"],
-            ["생년월일", "1994-01-23"],
-            ["면허 등급", "1종 보통"],
-          ]}
-          accent="blue"
-        />
-        <VCCard
-          title="혈액형 정보"
-          issuerLabel="Demo Hospital Issuer"
-          claims={[
-            ["혈액형", "A형"],
-            ["Rh", "+"],
-          ]}
-          accent="rose"
-        />
-        <VCCard
-          title="알레르기 정보"
-          issuerLabel="Demo Hospital Issuer"
-          claims={[
-            ["알레르기", "페니실린"],
-            ["중증도", "중증"],
-            ["최종 갱신", "2026-03-10"],
-          ]}
-          accent="amber"
-        />
-      </div>
-
-      <div className="bg-white border border-slate-200 rounded-lg p-4">
-        <label className="flex items-center justify-between mb-3">
-          <span className="font-semibold text-slate-700">응급 모드</span>
-          <button
-            onClick={() => setEmergencyOn((v) => !v)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium ${
-              emergencyOn
-                ? "bg-rose-600 text-white"
-                : "bg-slate-200 text-slate-700"
-            }`}
+    <div className="min-h-screen bg-slate-100">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-50 shadow-xl">
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur">
+          <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-blue-50 text-base">
+            🪪
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-base font-semibold text-slate-900">환자 지갑</h1>
+            <p className="truncate text-[11px] text-slate-400">
+              holder: {DEMO_HOLDER.did.slice(0, 20)}…
+            </p>
+          </div>
+          <Link
+            to="/doctor"
+            target="_blank"
+            className="flex-none rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 active:bg-slate-200"
           >
-            {emergencyOn ? "ON (응급 활성화)" : "OFF"}
-          </button>
-        </label>
+            의사 화면 →
+          </Link>
+        </header>
 
-        {emergencyOn && qrDataUrl && (
-          <div className="mt-2">
-            <p className="text-xs text-slate-500 mb-2">
-              의료진에게 QR을 보여주거나 아래 페이로드를 복사해서 의사 화면에
-              붙여넣으세요.
-            </p>
-            <img
-              src={qrDataUrl}
-              alt="Emergency VP QR"
-              className="mx-auto w-56 h-56 border"
+        <main className="flex-1 overflow-y-auto px-4 pb-8 pt-5">
+          <div className="mb-5 flex flex-col gap-3">
+            <VCCard
+              title="모바일 운전면허증 (mDL)"
+              issuerLabel="Korean mDL Reference Issuer (Demo)"
+              subtitle="reference implementation, not gov-signed"
+              claims={[
+                ["이름", "김단유"],
+                ["주민번호", "940123-1******"],
+                ["생년월일", "1994-01-23"],
+                ["면허 등급", "1종 보통"],
+              ]}
+              accent="blue"
             />
-            <button
-              onClick={copy}
-              className="mt-3 w-full bg-slate-800 text-white py-2 rounded text-sm font-medium"
-            >
-              {copied ? "✓ 복사됨" : "VP 페이로드 클립보드 복사"}
-            </button>
-            {vpCompact && (
-              <details className="mt-2">
-                <summary className="text-xs text-slate-500 cursor-pointer">
-                  SD-JWT VP 페이로드 (dev tools 시연용)
-                </summary>
-                <pre className="text-[10px] break-all whitespace-pre-wrap bg-slate-50 p-2 mt-1 max-h-32 overflow-auto">
-                  {vpCompact}
-                </pre>
-              </details>
-            )}
+            <VCCard
+              title="혈액형 정보"
+              issuerLabel="Demo Hospital Issuer"
+              claims={[
+                ["혈액형", "A형"],
+                ["Rh", "+"],
+              ]}
+              accent="rose"
+            />
+            <VCCard
+              title="알레르기 정보"
+              issuerLabel="Demo Hospital Issuer"
+              claims={[
+                ["알레르기", "페니실린"],
+                ["중증도", "중증"],
+                ["최종 갱신", "2026-03-10"],
+              ]}
+              accent="amber"
+            />
           </div>
-        )}
 
-        {emergencyOn && !qrDataUrl && qrError && vpCompact && (
-          <div className="mt-2 space-y-2">
-            <p className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
-              {qrError}
-            </p>
-            <button
-              onClick={copy}
-              className="w-full bg-slate-800 text-white py-2 rounded text-sm font-medium"
-            >
-              {copied ? "✓ 복사됨" : "VP 페이로드 클립보드 복사"}
-            </button>
-            <details>
-              <summary className="text-xs text-slate-500 cursor-pointer">
-                SD-JWT VP 페이로드 ({new TextEncoder().encode(vpCompact).length} bytes)
-              </summary>
-              <pre className="text-[10px] break-all whitespace-pre-wrap bg-slate-50 p-2 mt-1 max-h-32 overflow-auto">
-                {vpCompact}
-              </pre>
-            </details>
-          </div>
-        )}
+          <section className="overflow-hidden rounded-3xl bg-white shadow-sm">
+            <div className="flex items-center justify-between px-5 py-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">응급 모드</p>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  켜면 혈액형·알레르기만 의료진에게 공개
+                </p>
+              </div>
+              <button
+                onClick={() => setEmergencyOn((v) => !v)}
+                aria-pressed={emergencyOn}
+                className={`relative h-8 w-14 flex-none rounded-full transition ${
+                  emergencyOn ? "bg-rose-600" : "bg-slate-200"
+                }`}
+              >
+                <span
+                  className={`absolute top-1 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                    emergencyOn ? "translate-x-7" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
 
-        {emergencyOn && !qrDataUrl && !qrError && (
-          <p className="text-xs text-slate-500">QR 생성 중...</p>
-        )}
+            <div className="px-5 pb-5">
+              {emergencyOn && qrDataUrl && (
+                <div>
+                  <p className="mb-3 text-xs text-slate-500">
+                    의료진에게 QR을 보여주거나 아래 페이로드를 복사해서 의사
+                    화면에 붙여넣으세요.
+                  </p>
+                  <div className="flex justify-center rounded-2xl bg-slate-50 p-4">
+                    <img
+                      src={qrDataUrl}
+                      alt="Emergency VP QR"
+                      className="h-56 w-56 rounded-xl bg-white"
+                    />
+                  </div>
+                  <button
+                    onClick={copy}
+                    className="mt-3 w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:bg-slate-800"
+                  >
+                    {copied ? "복사됨" : "VP 페이로드 클립보드 복사"}
+                  </button>
+                  {vpCompact && (
+                    <details className="mt-3 text-xs text-slate-400">
+                      <summary className="cursor-pointer select-none text-blue-600">
+                        SD-JWT VP 페이로드 (dev tools 시연용)
+                      </summary>
+                      <pre className="mt-1.5 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-slate-50 p-3 text-[10px]">
+                        {vpCompact}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+              )}
 
-        {!emergencyOn && (
-          <p className="text-xs text-slate-500">
-            응급 상황에서 토글을 켜면 혈액형 + 알레르기 정보만 선택적으로
-            공개합니다. 이름·주민번호·주소는 공개되지 않습니다.
-          </p>
-        )}
+              {emergencyOn && !qrDataUrl && qrError && vpCompact && (
+                <div className="flex flex-col gap-2">
+                  <p className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-xs text-rose-700">
+                    {qrError}
+                  </p>
+                  <button
+                    onClick={copy}
+                    className="w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:bg-slate-800"
+                  >
+                    {copied ? "복사됨" : "VP 페이로드 클립보드 복사"}
+                  </button>
+                  <details className="text-xs text-slate-400">
+                    <summary className="cursor-pointer select-none text-blue-600">
+                      SD-JWT VP 페이로드 ({new TextEncoder().encode(vpCompact).length} bytes)
+                    </summary>
+                    <pre className="mt-1.5 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-slate-50 p-3 text-[10px]">
+                      {vpCompact}
+                    </pre>
+                  </details>
+                </div>
+              )}
+
+              {emergencyOn && !qrDataUrl && !qrError && (
+                <p className="text-xs text-slate-400">QR 생성 중...</p>
+              )}
+
+              {!emergencyOn && (
+                <p className="text-xs leading-relaxed text-slate-400">
+                  응급 상황에서 토글을 켜면 혈액형 + 알레르기 정보만 선택적으로
+                  공개합니다. 이름·주민번호·주소는 공개되지 않습니다.
+                </p>
+              )}
+            </div>
+          </section>
+        </main>
       </div>
     </div>
   );
@@ -225,27 +248,28 @@ interface VCCardProps {
 }
 
 function VCCard({ title, issuerLabel, subtitle, claims, accent }: VCCardProps) {
-  const palette = {
-    blue: "bg-blue-50 border-blue-200",
-    rose: "bg-rose-50 border-rose-200",
-    amber: "bg-amber-50 border-amber-200",
+  const dot = {
+    blue: "bg-blue-500",
+    rose: "bg-rose-500",
+    amber: "bg-amber-500",
   }[accent];
 
   return (
-    <div className={`border rounded-lg p-3 ${palette}`}>
-      <div className="flex items-start justify-between">
-        <h3 className="font-semibold text-slate-800">{title}</h3>
-        <span className="text-[10px] bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-600">
+    <div className="rounded-3xl bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className={`h-2 w-2 flex-none rounded-full ${dot}`} />
+          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+        </div>
+        <span className="flex-none rounded-full bg-slate-50 px-2 py-0.5 text-[10px] text-slate-500">
           {issuerLabel}
         </span>
       </div>
-      {subtitle && (
-        <p className="text-[10px] text-slate-500 italic mb-1">{subtitle}</p>
-      )}
-      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-700">
+      {subtitle && <p className="mt-0.5 text-[10px] italic text-slate-400">{subtitle}</p>}
+      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-slate-700">
         {claims.map(([k, v]) => (
           <div key={k} className="contents">
-            <dt className="text-slate-500">{k}</dt>
+            <dt className="text-slate-400">{k}</dt>
             <dd className="font-medium">{v}</dd>
           </div>
         ))}
