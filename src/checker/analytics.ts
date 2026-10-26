@@ -56,13 +56,20 @@ export type CheckerEventName =
  * 전송 실패는 삼키고 호출부 동작엔 영향을 주지 않는다 — 다운로드·결제
  * 버튼 등 실제 기능은 집계 실패와 무관하게 정상 동작해야 한다
  * (Failure modes: 집계 손실만 발생, 사용자 영향 없음).
+ *
+ * 버그 수정(VC 루프): markFired()가 예전엔 이 try 블록 밖에 있어서,
+ * localStorage.setItem이 던지면(용량 초과 등) 이 함수 자체가 예외를
+ * 던졌다 — "절대 안 던진다"는 위 설명과 달리, "결과 공유하기"·
+ * "미리 신청하기"·"신청 완료" 버튼은 이 함수를 try/catch 없이 직접
+ * 호출하고 있어서 그 경우 버튼 클릭이 통째로 멈췄다. 함수 전체를
+ * 하나의 try로 묶어서 이 함수가 실제로 절대 안 던지게 고쳤다.
  */
 export function trackCheckerEvent(eventName: CheckerEventName): void {
-  if (hasAlreadyFired(eventName)) return;
-  markFired(eventName);
   try {
+    if (hasAlreadyFired(eventName)) return;
+    markFired(eventName);
     track(eventName, { visitorId: getOrCreateVisitorId() });
   } catch {
-    // 집계 실패는 무시.
+    // 집계 실패는 무시 — 호출부 동작에는 영향을 주지 않는다.
   }
 }

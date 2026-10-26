@@ -59,4 +59,12 @@ describe("trackCheckerEvent", () => {
     });
     expect(() => trackCheckerEvent("checker_completed")).not.toThrow();
   });
+
+  it("localStorage.setItem이 던져도(용량 초과 등) 예외가 전파되지 않는다 — 공유·결제·신청 버튼이 이 함수를 try/catch 없이 직접 호출하므로 중요하다", () => {
+    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("quota exceeded", "QuotaExceededError");
+    });
+    expect(() => trackCheckerEvent("checker_shared")).not.toThrow();
+    spy.mockRestore();
+  });
 });
