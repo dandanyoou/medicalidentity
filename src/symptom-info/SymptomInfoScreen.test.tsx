@@ -112,28 +112,16 @@ describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
   });
 });
 
-describe("SymptomInfoScreen — 주변 찾기 (지도로 그대로 넘기기, 알고리즘 추천 아님)", () => {
+describe("SymptomInfoScreen — 주변 찾기 (네이버 지도로 그대로 넘기기, 알고리즘 추천 아님)", () => {
   beforeEach(() => {
     vi.spyOn(window, "open").mockImplementation(() => null);
   });
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
-    // @ts-expect-error — 테스트 간 geolocation stub 정리
-    delete navigator.geolocation;
   });
 
-  it("위치 허용 시 좌표를 포함한 구글 지도 검색 링크를 연다", () => {
-    Object.defineProperty(navigator, "geolocation", {
-      configurable: true,
-      value: {
-        getCurrentPosition: (success: PositionCallback) =>
-          success({
-            coords: { latitude: 37.5, longitude: 127.0 },
-          } as GeolocationPosition),
-      },
-    });
-
+  it("증상을 선택하면 네이버 지도에서 해당 진료과를 검색하는 새 탭을 연다", () => {
     render(
       <MemoryRouter>
         <SymptomInfoScreen />
@@ -145,39 +133,11 @@ describe("SymptomInfoScreen — 주변 찾기 (지도로 그대로 넘기기, �
 
     expect(window.open).toHaveBeenCalledTimes(1);
     const [url] = (window.open as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toContain("google.com/maps/search");
-    expect(url).toContain("37.5");
-  });
-
-  it("위치 거부/실패해도 카테고리 검색만으로 지도를 연다(막히지 않음)", () => {
-    Object.defineProperty(navigator, "geolocation", {
-      configurable: true,
-      value: {
-        getCurrentPosition: (_success: PositionCallback, error: PositionErrorCallback) =>
-          error({ code: 1, message: "denied" } as GeolocationPositionError),
-      },
-    });
-
-    render(
-      <MemoryRouter>
-        <SymptomInfoScreen />
-      </MemoryRouter>,
-    );
-    typeSymptom("복통");
-    clickSuggestion("복통");
-    fireEvent.click(screen.getByRole("button", { name: "주변 외과 찾기" }));
-
-    expect(window.open).toHaveBeenCalledTimes(1);
-    const [url] = (window.open as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toContain("google.com/maps/search");
+    expect(url).toContain("map.naver.com");
+    expect(decodeURIComponent(url)).toContain("신경과");
   });
 
   it("매칭 안 된 증상에서도 '주변 병원 찾기'는 동작한다", () => {
-    Object.defineProperty(navigator, "geolocation", {
-      configurable: true,
-      value: undefined,
-    });
-
     render(
       <MemoryRouter>
         <SymptomInfoScreen />
@@ -188,7 +148,7 @@ describe("SymptomInfoScreen — 주변 찾기 (지도로 그대로 넘기기, �
 
     expect(window.open).toHaveBeenCalledTimes(1);
     const [url] = (window.open as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toContain("google.com/maps/search");
+    expect(url).toContain("map.naver.com");
     expect(decodeURIComponent(url)).toContain("병원");
   });
 });

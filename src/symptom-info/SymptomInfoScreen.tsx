@@ -14,22 +14,16 @@ const SEVERITY_LEVELS = [1, 2, 3, 4, 5] as const;
  * 주석 참고. 자유 텍스트 입력이어도 콘텐츠는 지어내지 않는다: 매칭 실패 시
  * 솔직하게 "등록된 정보가 없다"고 말한다(아래 generic fallback).
  */
+// 네이버 지도로 연결한다(구글맵 대신) — 한국 병원은 네이버 지도가 진료과목·
+// 전문의 여부·리뷰 같은 상세 정보를 훨씬 많이 들고 있다. 환자가 그 페이지에서
+// 직접 둘러보고 고르는 것이고, 저희가 특정 병원을 골라서 순서를 매기지
+// 않는다 — 검색어만 넘기고 나머지는 네이버 지도 자체 결과·정렬에 맡긴다.
+// 좌표를 URL에 직접 넣는 건 네이버 쪽에 공식 문서화된 방식이 아니라서
+// 안 쓴다 — 대신 네이버 지도 페이지 자체가 "내 주변" 정렬을 제공할 때
+// 위치 권한을 알아서 물어본다.
 function openNearbyMap(query: string) {
-  function go(suffix: string) {
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      query + suffix,
-    )}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
-  if (!navigator.geolocation) {
-    go("");
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    (pos) => go(` ${pos.coords.latitude},${pos.coords.longitude}`),
-    () => go(""), // 위치 거부/실패해도 카테고리 검색은 그대로 연다
-    { timeout: 5000 },
-  );
+  const url = `https://map.naver.com/p/search/${encodeURIComponent(query)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export function SymptomInfoScreen() {
