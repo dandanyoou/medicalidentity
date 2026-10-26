@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { SymptomDiaryScreen } from "./SymptomDiaryScreen";
@@ -55,5 +55,56 @@ describe("SymptomDiaryScreen — 환자가 쓴 글을 그대로 보여준다", (
 
     expect(screen.queryByText("기록 B")).toBeNull();
     expect(screen.getByText("기록 A")).toBeTruthy();
+  });
+});
+
+describe("SymptomDiaryScreen — 주변 병원 찾기 (일기에서도 가능해야 함)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.spyOn(window, "open").mockImplementation(() => null);
+  });
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it("매칭된 태그가 있으면 진료과별 '주변 찾기' 버튼이 뜨고, 누르면 네이버 지도가 열린다", () => {
+    addDiaryEntry({ rawText: "머리가 아파요", matchedTags: ["두통"] });
+
+    render(
+      <MemoryRouter>
+        <SymptomDiaryScreen />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "주변 신경과 찾기" }));
+
+    expect(window.open).toHaveBeenCalledTimes(1);
+    const [url] = (window.open as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toContain("map.naver.com");
+    expect(decodeURIComponent(url)).toContain("신경과");
+  });
+
+  it("복합 증상이면 진료과별로 버튼이 따로 뜬다(중복 제거)", () => {
+    addDiaryEntry({ rawText: "머리 아프고 어지러워요", matchedTags: ["두통", "어지러움"] });
+
+    render(
+      <MemoryRouter>
+        <SymptomDiaryScreen />
+      </MemoryRouter>,
+    );
+    // 두통·어지러움 둘 다 신경과라 버튼은 1개만 떠야 한다(중복 제거).
+    expect(screen.getAllByRole("button", { name: "주변 신경과 찾기" })).toHaveLength(1);
+  });
+
+  it("매칭된 태그가 없으면 '주변 찾기' 버튼이 안 뜬다", () => {
+    addDiaryEntry({ rawText: "아무도모르는희귀증상XYZ", matchedTags: [] });
+
+    render(
+      <MemoryRouter>
+        <SymptomDiaryScreen />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText(/주변 .* 찾기/)).toBeNull();
   });
 });

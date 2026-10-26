@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { deleteDiaryEntry, listDiaryEntries, type DiaryEntry } from "./diary";
+import { SYMPTOMS } from "../symptom-info/data";
+import { openNearbyMap } from "../symptom-info/nearbyMap";
+
+/** 저장된 태그(label)에서 진료과를 역으로 찾는다 — 중복 제거. */
+function departmentsFor(tags: string[]): string[] {
+  const depts = tags
+    .map((tag) => SYMPTOMS.find((s) => s.label === tag)?.mapQuery)
+    .filter((d): d is string => Boolean(d));
+  return [...new Set(depts)];
+}
 
 function formatDateTime(iso: string): string {
   const d = new Date(iso);
@@ -98,7 +108,7 @@ export function SymptomDiaryScreen() {
                   )}
 
                   {(entry.onset || entry.severity || entry.note) && (
-                    <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-500">
+                    <dl className="mb-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-500">
                       {entry.onset && (
                         <>
                           <dt className="text-slate-400">언제부터</dt>
@@ -118,6 +128,21 @@ export function SymptomDiaryScreen() {
                         </>
                       )}
                     </dl>
+                  )}
+
+                  {departmentsFor(entry.matchedTags).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {departmentsFor(entry.matchedTags).map((dept) => (
+                        <button
+                          key={dept}
+                          type="button"
+                          onClick={() => openNearbyMap(dept)}
+                          className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 active:bg-slate-50"
+                        >
+                          주변 {dept} 찾기
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </li>
               ))}
