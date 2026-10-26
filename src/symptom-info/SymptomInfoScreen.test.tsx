@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { SymptomInfoScreen } from "./SymptomInfoScreen";
+import { loadDiary } from "../wallet/diary";
 
 function typeSymptom(text: string) {
   const input = screen.getByPlaceholderText(/머리가 아프고 속이 메스꺼워요/);
@@ -189,5 +190,64 @@ describe("SymptomInfoScreen — 주변 찾기 (지도로 그대로 넘기기, �
     const [url] = (window.open as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(url).toContain("google.com/maps/search");
     expect(decodeURIComponent(url)).toContain("병원");
+  });
+});
+
+describe("SymptomInfoScreen — 증상 일기 저장", () => {
+  beforeEach(() => localStorage.clear());
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+  });
+
+  it("원문을 그대로, 매칭된 태그와 함께 일기에 저장한다", () => {
+    render(
+      <MemoryRouter>
+        <SymptomInfoScreen />
+      </MemoryRouter>,
+    );
+    typeSymptom("어제 저녁부터 머리가 아프고 속이 메스꺼워요");
+    fireEvent.click(screen.getByRole("button", { name: "증상 일기에 저장" }));
+
+    const diary = loadDiary();
+    expect(diary).toHaveLength(1);
+    expect(diary[0].rawText).toBe("어제 저녁부터 머리가 아프고 속이 메스꺼워요");
+    expect(diary[0].matchedTags.sort()).toEqual(["두통", "메스꺼움"].sort());
+  });
+
+  it("언제부터·강도·메모를 같이 저장할 수 있다", () => {
+    render(
+      <MemoryRouter>
+        <SymptomInfoScreen />
+      </MemoryRouter>,
+    );
+    typeSymptom("두통");
+    fireEvent.change(screen.getByPlaceholderText("예: 어제 저녁부터"), {
+      target: { value: "오늘 아침부터" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "4" }));
+    fireEvent.change(screen.getByPlaceholderText("예: 빛을 보면 더 아파요"), {
+      target: { value: "눈이 침침해요" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "증상 일기에 저장" }));
+
+    const diary = loadDiary();
+    expect(diary[0].onset).toBe("오늘 아침부터");
+    expect(diary[0].severity).toBe(4);
+    expect(diary[0].note).toBe("눈이 침침해요");
+  });
+
+  it("매칭 안 된 증상이어도 원문은 그대로 일기에 저장된다(지어내지 않지만 기록은 남김)", () => {
+    render(
+      <MemoryRouter>
+        <SymptomInfoScreen />
+      </MemoryRouter>,
+    );
+    typeSymptom("아무도모르는희귀증상XYZ");
+    fireEvent.click(screen.getByRole("button", { name: "증상 일기에 저장" }));
+
+    const diary = loadDiary();
+    expect(diary[0].rawText).toBe("아무도모르는희귀증상XYZ");
+    expect(diary[0].matchedTags).toEqual([]);
   });
 });

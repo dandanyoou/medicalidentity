@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { searchSymptoms, type SymptomEntry } from "./data";
+import { addDiaryEntry } from "../wallet/diary";
+
+const SEVERITY_LEVELS = [1, 2, 3, 4, 5] as const;
 
 /**
  * 증상 정보 + 주변 병원·약국 찾기.
@@ -36,18 +39,35 @@ export function SymptomInfoScreen() {
 
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<SymptomEntry | null>(null);
+  const [onset, setOnset] = useState("");
+  const [severity, setSeverity] = useState<number | null>(null);
+  const [note, setNote] = useState("");
+  const [saved, setSaved] = useState(false);
 
   const matches = useMemo(() => searchSymptoms(query), [query]);
   const noMatch = query.trim().length > 0 && matches.length === 0 && !selected;
 
   function handleSelect(entry: SymptomEntry) {
     setSelected(entry);
-    setQuery(entry.label);
   }
 
   function handleQueryChange(value: string) {
     setQuery(value);
     setSelected(null);
+    setSaved(false);
+  }
+
+  function handleSaveToDiary() {
+    // 선택한 항목 하나가 아니라, 문장 안에서 찾은 태그를 전부 같이
+    // 저장한다("두통 + 메스꺼움"처럼 복합 증상을 한 기록으로 남기기 위함).
+    addDiaryEntry({
+      rawText: query.trim(),
+      matchedTags: matches.map((m) => m.label),
+      onset: onset.trim() || undefined,
+      severity: severity ?? undefined,
+      note: note.trim() || undefined,
+    });
+    setSaved(true);
   }
 
   return (
@@ -155,6 +175,91 @@ export function SymptomInfoScreen() {
                 진료과만 안내해드려요 — 지도 검색 결과를 그대로 열어줄 뿐,
                 저희가 특정 병원을 골라서 추천하지 않습니다.
               </p>
+            </section>
+          )}
+
+          {query.trim().length > 0 && (
+            <section className="mt-4 rounded-3xl bg-white p-5 shadow-sm">
+              <h2 className="mb-1 text-sm font-semibold text-slate-800">증상 일기에 저장</h2>
+              <p className="mb-3 text-xs leading-relaxed text-slate-400">
+                적으신 내용을 그대로 저장해둬요. 다음에 다른 병원에 가서 또
+                설명하지 않아도 되게, 그 병원에서 이 기록을 보여주시면 됩니다.
+              </p>
+
+              <label className="mb-3 block" htmlFor="symptom-onset">
+                <span className="mb-1 block text-xs font-medium text-slate-500">언제부터인가요?</span>
+                <input
+                  id="symptom-onset"
+                  type="text"
+                  value={onset}
+                  onChange={(event) => {
+                    setOnset(event.target.value);
+                    setSaved(false);
+                  }}
+                  placeholder="예: 어제 저녁부터"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-600"
+                />
+              </label>
+
+              <div className="mb-3">
+                <span className="mb-1 block text-xs font-medium text-slate-500">
+                  어느 정도인가요? (본인 느낌으로)
+                </span>
+                <div className="flex gap-2">
+                  {SEVERITY_LEVELS.map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      onClick={() => {
+                        setSeverity(level);
+                        setSaved(false);
+                      }}
+                      aria-pressed={severity === level}
+                      className={`h-9 w-9 rounded-full text-sm font-semibold transition ${
+                        severity === level
+                          ? "bg-blue-600 text-white"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className="mb-4 block" htmlFor="symptom-note">
+                <span className="mb-1 block text-xs font-medium text-slate-500">
+                  더 적어두고 싶은 내용(선택)
+                </span>
+                <input
+                  id="symptom-note"
+                  type="text"
+                  value={note}
+                  onChange={(event) => {
+                    setNote(event.target.value);
+                    setSaved(false);
+                  }}
+                  placeholder="예: 빛을 보면 더 아파요"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-600"
+                />
+              </label>
+
+              {saved ? (
+                <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  <span>일기에 저장됐어요.</span>
+                  <Link to="/diary" className="font-semibold underline">
+                    일기 보기
+                  </Link>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSaveToDiary}
+                  className="w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:bg-slate-800"
+                >
+                  증상 일기에 저장
+                </button>
+              )}
             </section>
           )}
         </main>

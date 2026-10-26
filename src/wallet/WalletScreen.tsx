@@ -120,6 +120,21 @@ export function WalletScreen() {
         </header>
 
         <main className="flex-1 overflow-y-auto px-4 pb-28 pt-5">
+          <div className="mb-5 flex gap-2">
+            <Link
+              to="/symptom"
+              className="flex-1 rounded-2xl bg-white px-4 py-3 text-center text-sm font-medium text-slate-700 shadow-sm active:bg-slate-50"
+            >
+              증상 정보
+            </Link>
+            <Link
+              to="/diary"
+              className="flex-1 rounded-2xl bg-white px-4 py-3 text-center text-sm font-medium text-slate-700 shadow-sm active:bg-slate-50"
+            >
+              증상 일기
+            </Link>
+          </div>
+
           <div className="mb-5 flex flex-col gap-3">
             <VCCard
               title="모바일 운전면허증 (mDL)"
