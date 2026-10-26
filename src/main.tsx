@@ -15,6 +15,9 @@ const WalletScreen = lazy(() =>
 const DoctorScreen = lazy(() =>
   import("./doctor/DoctorScreen").then((m) => ({ default: m.DoctorScreen })),
 );
+const SymptomInfoScreen = lazy(() =>
+  import("./symptom-info/SymptomInfoScreen").then((m) => ({ default: m.SymptomInfoScreen })),
+);
 
 // VC 루프 iter 4: fallback={null}이었을 때 /wallet·/doctor 진입 시 청크
 // 로딩 중 흰 화면이 깜빡였다(특히 느린 회선) — 최소한의 로딩 표시로 교체.
@@ -35,6 +38,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/wallet" element={<WalletScreen />} />
           <Route path="/doctor" element={<DoctorScreen />} />
           <Route path="/checker" element={<CheckerScreen />} />
+          <Route path="/symptom" element={<SymptomInfoScreen />} />
         </Routes>
       </Suspense>
     </BrowserRouter>
