@@ -11,3 +11,18 @@ body {
     "Noto Sans KR",
     sans-serif;
 }
+
+/* 검증 결과가 나타날 때 쓰는 연출용 트랜지션 — DoctorScreen 참고. */
+@keyframes reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-reveal-in {
+  animation: reveal-in 0.35s ease-out both;
+}

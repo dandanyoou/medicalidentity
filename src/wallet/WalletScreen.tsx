@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import QRCode from "qrcode";
 import { getPatientVCs, type PatientVCs } from "../data/patient-vcs";
-import { DEMO_AUDIENCE, DEMO_HOLDER } from "../data/issuer-keys";
-import { presentVP, randomNonce, type SignedVC } from "../lib/sdjwt";
+import { DEMO_HOLDER } from "../data/issuer-keys";
+import type { SignedVC } from "../lib/sdjwt";
+import { buildBundle, buildVPPayload } from "./bundle";
 
 /**
  * Wallet screen — patient PWA.
@@ -295,55 +296,6 @@ function VCCard({ title, issuerLabel, subtitle, claims, accent }: VCCardProps) {
       </dl>
     </div>
   );
-}
-
-async function buildBundle(vcs: PatientVCs) {
-  const nonce = randomNonce();
-  const presentArgs = {
-    holderPrivateKey: DEMO_HOLDER.privateKey,
-    holderDid: DEMO_HOLDER.did,
-    audience: DEMO_AUDIENCE,
-    nonce,
-  };
-  const bloodVP = await presentVP({
-    vc: vcs.bloodType,
-    revealClaimNames: ["bloodType", "rhFactor"],
-    ...presentArgs,
-  });
-  const allergyVP = await presentVP({
-    vc: vcs.allergy,
-    revealClaimNames: ["allergens", "severity"],
-    ...presentArgs,
-  });
-  const mDLVP = await presentVP({
-    vc: vcs.mDL,
-    revealClaimNames: [],
-    ...presentArgs,
-  });
-  const controlledSubstanceVP = await presentVP({
-    vc: vcs.controlledSubstance,
-    revealClaimNames: ["priorVisits"],
-    ...presentArgs,
-  });
-  // Full bundle (paste path) includes mDL identity anchor + 관리약물 이력.
-  // QR bundle (scan path) drops both — payload exceeds QR v40 (~2,953 bytes) otherwise.
-  const fullCompact = JSON.stringify({
-    blood: bloodVP.compact,
-    allergy: allergyVP.compact,
-    mDL: mDLVP.compact,
-    controlledSubstance: controlledSubstanceVP.compact,
-    nonce,
-  });
-  const qrCompact = JSON.stringify({
-    blood: bloodVP.compact,
-    allergy: allergyVP.compact,
-    nonce,
-  });
-  return { fullCompact, qrCompact };
-}
-
-async function buildVPPayload(vcs: PatientVCs): Promise<string> {
-  return (await buildBundle(vcs)).fullCompact;
 }
 
 async function buildEmergencyQR(vcs: PatientVCs) {

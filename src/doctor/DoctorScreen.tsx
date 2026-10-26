@@ -8,6 +8,8 @@ import {
   REVOKED_CREDENTIAL_IDS,
 } from "../data/issuer-keys";
 import { verifyVP, VerifyError, type VerifyResult } from "../lib/sdjwt";
+import { getPatientVCs } from "../data/patient-vcs";
+import { buildVPPayload } from "../wallet/bundle";
 import { DDICheck } from "./DDICheck";
 import { ControlledSubstancePanel } from "./ControlledSubstancePanel";
 
@@ -37,6 +39,8 @@ export function DoctorScreen() {
   const [pasteValue, setPasteValue] = useState("");
   const [bundle, setBundle] = useState<VerifiedBundle | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [scanActive, setScanActive] = useState(false);
   // D6 REGRESSION: 기본값은 항상 "emergency" — 관리약물 모드는 명시적으로 켜야 함.
@@ -50,6 +54,7 @@ export function DoctorScreen() {
 
   const verifyText = async (text: string) => {
     setError(null);
+    setVerifying(true);
     try {
       const parsed = JSON.parse(text) as PresentationBundle;
       // ER에서 급하게 붙여넣다 보면 복사가 중간에 잘리거나 필수 필드가
@@ -92,6 +97,10 @@ export function DoctorScreen() {
             expectedNonce: parsed.nonce,
           })
         : null;
+      // 실제 검증(서명·신뢰앵커·폐기·nonce)은 이미 끝났다 — 아래 지연은
+      // 순수 연출용이다(결과가 너무 순식간에 떠서 "진짜 확인했다"는 느낌이
+      // 안 들었다는 피드백 반영). 검증 로직 자체와는 무관함.
+      await new Promise((resolve) => setTimeout(resolve, 450));
       setBundle({
         blood,
         allergy,
@@ -106,6 +115,21 @@ export function DoctorScreen() {
         setError(`검증 오류: ${(e as Error).message}`);
       }
       setBundle(null);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const loadDemoData = async () => {
+    setDemoLoading(true);
+    try {
+      const vcs = await getPatientVCs();
+      const payload = await buildVPPayload(vcs);
+      await verifyText(payload);
+    } catch (e) {
+      setError(`데모 데이터 준비 실패: ${(e as Error).message}`);
+    } finally {
+      setDemoLoading(false);
     }
   };
 
@@ -156,7 +180,7 @@ export function DoctorScreen() {
         </header>
 
         <main className="flex-1 overflow-y-auto px-4 pb-8 pt-5">
-          {!bundle && (
+          {!bundle && !verifying && (
             <section className="rounded-3xl bg-white p-5 shadow-sm">
               <h2 className="text-sm font-semibold text-slate-800">환자 VP 입력</h2>
               <p className="mt-1 mb-4 text-xs text-slate-400">
@@ -188,6 +212,27 @@ export function DoctorScreen() {
                 placeholder='wallet에서 복사한 JSON ({"blood":"...","allergy":"...","nonce":"..."[,"mDL":"..."]})'
                 className="h-24 w-full rounded-2xl border border-slate-200 p-3 font-mono text-xs outline-none focus:border-blue-600"
               />
+
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                <button
+                  onClick={loadDemoData}
+                  disabled={demoLoading}
+                  className="w-full rounded-full border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 active:bg-slate-50 disabled:opacity-40"
+                >
+                  {demoLoading ? "준비 중..." : "데모 데이터로 먼저 보기"}
+                </button>
+                <p className="mt-1.5 text-[10px] leading-relaxed text-slate-400">
+                  wallet의 시드 환자 데이터로 실제 서명 검증을 거쳐 보여줍니다(가짜
+                  화면이 아님) — QR·페이스트 없이 바로 결과를 확인하고 싶을 때.
+                </p>
+              </div>
+            </section>
+          )}
+
+          {verifying && (
+            <section className="flex flex-col items-center justify-center rounded-3xl bg-white p-10 shadow-sm">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600" />
+              <p className="mt-3 text-sm text-slate-500">서명·신뢰앵커·폐기 여부 확인 중...</p>
             </section>
           )}
 
@@ -215,7 +260,7 @@ export function DoctorScreen() {
           )}
 
           {bundle && (
-            <section className="flex flex-col gap-4">
+            <section className="flex flex-col gap-4 animate-reveal-in">
               {bundle.mDLTrusted && (
                 <div className="flex items-center gap-3 rounded-3xl bg-blue-50 p-4">
                   <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-blue-600 text-base text-white">

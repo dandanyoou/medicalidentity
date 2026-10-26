@@ -94,3 +94,18 @@ describe("DoctorScreen — 로직 견고화 (필드 누락 입력)", () => {
     expect(await screen.findByText(/필수 항목\(blood, allergy, nonce\)이 빠져 있습니다/)).toBeTruthy();
   });
 });
+
+describe("DoctorScreen — 데모 데이터로 보기 (실제 검증 경로, 가짜 화면 아님)", () => {
+  afterEach(() => cleanup());
+
+  it("QR 스캔·페이스트 없이도 버튼 하나로 실제 서명 검증을 거쳐 결과를 보여준다", async () => {
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByText("데모 데이터로 먼저 보기"));
+    await screen.findByText("환자 정보 (마스킹됨)", {}, { timeout: 3000 });
+    expect(screen.getByText("A +")).toBeTruthy();
+  });
+});
