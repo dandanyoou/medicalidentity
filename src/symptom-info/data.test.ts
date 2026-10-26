@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import { SYMPTOMS, searchSymptoms } from "./data";
 
 describe("증상 데이터 무결성", () => {
-  it("label + alias를 합쳐 100개 이상의 인식 가능한 표현을 제공한다", () => {
+  it("80개 이상의 증상 카테고리를 제공한다(2026-10-26 확장: 안과·피부과·정신건강·정형외과·비뇨기과 등 보강)", () => {
+    expect(SYMPTOMS.length).toBeGreaterThanOrEqual(80);
+  });
+
+  it("label + alias를 합쳐 200개 이상의 인식 가능한 표현을 제공한다", () => {
     const total = SYMPTOMS.reduce((sum, s) => sum + 1 + s.aliases.length, 0);
-    expect(total).toBeGreaterThanOrEqual(100);
+    expect(total).toBeGreaterThanOrEqual(200);
   });
 
   it("모든 항목에 일반 정보·응급 신호·지도 검색어가 비어있지 않다", () => {
