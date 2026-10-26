@@ -33,4 +33,21 @@ describe("증상 데이터 무결성", () => {
     expect(searchSymptoms("")).toHaveLength(0);
     expect(searchSymptoms("   ")).toHaveLength(0);
   });
+
+  it("한 문장에 여러 부위가 섞여도(조사·어미가 달라도) 전부 찾아낸다", () => {
+    // 2026-10-26: "허리가 아픈데"(ㄴ데 활용) + "머리도 좀 아프고"(도 조사 +
+    // 고 활용) — 둘 다 이전까지는 painPhrases 이전 고정 문자열로 못 잡던 패턴.
+    const results = searchSymptoms("허리가 아픈데 지금 머리도 좀 아프고");
+    const keys = results.map((s) => s.key);
+    expect(keys).toContain("back-pain");
+    expect(keys).toContain("headache");
+  });
+
+  it("받침 있는 부위 단어(목/무릎/발목/손목/눈)도 '이' 조사로 매칭된다", () => {
+    expect(searchSymptoms("목이 아파요").some((s) => s.key === "neck-pain")).toBe(true);
+    expect(searchSymptoms("무릎이 아파요").some((s) => s.key === "knee-pain")).toBe(true);
+    expect(searchSymptoms("발목이 아파요").some((s) => s.key === "ankle-pain")).toBe(true);
+    expect(searchSymptoms("손목이 아파요").some((s) => s.key === "wrist-pain")).toBe(true);
+    expect(searchSymptoms("눈이 아파요").some((s) => s.key === "eye-pain")).toBe(true);
+  });
 });

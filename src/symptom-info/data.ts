@@ -26,11 +26,34 @@ export interface SymptomEntry {
   mapQuery: string;
 }
 
+/**
+ * "허리가 아픈데", "머리도 좀 아프고"처럼 한 문장에 여러 부위가 같이
+ * 나오는 경우를 손으로 하나씩 못 따라간다 — 조사(가/도)와 어미(아프/아파/
+ * 아픈)의 흔한 조합을 자동으로 만든다. "아프다"는 불규칙 활용이라
+ * (아프+아요→아파요, 아프+ㄴ데→아픈데, 'ㅡ' 탈락) 어간 "아프" 하나로는
+ * 못 잡는 경우가 많아 세 어미 형태를 각각 따로 둔다. 이래도 모든 조사·
+ * 어미 조합을 다 잡진 못한다 — 여전히 고정 문자열 매칭이지 NLP가 아니다.
+ */
+function painPhrases(bodyPart: string): string[] {
+  // "이/가"는 받침 유무로 갈리는데(목이 아파 vs 머리가 아파) 단어마다
+  // 맞는 쪽만 골라 넣기보단 둘 다 넣는다 — 안 맞는 쪽("목가")은 실제
+  // 문장에 안 나타나니 그냥 안 쓰이고, 맞는 쪽을 빠뜨리는 실수를 막는다.
+  const particles = ["이", "가", "도", "는", "는요"];
+  const stems = ["아프", "아파", "아픈", "아팠"];
+  // "머리도 좀 아프고"처럼 정도부사가 주어와 서술어 사이에 끼는 건 한국어
+  // 문장에서 아주 흔하다 — 빈 문자열(부사 없음)과 자주 쓰는 부사 몇 개를
+  // 같이 넣어서 커버한다. 그래도 모든 부사·어순을 다 잡진 못한다.
+  const adverbs = ["", "좀 ", "많이 ", "조금 ", "약간 "];
+  return particles.flatMap((p) =>
+    adverbs.flatMap((a) => stems.map((s) => `${bodyPart}${p} ${a}${s}`)),
+  );
+}
+
 export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "headache",
     label: "두통",
-    aliases: ["머리아픔", "머리통증", "편두통", "머리띵함", "머리가 아프", "머리아파"],
+    aliases: ["머리아픔", "머리통증", "편두통", "머리띵함", ...painPhrases("머리")],
     generalInfo:
       "충분한 수분 섭취와 휴식이 도움이 될 수 있습니다. 반복되거나 평소와 다른 두통은 병원에서 상담하세요.",
     redFlags: [
@@ -76,7 +99,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "sore-throat",
     label: "인후통",
-    aliases: ["목아픔", "목따가움", "편도염", "목부음", "목이 아프", "목아파"],
+    aliases: ["목아픔", "목따가움", "편도염", "목부음", ...painPhrases("목")],
     generalInfo: "따뜻한 물을 자주 마시고 목을 쉬게 하세요. 삼키기 힘들 정도면 병원 진료가 필요합니다.",
     redFlags: ["침을 삼키지 못할 정도의 통증", "호흡곤란", "고열과 심한 목부음 동반"],
     mapQuery: "이비인후과",
@@ -132,7 +155,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "abdominal-pain",
     label: "복통",
-    aliases: ["배아픔", "뱃속통증", "배통증", "배가 아프", "배아파", "속이 아프"],
+    aliases: ["배아픔", "뱃속통증", "배통증", "속이 아프", ...painPhrases("배")],
     generalInfo: "가벼운 복통은 휴식으로 나아지기도 하지만, 통증이 심하거나 지속되면 병원 진료가 필요합니다.",
     redFlags: ["갑자기 시작된 극심한 복통", "복통과 함께 고열·구토 지속", "복부가 딱딱하게 긴장됨"],
     mapQuery: "외과",
@@ -220,7 +243,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "back-pain",
     label: "요통",
-    aliases: ["허리통증", "허리아픔", "허리가 아프", "허리아파"],
+    aliases: ["허리통증", "허리아픔", ...painPhrases("허리")],
     generalInfo: "무리한 자세를 피하고 휴식을 취하세요. 다리 저림이 동반되면 병원 진료가 필요합니다.",
     redFlags: ["다리 마비나 감각 저하 동반", "대소변 조절이 어려움"],
     mapQuery: "정형외과",
@@ -244,7 +267,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "shoulder-pain",
     label: "어깨결림",
-    aliases: ["어깨통증", "어깨뭉침"],
+    aliases: ["어깨통증", "어깨뭉침", ...painPhrases("어깨")],
     generalInfo: "스트레칭과 자세 교정이 도움이 될 수 있습니다. 팔 저림이 동반되면 진료를 받으세요.",
     redFlags: ["팔로 퍼지는 저림·마비", "가슴 통증과 함께 나타남"],
     mapQuery: "정형외과",
@@ -252,7 +275,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "neck-pain",
     label: "목통증",
-    aliases: ["목결림", "목뻐근함"],
+    aliases: ["목결림", "목뻐근함", ...painPhrases("목")],
     generalInfo: "자세 교정과 휴식이 도움이 될 수 있습니다. 팔 저림이 동반되면 진료를 받으세요.",
     redFlags: ["팔 저림·마비 동반", "두통이 심하게 동반"],
     mapQuery: "정형외과",
@@ -392,7 +415,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "eye-pain",
     label: "눈통증",
-    aliases: ["눈이 아프", "눈아파"],
+    aliases: [...painPhrases("눈")],
     generalInfo: "렌즈 착용 중이라면 바로 빼세요. 통증이 지속되면 안과 진료가 필요합니다.",
     redFlags: ["시력 저하 동반", "빛을 보기 힘들 정도의 통증"],
     mapQuery: "안과",
@@ -552,7 +575,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "knee-pain",
     label: "무릎통증",
-    aliases: ["무릎이 아프", "무릎아파"],
+    aliases: [...painPhrases("무릎")],
     generalInfo: "휴식과 찜질이 도움이 될 수 있습니다. 붓거나 움직이기 힘들면 진료를 받으세요.",
     redFlags: ["갑자기 심하게 부음", "체중을 싣지 못할 정도의 통증"],
     mapQuery: "정형외과",
@@ -560,7 +583,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "ankle-pain",
     label: "발목통증",
-    aliases: ["발목이 아프", "발목삠"],
+    aliases: ["발목삠", ...painPhrases("발목")],
     generalInfo: "RICE(휴식·냉찜질·압박·거상)가 도움이 됩니다. 심하게 붓거나 체중을 못 실으면 진료를 받으세요.",
     redFlags: ["기형적으로 변형됨", "체중을 전혀 실을 수 없음"],
     mapQuery: "정형외과",
@@ -568,7 +591,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "wrist-pain",
     label: "손목통증",
-    aliases: ["손목이 아프", "손목아파"],
+    aliases: [...painPhrases("손목")],
     generalInfo: "반복적인 손 사용과 관련 있는 경우가 많습니다. 저림이 동반되면 진료를 고려하세요.",
     redFlags: ["저림·감각저하 동반", "외상 후 변형됨"],
     mapQuery: "정형외과",
