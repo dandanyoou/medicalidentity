@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { searchSymptoms, type SymptomEntry } from "./data";
 import { openNearbyMap } from "./nearbyMap";
-import { addDiaryEntry } from "../wallet/diary";
+import { addDiaryEntry, DiarySaveError } from "../wallet/diary";
 
 const SEVERITY_LEVELS = [1, 2, 3, 4, 5] as const;
 
@@ -27,6 +27,7 @@ export function SymptomInfoScreen() {
   const [severity, setSeverity] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const matches = useMemo(() => searchSymptoms(query), [query]);
   const noMatch = query.trim().length > 0 && matches.length === 0 && !selected;
@@ -42,16 +43,25 @@ export function SymptomInfoScreen() {
   }
 
   function handleSaveToDiary() {
-    // 선택한 항목 하나가 아니라, 문장 안에서 찾은 태그를 전부 같이
-    // 저장한다("두통 + 메스꺼움"처럼 복합 증상을 한 기록으로 남기기 위함).
-    addDiaryEntry({
-      rawText: query.trim(),
-      matchedTags: matches.map((m) => m.label),
-      onset: onset.trim() || undefined,
-      severity: severity ?? undefined,
-      note: note.trim() || undefined,
-    });
-    setSaved(true);
+    setSaveError(null);
+    try {
+      // 선택한 항목 하나가 아니라, 문장 안에서 찾은 태그를 전부 같이
+      // 저장한다("두통 + 메스꺼움"처럼 복합 증상을 한 기록으로 남기기 위함).
+      addDiaryEntry({
+        rawText: query.trim(),
+        matchedTags: matches.map((m) => m.label),
+        onset: onset.trim() || undefined,
+        severity: severity ?? undefined,
+        note: note.trim() || undefined,
+      });
+      setSaved(true);
+    } catch (e) {
+      // "저장됐어요"라고 조용히 거짓말하는 대신, 실패를 그대로 보여준다
+      // (저장공간 초과 등 — diary.ts의 DiarySaveError 참고).
+      setSaveError(
+        e instanceof DiarySaveError ? e.message : "저장에 실패했습니다. 다시 시도해주세요.",
+      );
+    }
   }
 
   return (
@@ -227,6 +237,12 @@ export function SymptomInfoScreen() {
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-600"
                 />
               </label>
+
+              {saveError && (
+                <p role="alert" className="mb-2 rounded-2xl bg-rose-50 px-4 py-3 text-xs text-rose-700">
+                  {saveError}
+                </p>
+              )}
 
               {saved ? (
                 <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">

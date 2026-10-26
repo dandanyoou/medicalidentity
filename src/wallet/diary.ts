@@ -44,9 +44,35 @@ export function loadDiary(): DiaryEntry[] {
   }
 }
 
-function persist(entries: DiaryEntry[]): void {
-  safeStorage()?.setItem(STORAGE_KEY, JSON.stringify(entries));
+/**
+ * localStorage 용량 초과(QuotaExceededError) 등으로 setItem이 던질 수 있다
+ * — 호출부(addDiaryEntry)가 실패를 알 수 있게 성공 여부를 반환한다. 여기서
+ * 조용히 삼키면 "저장됐다"고 화면에 뜨는데 실제로는 저장이 안 되는 상황이
+ * 생긴다.
+ */
+function persist(entries: DiaryEntry[]): boolean {
+  const storage = safeStorage();
+  if (!storage) return false;
+  try {
+    storage.setItem(STORAGE_KEY, JSON.stringify(entries));
+    return true;
+  } catch {
+    return false;
+  }
 }
+
+function newEntryId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    // 구형 Safari(15.4 미만)나 비보안(non-HTTPS) 컨텍스트에서는
+    // randomUUID가 없거나 던질 수 있다 — 저장 자체가 막히면 안 되니
+    // 충돌 가능성은 낮지만 괜찮은 대체 ID로 넘어간다.
+    return `diary-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+export class DiarySaveError extends Error {}
 
 export function addDiaryEntry(input: {
   rawText: string;
@@ -56,7 +82,7 @@ export function addDiaryEntry(input: {
   note?: string;
 }): DiaryEntry {
   const entry: DiaryEntry = {
-    id: crypto.randomUUID(),
+    id: newEntryId(),
     createdAt: new Date().toISOString(),
     rawText: input.rawText,
     matchedTags: input.matchedTags,
@@ -65,7 +91,11 @@ export function addDiaryEntry(input: {
     note: input.note,
   };
   const entries = [entry, ...loadDiary()];
-  persist(entries);
+  if (!persist(entries)) {
+    throw new DiarySaveError(
+      "저장에 실패했습니다 — 기기 저장공간이 가득 찼을 수 있어요. 오래된 기록을 지우고 다시 시도해주세요.",
+    );
+  }
   return entry;
 }
 

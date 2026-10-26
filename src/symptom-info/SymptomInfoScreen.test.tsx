@@ -210,4 +210,23 @@ describe("SymptomInfoScreen — 증상 일기 저장", () => {
     expect(diary[0].rawText).toBe("아무도모르는희귀증상XYZ");
     expect(diary[0].matchedTags).toEqual([]);
   });
+
+  it("저장이 실패하면 '저장됐어요'라고 속이지 않고 실패를 보여준다", () => {
+    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("quota exceeded", "QuotaExceededError");
+    });
+
+    render(
+      <MemoryRouter>
+        <SymptomInfoScreen />
+      </MemoryRouter>,
+    );
+    typeSymptom("두통");
+    fireEvent.click(screen.getByRole("button", { name: "증상 일기에 저장" }));
+
+    expect(screen.getByText(/저장공간이 가득 찼을 수 있어요/)).toBeTruthy();
+    expect(screen.queryByText("일기에 저장됐어요.")).toBeNull();
+
+    spy.mockRestore();
+  });
 });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { addDiaryEntry, deleteDiaryEntry, listDiaryEntries, loadDiary } from "./diary";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { addDiaryEntry, deleteDiaryEntry, DiarySaveError, listDiaryEntries, loadDiary } from "./diary";
 
 describe("증상 일기 저장소", () => {
   beforeEach(() => localStorage.clear());
@@ -43,5 +43,29 @@ describe("증상 일기 저장소", () => {
   it("손상된 저장값은 조용히 빈 목록으로 처리한다(과거 데이터 복구보다 안전)", () => {
     localStorage.setItem("symptom_diary_v1", "{not valid json");
     expect(loadDiary()).toEqual([]);
+  });
+
+  it("저장공간이 가득 차면(QuotaExceededError) '저장됐다'고 거짓말하지 않고 DiarySaveError를 던진다", () => {
+    const spy = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("quota exceeded", "QuotaExceededError");
+    });
+
+    expect(() => addDiaryEntry({ rawText: "저장 안 될 항목", matchedTags: [] })).toThrow(
+      DiarySaveError,
+    );
+
+    spy.mockRestore();
+  });
+
+  it("crypto.randomUUID가 없는 환경에서도 저장은 계속된다(대체 ID 사용)", () => {
+    const original = crypto.randomUUID;
+    // @ts-expect-error — 구형 환경 시뮬레이션
+    crypto.randomUUID = undefined;
+
+    const entry = addDiaryEntry({ rawText: "구형 브라우저 테스트", matchedTags: [] });
+    expect(entry.id).toBeTruthy();
+    expect(loadDiary()).toHaveLength(1);
+
+    crypto.randomUUID = original;
   });
 });
