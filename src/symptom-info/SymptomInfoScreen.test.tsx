@@ -5,8 +5,15 @@ import { MemoryRouter } from "react-router-dom";
 import { SymptomInfoScreen } from "./SymptomInfoScreen";
 
 function typeSymptom(text: string) {
-  const input = screen.getByPlaceholderText(/머리아픔, 속쓰림, 어지러움/);
+  const input = screen.getByPlaceholderText(/머리가 아프고 속이 메스꺼워요/);
   fireEvent.change(input, { target: { value: text } });
+}
+
+// textarea는 입력값을 자식 텍스트 노드로 렌더링하므로, 입력값과 같은 글자의
+// 제안 버튼을 getByText로 찾으면 textarea 자신과 겹쳐 모호해진다 — 버튼
+// role로 좁혀서 찾는다.
+function clickSuggestion(label: string) {
+  fireEvent.click(screen.getByRole("button", { name: label }));
 }
 
 describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
@@ -30,7 +37,7 @@ describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
       </MemoryRouter>,
     );
     typeSymptom("두통");
-    expect(screen.getByText("두통")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "두통" })).toBeTruthy();
   });
 
   it("alias로 입력해도 매칭된다(예: '머리아픔' → 두통)", () => {
@@ -40,8 +47,33 @@ describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
       </MemoryRouter>,
     );
     typeSymptom("머리아픔");
-    fireEvent.click(screen.getByText("두통"));
+    clickSuggestion("두통");
     expect(screen.getByText(/갑자기 극심한 두통/)).toBeTruthy();
+  });
+
+  it("자연스러운 문장 안에 포함된 증상도 찾아낸다(진단이 아니라 단순 단어 매칭)", () => {
+    render(
+      <MemoryRouter>
+        <SymptomInfoScreen />
+      </MemoryRouter>,
+    );
+    typeSymptom("어제 저녁부터 머리가 아프고 속이 메스꺼워요");
+    expect(screen.getByRole("button", { name: "두통" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "메스꺼움" })).toBeTruthy();
+  });
+
+  it("증상을 선택하면 특정 병원이 아니라 진료과만 안내한다", () => {
+    render(
+      <MemoryRouter>
+        <SymptomInfoScreen />
+      </MemoryRouter>,
+    );
+    typeSymptom("두통");
+    clickSuggestion("두통");
+    // "신경과"는 <strong>으로 분리된 별도 텍스트 노드라 정규식 하나로는 못
+    // 잡는다 — 두 조각을 따로 확인한다.
+    expect(screen.getByText("신경과", { selector: "strong" })).toBeTruthy();
+    expect(screen.getByText(/전문의가 진료합니다/)).toBeTruthy();
   });
 
   it("후보를 선택하면 참고 정보와 응급 신호 목록이 뜬다", () => {
@@ -51,7 +83,7 @@ describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
       </MemoryRouter>,
     );
     typeSymptom("발열");
-    fireEvent.click(screen.getByText("발열"));
+    clickSuggestion("발열");
     expect(screen.getByText(/39도 이상 고열이 하루 이상 지속/)).toBeTruthy();
     expect(screen.getByText("이런 증상이 함께 있으면 바로 응급실/119")).toBeTruthy();
   });
@@ -63,8 +95,8 @@ describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
       </MemoryRouter>,
     );
     typeSymptom("기침");
-    fireEvent.click(screen.getByText("기침"));
-    expect(screen.getByText(/특정 병원을\s*추천하지 않습니다/)).toBeTruthy();
+    clickSuggestion("기침");
+    expect(screen.getByText(/특정 병원을\s*골라서 추천하지 않습니다/)).toBeTruthy();
   });
 
   it("등록되지 않은 증상은 지어내지 않고 솔직하게 '등록된 정보가 없다'고 말한다", () => {
@@ -75,7 +107,7 @@ describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
     );
     typeSymptom("아무도모르는희귀증상XYZ");
     expect(screen.getByText(/등록된 정보가 없는 증상/)).toBeTruthy();
-    expect(screen.getByText("주변 병원 찾기")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "주변 병원 찾기" })).toBeTruthy();
   });
 });
 
@@ -107,8 +139,8 @@ describe("SymptomInfoScreen — 주변 찾기 (지도로 그대로 넘기기, �
       </MemoryRouter>,
     );
     typeSymptom("두통");
-    fireEvent.click(screen.getByText("두통"));
-    fireEvent.click(screen.getByText("주변 신경과 찾기"));
+    clickSuggestion("두통");
+    fireEvent.click(screen.getByRole("button", { name: "주변 신경과 찾기" }));
 
     expect(window.open).toHaveBeenCalledTimes(1);
     const [url] = (window.open as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -131,8 +163,8 @@ describe("SymptomInfoScreen — 주변 찾기 (지도로 그대로 넘기기, �
       </MemoryRouter>,
     );
     typeSymptom("복통");
-    fireEvent.click(screen.getByText("복통"));
-    fireEvent.click(screen.getByText("주변 외과 찾기"));
+    clickSuggestion("복통");
+    fireEvent.click(screen.getByRole("button", { name: "주변 외과 찾기" }));
 
     expect(window.open).toHaveBeenCalledTimes(1);
     const [url] = (window.open as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -151,7 +183,7 @@ describe("SymptomInfoScreen — 주변 찾기 (지도로 그대로 넘기기, �
       </MemoryRouter>,
     );
     typeSymptom("아무도모르는희귀증상XYZ");
-    fireEvent.click(screen.getByText("주변 병원 찾기"));
+    fireEvent.click(screen.getByRole("button", { name: "주변 병원 찾기" }));
 
     expect(window.open).toHaveBeenCalledTimes(1);
     const [url] = (window.open as ReturnType<typeof vi.fn>).mock.calls[0];

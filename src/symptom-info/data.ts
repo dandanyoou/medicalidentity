@@ -30,7 +30,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "headache",
     label: "두통",
-    aliases: ["머리아픔", "머리통증", "편두통", "머리띵함"],
+    aliases: ["머리아픔", "머리통증", "편두통", "머리띵함", "머리가 아프", "머리아파"],
     generalInfo:
       "충분한 수분 섭취와 휴식이 도움이 될 수 있습니다. 반복되거나 평소와 다른 두통은 병원에서 상담하세요.",
     redFlags: [
@@ -43,7 +43,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "fever",
     label: "발열",
-    aliases: ["열", "고열", "미열", "신열"],
+    aliases: ["열", "고열", "미열", "신열", "열이 나", "열나"],
     generalInfo:
       "수분을 충분히 섭취하고 휴식을 취하세요. 38.5도 이상이 지속되면 병원에서 진료를 받는 것이 좋습니다.",
     redFlags: ["39도 이상 고열이 하루 이상 지속", "심한 호흡곤란", "의식 저하나 발작"],
@@ -60,7 +60,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "cough",
     label: "기침",
-    aliases: ["마른기침", "가래기침", "잔기침"],
+    aliases: ["마른기침", "가래기침", "잔기침", "기침이 나", "콜록"],
     generalInfo: "2주 이상 지속되는 기침, 가래에 피가 섞이는 경우 등은 병원 진료가 필요합니다.",
     redFlags: ["호흡곤란", "가슴 통증을 동반한 기침", "피가 섞인 가래"],
     mapQuery: "호흡기내과",
@@ -76,7 +76,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "sore-throat",
     label: "인후통",
-    aliases: ["목아픔", "목따가움", "편도염", "목부음"],
+    aliases: ["목아픔", "목따가움", "편도염", "목부음", "목이 아프", "목아파"],
     generalInfo: "따뜻한 물을 자주 마시고 목을 쉬게 하세요. 삼키기 힘들 정도면 병원 진료가 필요합니다.",
     redFlags: ["침을 삼키지 못할 정도의 통증", "호흡곤란", "고열과 심한 목부음 동반"],
     mapQuery: "이비인후과",
@@ -132,7 +132,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "abdominal-pain",
     label: "복통",
-    aliases: ["배아픔", "뱃속통증", "배통증"],
+    aliases: ["배아픔", "뱃속통증", "배통증", "배가 아프", "배아파", "속이 아프"],
     generalInfo: "가벼운 복통은 휴식으로 나아지기도 하지만, 통증이 심하거나 지속되면 병원 진료가 필요합니다.",
     redFlags: ["갑자기 시작된 극심한 복통", "복통과 함께 고열·구토 지속", "복부가 딱딱하게 긴장됨"],
     mapQuery: "외과",
@@ -156,7 +156,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "vomiting",
     label: "구토",
-    aliases: ["토함", "구토증세"],
+    aliases: ["토함", "구토증세", "토할 것 같", "구토가 나"],
     generalInfo: "탈수에 주의하고 소량씩 수분을 섭취하세요. 반복되거나 멈추지 않으면 병원 진료가 필요합니다.",
     redFlags: ["피가 섞인 구토", "심한 탈수", "극심한 두통이나 복통 동반"],
     mapQuery: "소화기내과",
@@ -164,7 +164,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "nausea",
     label: "메스꺼움",
-    aliases: ["구역질", "속메스꺼움", "울렁거림"],
+    aliases: ["구역질", "속메스꺼움", "울렁거림", "매쓰거움", "매스꺼움", "속이 안 좋", "메스꺼워"],
     generalInfo: "가벼운 음식과 휴식이 도움이 될 수 있습니다. 지속되면 원인 확인이 필요합니다.",
     redFlags: ["극심한 복통과 동반", "의식 저하 동반"],
     mapQuery: "소화기내과",
@@ -196,7 +196,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "dizziness",
     label: "어지러움",
-    aliases: ["현기증", "아찔함"],
+    aliases: ["현기증", "아찔함", "어지러워", "어지럽"],
     generalInfo: "일시적인 어지러움은 흔하지만, 반복되거나 다른 증상과 함께 나타나면 병원에서 원인을 확인하는 것이 좋습니다.",
     redFlags: ["어지러움과 함께 가슴 통증", "한쪽 팔다리 마비나 감각 저하", "심한 두통을 동반한 어지러움"],
     mapQuery: "신경과",
@@ -204,7 +204,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "fatigue",
     label: "피로감",
-    aliases: ["무기력", "기운없음"],
+    aliases: ["무기력", "기운없음", "피곤해", "힘이 없"],
     generalInfo: "충분한 수면과 휴식으로 나아지는지 지켜보세요. 몇 주 이상 지속되면 진료를 고려하세요.",
     redFlags: ["체중이 갑자기 줄어듦과 동반", "호흡곤란 동반"],
     mapQuery: "가정의학과",
@@ -220,7 +220,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   {
     key: "back-pain",
     label: "요통",
-    aliases: ["허리통증", "허리아픔"],
+    aliases: ["허리통증", "허리아픔", "허리가 아프", "허리아파"],
     generalInfo: "무리한 자세를 피하고 휴식을 취하세요. 다리 저림이 동반되면 병원 진료가 필요합니다.",
     redFlags: ["다리 마비나 감각 저하 동반", "대소변 조절이 어려움"],
     mapQuery: "정형외과",
@@ -379,13 +379,33 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
   },
 ];
 
-/** 자유 텍스트 입력을 label/alias에 매칭한다 — 지어내지 않고, 없으면 없다고 말한다. */
+/**
+ * 자유 텍스트(문장 포함)를 label/alias에 매칭한다 — 지어내지 않고, 없으면
+ * 없다고 말한다. LLM이 문장을 "해석"하지 않는다: 단순 부분 문자열 일치라서
+ * 한국어 활용형(예: "아파요"의 어간 변화)을 전부 잡아내진 못한다. 자주
+ * 쓰이는 활용형은 alias에 조각으로 미리 추가해뒀다(예: "머리가 아프").
+ *
+ * 양방향으로 본다: (1) 문장 안에 등록된 단어가 들어있는 경우(자연어 입력,
+ * 예: "어제부터 머리가 아파요" 안의 "머리가 아프") — 우선순위 높음.
+ * (2) 입력이 등록된 단어의 앞부분인 경우(한 글자씩 타이핑 중, 자동완성).
+ */
 export function searchSymptoms(query: string): SymptomEntry[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  return SYMPTOMS.filter(
-    (s) => s.label.toLowerCase().includes(q) || s.aliases.some((a) => a.toLowerCase().includes(q)),
-  );
+
+  const contains: SymptomEntry[] = [];
+  const prefixOf: SymptomEntry[] = [];
+
+  for (const s of SYMPTOMS) {
+    const terms = [s.label, ...s.aliases].map((t) => t.toLowerCase());
+    if (terms.some((t) => t.length >= 2 && q.includes(t))) {
+      contains.push(s);
+    } else if (terms.some((t) => t.includes(q))) {
+      prefixOf.push(s);
+    }
+  }
+
+  return [...contains, ...prefixOf];
 }
 
 export function findSymptom(key: string): SymptomEntry | undefined {

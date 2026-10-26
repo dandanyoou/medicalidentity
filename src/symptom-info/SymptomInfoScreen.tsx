@@ -76,16 +76,20 @@ export function SymptomInfoScreen() {
 
           <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm">
             <label className="mb-2 block text-sm font-medium text-slate-600" htmlFor="symptom-input">
-              증상을 직접 적어보세요
+              어떻게 아프신지 편하게 적어보세요
             </label>
-            <input
+            <textarea
               id="symptom-input"
-              type="text"
               value={query}
               onChange={(event) => handleQueryChange(event.target.value)}
-              placeholder="예: 머리아픔, 속쓰림, 어지러움..."
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-600"
+              placeholder="예: 어제 저녁부터 머리가 아프고 속이 메스꺼워요"
+              rows={3}
+              className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-600"
             />
+            <p className="mt-1.5 text-[10px] leading-relaxed text-slate-400">
+              문장 안에서 등록된 증상 단어를 찾아드려요 — 아직 모든 표현을
+              완벽히 이해하진 못해요. 못 찾으면 아래에서 솔직하게 말씀드려요.
+            </p>
 
             {!selected && matches.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
@@ -136,16 +140,20 @@ export function SymptomInfoScreen() {
                 </ul>
               </div>
 
+              <p className="mt-4 text-sm text-slate-600">
+                이런 증상은 보통 <strong className="text-slate-800">{selected.mapQuery}</strong>{" "}
+                전문의가 진료합니다.
+              </p>
               <button
                 type="button"
                 onClick={() => openNearbyMap(selected.mapQuery)}
-                className="mt-4 w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:bg-slate-800"
+                className="mt-2 w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:bg-slate-800"
               >
                 주변 {selected.mapQuery} 찾기
               </button>
               <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
-                지도 서비스의 검색 결과를 그대로 열어줄 뿐, 특정 병원을
-                추천하지 않습니다.
+                진료과만 안내해드려요 — 지도 검색 결과를 그대로 열어줄 뿐,
+                저희가 특정 병원을 골라서 추천하지 않습니다.
               </p>
             </section>
           )}
