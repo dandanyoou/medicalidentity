@@ -62,4 +62,13 @@ describe("증상 데이터 무결성", () => {
     expect(leg).toBeTruthy();
     expect(leg?.mapQuery).toBe("정형외과");
   });
+
+  it("띄어쓰기는 있지만 조사가 빠진 표현도 매칭된다(사용자 테스트 사례: '머리 아프고 구토하고 속이 매스꺼움')", () => {
+    // "머리아프고"(붙여쓰기)·"머리가 아프고"(조사)와는 다른 세 번째 패턴 —
+    // 띄어쓰기는 있는데 조사("가/도/는")가 통째로 빠진 경우.
+    const keys = searchSymptoms("머리 아프고 구토하고 속이 매스꺼움").map((s) => s.key);
+    expect(keys).toContain("headache");
+    expect(keys).toContain("vomiting");
+    expect(keys).toContain("nausea");
+  });
 });

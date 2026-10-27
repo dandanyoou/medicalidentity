@@ -51,7 +51,10 @@ function painPhrases(bodyPart: string): string[] {
   // 흔하다(빠르게 타이핑할 때) — 띄어쓰기 버전과 별개로 붙여쓰기 버전도
   // 넣는다.
   const fused = stems.map((s) => `${bodyPart}${s}`);
-  return [...withParticles, ...fused];
+  // "머리 아프고"처럼 띄어쓰기는 있지만 조사를 통째로 빼먹는 경우도 많다
+  // (조사 있는 버전·완전 붙여쓰기 버전과는 다른 세 번째 패턴).
+  const noParticle = adverbs.flatMap((a) => stems.map((s) => `${bodyPart} ${a}${s}`));
+  return [...withParticles, ...fused, ...noParticle];
 }
 
 export const SYMPTOMS: readonly SymptomEntry[] = [
