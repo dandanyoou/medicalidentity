@@ -50,4 +50,16 @@ describe("증상 데이터 무결성", () => {
     expect(searchSymptoms("손목이 아파요").some((s) => s.key === "wrist-pain")).toBe(true);
     expect(searchSymptoms("눈이 아파요").some((s) => s.key === "eye-pain")).toBe(true);
   });
+
+  it("조사·띄어쓰기 없이 붙여 쓴 표현도 매칭된다(사용자 테스트 사례: '머리아프고 지금 다리도 아파')", () => {
+    const keys = searchSymptoms("머리아프고 지금 다리도 아파").map((s) => s.key);
+    expect(keys).toContain("headache");
+    expect(keys).toContain("leg-pain");
+  });
+
+  it("다리통증 항목이 존재하고 정형외과로 안내한다", () => {
+    const leg = SYMPTOMS.find((s) => s.key === "leg-pain");
+    expect(leg).toBeTruthy();
+    expect(leg?.mapQuery).toBe("정형외과");
+  });
 });

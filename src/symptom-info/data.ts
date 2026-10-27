@@ -44,9 +44,14 @@ function painPhrases(bodyPart: string): string[] {
   // 문장에서 아주 흔하다 — 빈 문자열(부사 없음)과 자주 쓰는 부사 몇 개를
   // 같이 넣어서 커버한다. 그래도 모든 부사·어순을 다 잡진 못한다.
   const adverbs = ["", "좀 ", "많이 ", "조금 ", "약간 "];
-  return particles.flatMap((p) =>
+  const withParticles = particles.flatMap((p) =>
     adverbs.flatMap((a) => stems.map((s) => `${bodyPart}${p} ${a}${s}`)),
   );
+  // "머리아프고"처럼 조사·띄어쓰기 없이 붙여 쓰는 경우도 실제로 아주
+  // 흔하다(빠르게 타이핑할 때) — 띄어쓰기 버전과 별개로 붙여쓰기 버전도
+  // 넣는다.
+  const fused = stems.map((s) => `${bodyPart}${s}`);
+  return [...withParticles, ...fused];
 }
 
 export const SYMPTOMS: readonly SymptomEntry[] = [
@@ -586,6 +591,19 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
     aliases: ["발목삠", ...painPhrases("발목")],
     generalInfo: "RICE(휴식·냉찜질·압박·거상)가 도움이 됩니다. 심하게 붓거나 체중을 못 실으면 진료를 받으세요.",
     redFlags: ["기형적으로 변형됨", "체중을 전혀 실을 수 없음"],
+    mapQuery: "정형외과",
+  },
+  {
+    key: "leg-pain",
+    label: "다리통증",
+    aliases: ["다리아픔", ...painPhrases("다리")],
+    generalInfo:
+      "근육통이나 가벼운 피로로도 흔히 생깁니다. 한쪽만 붓거나 색이 변하면 혈관 문제일 수 있어 바로 진료가 필요합니다.",
+    redFlags: [
+      "한쪽 다리만 갑자기 붓고 색이 변함(혈관 문제 의심)",
+      "다리에 힘이 빠지거나 감각이 사라짐",
+      "걷기 힘들 정도의 급격한 통증",
+    ],
     mapQuery: "정형외과",
   },
   {
