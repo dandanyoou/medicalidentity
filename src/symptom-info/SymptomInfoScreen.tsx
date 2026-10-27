@@ -158,6 +158,14 @@ export function SymptomInfoScreen() {
                 이런 증상은 보통 <strong className="text-slate-800">{selected.mapQuery}</strong>{" "}
                 전문의가 진료합니다.
               </p>
+              {matches.length > 1 && (
+                <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                  지금처럼 여러 증상이 같이 있다면, 특정 전문과보다 내과·
+                  가정의학과에서 먼저 전체적으로 보고 필요하면 전문과로
+                  안내받는 것도 좋은 방법이에요 — 증상이 겹치면 원인도
+                  한 가지가 아닐 수 있습니다.
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => openNearbyMap(selected.mapQuery)}

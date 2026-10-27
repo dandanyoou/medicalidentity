@@ -66,7 +66,13 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
       "두통과 함께 발음이 어눌해지거나 팔다리에 힘이 빠짐",
       "의식이 흐려짐",
     ],
-    mapQuery: "신경과",
+    // 2026-10-27: 신경과로 바로 보내던 걸 가정의학과로 바꿈 — 두통은
+    // 발열·몸살 등과 함께 오는 경우가 흔한데, 단일 증상이라고 신경과부터
+    // 보내면 실제로는 감기 같은 흔한 원인을 놓치고 엉뚱한 과로 보내는
+    // 셈이 된다. 표준 진료 순서(1차 진료 먼저, 필요하면 전문과 의뢰)를
+    // 따른다 — 증상 조합을 추론해서 바꾸는 게 아니라, 단일 증상 기본값
+    // 자체를 더 안전한 쪽으로 고정한 것.
+    mapQuery: "가정의학과",
   },
   {
     key: "fever",
@@ -227,7 +233,9 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
     aliases: ["현기증", "아찔함", "어지러워", "어지럽"],
     generalInfo: "일시적인 어지러움은 흔하지만, 반복되거나 다른 증상과 함께 나타나면 병원에서 원인을 확인하는 것이 좋습니다.",
     redFlags: ["어지러움과 함께 가슴 통증", "한쪽 팔다리 마비나 감각 저하", "심한 두통을 동반한 어지러움"],
-    mapQuery: "신경과",
+    // 2026-10-27: 어지러움도 원인이 귀·심장·신경 등 다양해 신경과로
+    // 단정하기보다 가정의학과에서 먼저 보는 게 더 안전한 기본값이다.
+    mapQuery: "가정의학과",
   },
   {
     key: "fatigue",
@@ -431,7 +439,9 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
     aliases: ["눈떨림"],
     generalInfo: "피로·카페인·마그네슘 부족과 관련 있는 경우가 많습니다. 몇 주 이상 지속되면 진료를 고려하세요.",
     redFlags: ["얼굴 다른 부위까지 떨림이 번짐"],
-    mapQuery: "신경과",
+    // 대부분 피로·카페인 관련 양성 증상이라 신경과보다 가정의학과가
+    // 더 부담 없는 첫 진료처다.
+    mapQuery: "가정의학과",
   },
   {
     key: "teary-eye",
@@ -567,7 +577,8 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
     aliases: ["집중이 안 돼", "멍해짐"],
     generalInfo: "수면 부족·스트레스와 관련 있는 경우가 많습니다. 지속되면 원인 확인을 위해 진료를 고려하세요.",
     redFlags: ["갑자기 심해지며 의식 저하 동반"],
-    mapQuery: "신경과",
+    // 수면·스트레스 등 원인이 다양해 가정의학과에서 먼저 보는 게 맞다.
+    mapQuery: "가정의학과",
   },
   {
     key: "memory-loss",
@@ -575,7 +586,7 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
     aliases: ["기억력저하", "자꾸 깜빡"],
     generalInfo: "일시적인 건망증은 흔합니다. 일상생활에 지장을 줄 정도로 심해지면 진료를 고려하세요.",
     redFlags: ["갑작스럽고 급격한 기억력 저하", "길을 잃거나 사람을 못 알아봄"],
-    mapQuery: "신경과",
+    mapQuery: "가정의학과",
   },
   {
     key: "knee-pain",
@@ -628,7 +639,9 @@ export const SYMPTOMS: readonly SymptomEntry[] = [
     aliases: ["쥐가 나", "근육경련"],
     generalInfo: "수분·전해질 부족과 관련 있는 경우가 많습니다. 자주 반복되면 진료를 고려하세요.",
     redFlags: ["전신 경련으로 번짐", "의식 저하 동반"],
-    mapQuery: "신경과",
+    // 전해질·수분 부족이 흔한 원인이라 신경과보다 가정의학과·내과가
+    // 더 적절한 첫 진료처다.
+    mapQuery: "가정의학과",
   },
   {
     key: "seizure",

@@ -63,6 +63,28 @@ describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
     expect(screen.getByRole("button", { name: "메스꺼움" })).toBeTruthy();
   });
 
+  it("여러 증상이 같이 매칭되면, 특정 과를 단정하기보다 내과·가정의학과도 고려해보라는 안내가 뜬다", () => {
+    render(
+      <MemoryRouter>
+        <SymptomInfoScreen />
+      </MemoryRouter>,
+    );
+    typeSymptom("어제 저녁부터 머리가 아프고 속이 메스꺼워요");
+    clickSuggestion("두통");
+    expect(screen.getByText(/내과·\s*가정의학과에서 먼저/)).toBeTruthy();
+  });
+
+  it("증상이 하나만 매칭되면 그 안내는 뜨지 않는다", () => {
+    render(
+      <MemoryRouter>
+        <SymptomInfoScreen />
+      </MemoryRouter>,
+    );
+    typeSymptom("무릎이 아파요");
+    clickSuggestion("무릎통증");
+    expect(screen.queryByText(/내과·\s*가정의학과에서 먼저/)).toBeNull();
+  });
+
   it("증상을 선택하면 특정 병원이 아니라 진료과만 안내한다", () => {
     render(
       <MemoryRouter>
@@ -71,9 +93,11 @@ describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
     );
     typeSymptom("두통");
     clickSuggestion("두통");
-    // "신경과"는 <strong>으로 분리된 별도 텍스트 노드라 정규식 하나로는 못
-    // 잡는다 — 두 조각을 따로 확인한다.
-    expect(screen.getByText("신경과", { selector: "strong" })).toBeTruthy();
+    // "가정의학과"는 <strong>으로 분리된 별도 텍스트 노드라 정규식 하나로는
+    // 못 잡는다 — 두 조각을 따로 확인한다. (2026-10-27: 두통을 신경과에서
+    // 가정의학과로 바꿈 — 발열 등과 같이 오는 경우가 흔해 1차 진료가
+    // 더 안전한 기본값.)
+    expect(screen.getByText("가정의학과", { selector: "strong" })).toBeTruthy();
     expect(screen.getByText(/전문의가 진료합니다/)).toBeTruthy();
   });
 
@@ -127,14 +151,14 @@ describe("SymptomInfoScreen — 주변 찾기 (네이버 지도로 그대로 넘
         <SymptomInfoScreen />
       </MemoryRouter>,
     );
-    typeSymptom("두통");
-    clickSuggestion("두통");
-    fireEvent.click(screen.getByRole("button", { name: "주변 신경과 찾기" }));
+    typeSymptom("무릎통증");
+    clickSuggestion("무릎통증");
+    fireEvent.click(screen.getByRole("button", { name: "주변 정형외과 찾기" }));
 
     expect(window.open).toHaveBeenCalledTimes(1);
     const [url] = (window.open as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(url).toContain("map.naver.com");
-    expect(decodeURIComponent(url)).toContain("신경과");
+    expect(decodeURIComponent(url)).toContain("정형외과");
   });
 
   it("매칭 안 된 증상에서도 '주변 병원 찾기'는 동작한다", () => {

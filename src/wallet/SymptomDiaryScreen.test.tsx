@@ -77,12 +77,12 @@ describe("SymptomDiaryScreen — 주변 병원 찾기 (일기에서도 가능해
         <SymptomDiaryScreen />
       </MemoryRouter>,
     );
-    fireEvent.click(screen.getByRole("button", { name: "주변 신경과 찾기" }));
+    fireEvent.click(screen.getByRole("button", { name: "주변 가정의학과 찾기" }));
 
     expect(window.open).toHaveBeenCalledTimes(1);
     const [url] = (window.open as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(url).toContain("map.naver.com");
-    expect(decodeURIComponent(url)).toContain("신경과");
+    expect(decodeURIComponent(url)).toContain("가정의학과");
   });
 
   it("복합 증상이면 진료과별로 버튼이 따로 뜬다(중복 제거)", () => {
@@ -93,8 +93,8 @@ describe("SymptomDiaryScreen — 주변 병원 찾기 (일기에서도 가능해
         <SymptomDiaryScreen />
       </MemoryRouter>,
     );
-    // 두통·어지러움 둘 다 신경과라 버튼은 1개만 떠야 한다(중복 제거).
-    expect(screen.getAllByRole("button", { name: "주변 신경과 찾기" })).toHaveLength(1);
+    // 두통·어지러움 둘 다 가정의학과라 버튼은 1개만 떠야 한다(중복 제거).
+    expect(screen.getAllByRole("button", { name: "주변 가정의학과 찾기" })).toHaveLength(1);
   });
 
   it("매칭된 태그가 없으면 '주변 찾기' 버튼이 안 뜬다", () => {
