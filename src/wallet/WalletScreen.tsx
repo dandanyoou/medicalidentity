@@ -20,6 +20,42 @@ import { buildBundle, buildVPPayload } from "./bundle";
  *   혈액형 VC   → bloodType, rhFactor
  *   알레르기 VC → allergens, severity
  */
+
+// 비응급/응급 두 화면 모두에서 같은 카드 3장을 보여준다(응급 모드일 땐
+// QR 아래로 순서만 바뀐다) — 데이터를 한 곳에 두고 두 번 렌더링한다.
+const PATIENT_CARDS: VCCardProps[] = [
+  {
+    title: "모바일 운전면허증 (mDL)",
+    issuerLabel: "Korean mDL Reference Issuer (Demo)",
+    subtitle: "reference implementation, not gov-signed",
+    claims: [
+      ["이름", "김단유"],
+      ["주민번호", "940123-1******"],
+      ["생년월일", "1994-01-23"],
+      ["면허 등급", "1종 보통"],
+    ],
+    accent: "blue",
+  },
+  {
+    title: "혈액형 정보",
+    issuerLabel: "Demo Hospital Issuer",
+    claims: [
+      ["혈액형", "A형"],
+      ["Rh", "+"],
+    ],
+    accent: "rose",
+  },
+  {
+    title: "알레르기 정보",
+    issuerLabel: "Demo Hospital Issuer",
+    claims: [
+      ["알레르기", "페니실린"],
+      ["중증도", "중증"],
+      ["최종 갱신", "2026-03-10"],
+    ],
+    accent: "amber",
+  },
+];
 export function WalletScreen() {
   useEffect(() => {
     document.title = "DID 응급 의료 신원 인증 데모";
@@ -99,7 +135,7 @@ export function WalletScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen overflow-x-hidden bg-slate-100">
       <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-50 shadow-xl">
         <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur">
           <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-blue-50 text-base">
@@ -136,47 +172,23 @@ export function WalletScreen() {
             </Link>
           </div>
 
-          <div className="mb-5 flex flex-col gap-3">
-            <VCCard
-              title="모바일 운전면허증 (mDL)"
-              issuerLabel="Korean mDL Reference Issuer (Demo)"
-              subtitle="reference implementation, not gov-signed"
-              claims={[
-                ["이름", "김단유"],
-                ["주민번호", "940123-1******"],
-                ["생년월일", "1994-01-23"],
-                ["면허 등급", "1종 보통"],
-              ]}
-              accent="blue"
-            />
-            <VCCard
-              title="혈액형 정보"
-              issuerLabel="Demo Hospital Issuer"
-              claims={[
-                ["혈액형", "A형"],
-                ["Rh", "+"],
-              ]}
-              accent="rose"
-            />
-            <VCCard
-              title="알레르기 정보"
-              issuerLabel="Demo Hospital Issuer"
-              claims={[
-                ["알레르기", "페니실린"],
-                ["중증도", "중증"],
-                ["최종 갱신", "2026-03-10"],
-              ]}
-              accent="amber"
-            />
-          </div>
-
           {!emergencyOn && (
-            <p className="mb-4 px-1 text-xs leading-relaxed text-slate-400">
-              응급 상황에서 아래 버튼을 누르면 혈액형 + 알레르기 정보만
-              선택적으로 공개합니다. 이름·주민번호·주소는 공개되지 않습니다.
-            </p>
+            <>
+              <div className="mb-5 flex flex-col gap-3">
+                {PATIENT_CARDS.map((card) => (
+                  <VCCard key={card.title} {...card} />
+                ))}
+              </div>
+              <p className="mb-4 px-1 text-xs leading-relaxed text-slate-400">
+                응급 상황에서 아래 버튼을 누르면 혈액형 + 알레르기 정보만
+                선택적으로 공개합니다. 이름·주민번호·주소는 공개되지 않습니다.
+              </p>
+            </>
           )}
 
+          {/* 응급 모드에서는 의료진이 당장 봐야 할 QR이 화면 최상단에
+              바로 보여야 한다 — 카드 3개를 스크롤해서 지나친 뒤에야 QR이
+              나오면 정작 응급 상황에서 제일 늦게 보이는 역설이 생긴다. */}
           {emergencyOn && (
             <section className="overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
               {qrDataUrl && (
@@ -238,6 +250,17 @@ export function WalletScreen() {
               )}
             </section>
           )}
+
+          {emergencyOn && (
+            <div className="mt-5 flex flex-col gap-3">
+              <p className="px-1 text-xs font-medium text-slate-400">
+                보유 중인 정보 (QR에는 혈액형·알레르기만 포함)
+              </p>
+              {PATIENT_CARDS.map((card) => (
+                <VCCard key={card.title} {...card} />
+              ))}
+            </div>
+          )}
         </main>
 
         {/* 응급 모드 — 실제 응급 상황에서 바로 찾을 수 있게 하단 고정, 큰 터치 영역 */}
@@ -276,12 +299,12 @@ function VCCard({ title, issuerLabel, subtitle, claims, accent }: VCCardProps) {
 
   return (
     <div className="rounded-3xl bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+        <div className="flex min-w-0 items-center gap-2">
           <span className={`h-2 w-2 flex-none rounded-full ${dot}`} />
-          <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+          <h3 className="truncate text-sm font-semibold text-slate-800">{title}</h3>
         </div>
-        <span className="flex-none rounded-full bg-slate-50 px-2 py-0.5 text-[10px] text-slate-500">
+        <span className="max-w-[55%] flex-none truncate rounded-full bg-slate-50 px-2 py-0.5 text-[10px] text-slate-500">
           {issuerLabel}
         </span>
       </div>

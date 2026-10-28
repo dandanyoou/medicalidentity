@@ -208,22 +208,29 @@ export function CheckerScreen() {
                 <span className="mb-2 block text-sm font-medium text-slate-600">
                   건강보험료 소득분위
                 </span>
-                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                  {TIERS.map((tier) => (
-                    <button
-                      key={tier}
-                      type="button"
-                      onClick={() => setIncomeTier(tier)}
-                      aria-pressed={incomeTier === tier}
-                      className={`flex h-11 w-11 flex-none items-center justify-center rounded-full text-sm font-semibold transition ${
-                        incomeTier === tier
-                          ? "bg-blue-600 text-white"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      {tier}
-                    </button>
-                  ))}
+                {/* 10분위 전부가 한 화면에 안 들어와 가로 스크롤이 필요한데,
+                    기본 overflow-x-auto만으로는 스크롤 가능하다는 신호가 거의
+                    안 보인다(마지막 칩이 살짝만 보임) — 오른쪽에 그라데이션
+                    페이드를 얹어 "더 있다"는 걸 드러낸다. */}
+                <div className="relative">
+                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                    {TIERS.map((tier) => (
+                      <button
+                        key={tier}
+                        type="button"
+                        onClick={() => setIncomeTier(tier)}
+                        aria-pressed={incomeTier === tier}
+                        className={`flex h-11 w-11 flex-none items-center justify-center rounded-full text-sm font-semibold transition ${
+                          incomeTier === tier
+                            ? "bg-blue-600 text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {tier}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white to-transparent" />
                 </div>
                 <details className="mt-2 text-xs text-slate-400">
                   <summary className="cursor-pointer select-none text-blue-600">
