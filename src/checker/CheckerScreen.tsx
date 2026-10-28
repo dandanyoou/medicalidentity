@@ -146,9 +146,10 @@ export function CheckerScreen() {
   const step = result ? 2 : 1;
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-50 shadow-xl">
-        {/* 앱 상단바 */}
+    <div className="min-h-screen bg-slate-100 md:px-6 md:py-10">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-50 shadow-xl md:max-w-2xl md:min-h-0 md:overflow-hidden md:rounded-3xl md:shadow-2xl">
+        {/* 앱 상단바 — 데스크톱에서도 카드 안에 그대로 고정(모바일 폰 목업과
+            똑같은 톤 유지, 레이아웃만 넓게). 모바일/웹 둘 다 같은 컴포넌트다. */}
         <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur">
           <Link
             to="/wallet"
@@ -164,7 +165,7 @@ export function CheckerScreen() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 pb-32 pt-5">
+        <main className="flex-1 overflow-y-auto px-4 pb-32 pt-5 md:pb-6">
           <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
             국민건강보험공단 고시 기준 상한액표 사용
           </div>
@@ -381,9 +382,12 @@ export function CheckerScreen() {
           )}
         </main>
 
-        {/* 하단 고정 CTA — 폼 바깥에서 form 속성으로 제출 */}
-        <div className="pointer-events-none fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2">
-          <div className="pointer-events-auto border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur">
+        {/* 하단 고정 CTA — 폼 바깥에서 form 속성으로 제출. 모바일은 엄지로
+            바로 누를 수 있게 화면에 고정, 데스크톱은 카드 안쪽 일반 흐름으로
+            들어가 떠 있는 버튼이 되지 않게 한다(고정 위치는 폭이 넓어진
+            카드의 둥근 모서리와 안 맞아 뜬 느낌이 난다). */}
+        <div className="pointer-events-none fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 md:static md:left-auto md:w-full md:max-w-none md:translate-x-0">
+          <div className="pointer-events-auto border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur md:rounded-b-3xl">
             <button
               type="submit"
               form="checker-form"

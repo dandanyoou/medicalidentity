@@ -135,8 +135,8 @@ export function WalletScreen() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-100">
-      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-50 shadow-xl">
+    <div className="min-h-screen overflow-x-hidden bg-slate-100 md:px-6 md:py-10">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-50 shadow-xl md:max-w-3xl md:min-h-0 md:overflow-hidden md:rounded-3xl md:shadow-2xl">
         <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur">
           <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-blue-50 text-base">
             🪪
@@ -156,7 +156,7 @@ export function WalletScreen() {
           </Link>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 pb-28 pt-5">
+        <main className="flex-1 overflow-y-auto px-4 pb-28 pt-5 md:pb-6">
           <div className="mb-5 flex gap-2">
             <Link
               to="/symptom"
@@ -174,7 +174,7 @@ export function WalletScreen() {
 
           {!emergencyOn && (
             <>
-              <div className="mb-5 flex flex-col gap-3">
+              <div className="mb-5 flex flex-col gap-3 md:grid md:grid-cols-2">
                 {PATIENT_CARDS.map((card) => (
                   <VCCard key={card.title} {...card} />
                 ))}
@@ -256,16 +256,19 @@ export function WalletScreen() {
               <p className="px-1 text-xs font-medium text-slate-400">
                 보유 중인 정보 (QR에는 혈액형·알레르기만 포함)
               </p>
-              {PATIENT_CARDS.map((card) => (
-                <VCCard key={card.title} {...card} />
-              ))}
+              <div className="flex flex-col gap-3 md:grid md:grid-cols-2">
+                {PATIENT_CARDS.map((card) => (
+                  <VCCard key={card.title} {...card} />
+                ))}
+              </div>
             </div>
           )}
         </main>
 
-        {/* 응급 모드 — 실제 응급 상황에서 바로 찾을 수 있게 하단 고정, 큰 터치 영역 */}
-        <div className="pointer-events-none fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2">
-          <div className="pointer-events-auto border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur">
+        {/* 응급 모드 — 모바일은 엄지로 바로 누를 수 있게 화면에 고정, 데스크톱은
+            카드 안쪽 일반 흐름으로 들어가 떠 있는 버튼이 되지 않게 한다. */}
+        <div className="pointer-events-none fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 md:static md:left-auto md:w-full md:max-w-none md:translate-x-0">
+          <div className="pointer-events-auto border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur md:rounded-b-3xl">
             <button
               onClick={() => setEmergencyOn((v) => !v)}
               aria-pressed={emergencyOn}

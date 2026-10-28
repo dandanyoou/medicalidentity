@@ -40,8 +40,8 @@ export function SymptomDiaryScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-50 shadow-xl">
+    <div className="min-h-screen bg-slate-100 md:px-6 md:py-10">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-50 shadow-xl md:max-w-2xl md:min-h-0 md:overflow-hidden md:rounded-3xl md:shadow-2xl">
         <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur">
           <Link
             to="/wallet"
