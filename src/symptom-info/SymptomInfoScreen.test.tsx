@@ -10,13 +10,6 @@ function typeSymptom(text: string) {
   fireEvent.change(input, { target: { value: text } });
 }
 
-// textarea는 입력값을 자식 텍스트 노드로 렌더링하므로, 입력값과 같은 글자의
-// 제안 버튼을 getByText로 찾으면 textarea 자신과 겹쳐 모호해진다 — 버튼
-// role로 좁혀서 찾는다.
-function clickSuggestion(label: string) {
-  fireEvent.click(screen.getByRole("button", { name: label }));
-}
-
 describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
   afterEach(() => cleanup());
 
@@ -31,36 +24,51 @@ describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
     expect(alertText).toContain("119");
   });
 
-  it("label로 입력하면 바로 매칭 후보가 뜬다(예: '두통')", () => {
+  it("label로 입력하면 클릭 없이 바로 해당 증상 정보가 펼쳐진다(예: '두통')", () => {
     render(
       <MemoryRouter>
         <SymptomInfoScreen />
       </MemoryRouter>,
     );
     typeSymptom("두통");
-    expect(screen.getByRole("button", { name: "두통" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "두통" })).toBeTruthy();
   });
 
-  it("alias로 입력해도 매칭된다(예: '머리아픔' → 두통)", () => {
+  it("alias로 입력해도 매칭되어 클릭 없이 바로 보인다(예: '머리아픔' → 두통)", () => {
     render(
       <MemoryRouter>
         <SymptomInfoScreen />
       </MemoryRouter>,
     );
     typeSymptom("머리아픔");
-    clickSuggestion("두통");
     expect(screen.getByText(/갑자기 극심한 두통/)).toBeTruthy();
   });
 
-  it("자연스러운 문장 안에 포함된 증상도 찾아낸다(진단이 아니라 단순 단어 매칭)", () => {
+  it("한 문장에 증상이 여러 개 섞여 있으면 전부 자동으로 펼쳐서 보여준다(클릭 불필요)", () => {
+    // 예전엔 칩을 하나씩 눌러야 그 증상 정보가 보였다 — 사용자가 "머리아파
+    // 다리아파 눈이 아파 속이 안좋아"처럼 여러 증상을 한 번에 쓰면 전부
+    // 한눈에 봐야 한다는 피드백 반영.
     render(
       <MemoryRouter>
         <SymptomInfoScreen />
       </MemoryRouter>,
     );
     typeSymptom("어제 저녁부터 머리가 아프고 속이 메스꺼워요");
-    expect(screen.getByRole("button", { name: "두통" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "메스꺼움" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "두통" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "메스꺼움" })).toBeTruthy();
+  });
+
+  it("네 가지 증상을 한 문장에 써도 네 카드가 전부 동시에 보인다", () => {
+    render(
+      <MemoryRouter>
+        <SymptomInfoScreen />
+      </MemoryRouter>,
+    );
+    typeSymptom("머리아파 다리아파 눈이 아파 속이 안좋아");
+    expect(screen.getByRole("heading", { name: "두통" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "다리통증" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "눈통증" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "메스꺼움" })).toBeTruthy();
   });
 
   it("여러 증상이 같이 매칭되면, 특정 과를 단정하기보다 내과·가정의학과도 고려해보라는 안내가 뜬다", () => {
@@ -70,7 +78,6 @@ describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
       </MemoryRouter>,
     );
     typeSymptom("어제 저녁부터 머리가 아프고 속이 메스꺼워요");
-    clickSuggestion("두통");
     expect(screen.getByText(/내과·\s*가정의학과에서 먼저/)).toBeTruthy();
   });
 
@@ -81,18 +88,16 @@ describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
       </MemoryRouter>,
     );
     typeSymptom("무릎이 아파요");
-    clickSuggestion("무릎통증");
     expect(screen.queryByText(/내과·\s*가정의학과에서 먼저/)).toBeNull();
   });
 
-  it("증상을 선택하면 특정 병원이 아니라 진료과만 안내한다", () => {
+  it("증상 정보에는 특정 병원이 아니라 진료과만 안내한다", () => {
     render(
       <MemoryRouter>
         <SymptomInfoScreen />
       </MemoryRouter>,
     );
     typeSymptom("두통");
-    clickSuggestion("두통");
     // "가정의학과"는 <strong>으로 분리된 별도 텍스트 노드라 정규식 하나로는
     // 못 잡는다 — 두 조각을 따로 확인한다. (2026-10-27: 두통을 신경과에서
     // 가정의학과로 바꿈 — 발열 등과 같이 오는 경우가 흔해 1차 진료가
@@ -101,14 +106,13 @@ describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
     expect(screen.getByText(/전문의가 진료합니다/)).toBeTruthy();
   });
 
-  it("후보를 선택하면 참고 정보와 응급 신호 목록이 뜬다", () => {
+  it("매칭되면 참고 정보와 응급 신호 목록이 클릭 없이 바로 뜬다", () => {
     render(
       <MemoryRouter>
         <SymptomInfoScreen />
       </MemoryRouter>,
     );
     typeSymptom("발열");
-    clickSuggestion("발열");
     expect(screen.getByText(/39도 이상 고열이 하루 이상 지속/)).toBeTruthy();
     expect(screen.getByText("이런 증상이 함께 있으면 바로 응급실/119")).toBeTruthy();
   });
@@ -120,7 +124,6 @@ describe("SymptomInfoScreen — 자유 텍스트 입력", () => {
       </MemoryRouter>,
     );
     typeSymptom("기침");
-    clickSuggestion("기침");
     expect(screen.getByText(/특정 병원을\s*골라서 추천하지 않습니다/)).toBeTruthy();
   });
 
@@ -145,14 +148,13 @@ describe("SymptomInfoScreen — 주변 찾기 (네이버 지도로 그대로 넘
     vi.restoreAllMocks();
   });
 
-  it("증상을 선택하면 네이버 지도에서 해당 진료과를 검색하는 새 탭을 연다", () => {
+  it("증상 정보가 뜨면 네이버 지도에서 해당 진료과를 검색하는 새 탭을 연다", () => {
     render(
       <MemoryRouter>
         <SymptomInfoScreen />
       </MemoryRouter>,
     );
     typeSymptom("무릎통증");
-    clickSuggestion("무릎통증");
     fireEvent.click(screen.getByRole("button", { name: "주변 정형외과 찾기" }));
 
     expect(window.open).toHaveBeenCalledTimes(1);

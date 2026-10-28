@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { searchSymptoms, type SymptomEntry } from "./data";
+import { searchSymptoms } from "./data";
 import { openNearbyMap } from "./nearbyMap";
 import { addDiaryEntry, DiarySaveError } from "../wallet/diary";
 
@@ -22,7 +22,6 @@ export function SymptomInfoScreen() {
   }, []);
 
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<SymptomEntry | null>(null);
   const [onset, setOnset] = useState("");
   const [severity, setSeverity] = useState<number | null>(null);
   const [note, setNote] = useState("");
@@ -30,15 +29,13 @@ export function SymptomInfoScreen() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const matches = useMemo(() => searchSymptoms(query), [query]);
-  const noMatch = query.trim().length > 0 && matches.length === 0 && !selected;
-
-  function handleSelect(entry: SymptomEntry) {
-    setSelected(entry);
-  }
+  // 매칭이 너무 많으면(짧고 모호한 입력) 전부 펼치는 대신 상위 N개만 —
+  // 그래도 "한 번에 다 보여준다"는 원칙은 유지, 그냥 벽처럼 안 쌓는다.
+  const visibleMatches = matches.slice(0, 8);
+  const noMatch = query.trim().length > 0 && matches.length === 0;
 
   function handleQueryChange(value: string) {
     setQuery(value);
-    setSelected(null);
     setSaved(false);
   }
 
@@ -105,21 +102,6 @@ export function SymptomInfoScreen() {
               완벽히 이해하진 못해요. 못 찾으면 아래에서 솔직하게 말씀드려요.
             </p>
 
-            {!selected && matches.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {matches.slice(0, 8).map((s) => (
-                  <button
-                    key={s.key}
-                    type="button"
-                    onClick={() => handleSelect(s)}
-                    className="rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200"
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
             {noMatch && (
               <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-500">
                 아직 등록된 정보가 없는 증상이에요 — 지어내지 않고 솔직하게
@@ -136,48 +118,59 @@ export function SymptomInfoScreen() {
             )}
           </section>
 
-          {selected && (
-            <section className="rounded-3xl bg-white p-5 shadow-sm">
-              <h2 className="mb-2 text-sm font-semibold text-slate-800">{selected.label}</h2>
-              <p className="mb-4 text-sm leading-relaxed text-slate-600">
-                {selected.generalInfo}
-              </p>
-
-              <div className="rounded-2xl border border-rose-100 bg-rose-50 p-3">
-                <p className="mb-1.5 text-sm font-semibold text-rose-900">
-                  이런 증상이 함께 있으면 바로 응급실/119
-                </p>
-                <ul className="list-disc space-y-0.5 pl-4 text-xs text-rose-800">
-                  {selected.redFlags.map((flag) => (
-                    <li key={flag}>{flag}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <p className="mt-4 text-sm text-slate-600">
-                이런 증상은 보통 <strong className="text-slate-800">{selected.mapQuery}</strong>{" "}
-                전문의가 진료합니다.
-              </p>
+          {/* 문장 하나에 증상이 여러 개 섞여 있어도(예: "머리아파 다리아파
+              눈이 아파 속이 안좋아") 전부 한 번에 펼쳐서 보여준다 — 예전엔
+              칩을 하나씩 눌러야만 그 증상 정보가 보였는데, 그러면 여러
+              증상을 한눈에 비교할 수가 없었다. 어떤 게 진짜 원인인지
+              종합 판단은 여전히 하지 않는다(그건 의료기기 소프트웨어
+              영역) — 그냥 찾은 걸 전부 숨김없이 보여줄 뿐이다. */}
+          {visibleMatches.length > 0 && (
+            <div className="mt-4 flex flex-col gap-3">
               {matches.length > 1 && (
-                <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                  지금처럼 여러 증상이 같이 있다면, 특정 전문과보다 내과·
-                  가정의학과에서 먼저 전체적으로 보고 필요하면 전문과로
-                  안내받는 것도 좋은 방법이에요 — 증상이 겹치면 원인도
-                  한 가지가 아닐 수 있습니다.
+                <p className="px-1 text-xs leading-relaxed text-slate-400">
+                  증상을 {matches.length}개 찾았어요. 여러 개가 같이 있다면
+                  특정 전문과보다 내과·가정의학과에서 먼저 전체적으로 보고
+                  필요하면 전문과로 안내받는 것도 좋은 방법이에요 — 증상이
+                  겹치면 원인도 한 가지가 아닐 수 있습니다. 아래 각 증상의
+                  응급 신호도 같이 확인해보세요.
                 </p>
               )}
-              <button
-                type="button"
-                onClick={() => openNearbyMap(selected.mapQuery)}
-                className="mt-2 w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:bg-slate-800"
-              >
-                주변 {selected.mapQuery} 찾기
-              </button>
-              <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
-                진료과만 안내해드려요 — 지도 검색 결과를 그대로 열어줄 뿐,
-                저희가 특정 병원을 골라서 추천하지 않습니다.
-              </p>
-            </section>
+              {visibleMatches.map((entry) => (
+                <section key={entry.key} className="rounded-3xl bg-white p-5 shadow-sm">
+                  <h2 className="mb-2 text-sm font-semibold text-slate-800">{entry.label}</h2>
+                  <p className="mb-4 text-sm leading-relaxed text-slate-600">
+                    {entry.generalInfo}
+                  </p>
+
+                  <div className="rounded-2xl border border-rose-100 bg-rose-50 p-3">
+                    <p className="mb-1.5 text-sm font-semibold text-rose-900">
+                      이런 증상이 함께 있으면 바로 응급실/119
+                    </p>
+                    <ul className="list-disc space-y-0.5 pl-4 text-xs text-rose-800">
+                      {entry.redFlags.map((flag) => (
+                        <li key={flag}>{flag}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <p className="mt-4 text-sm text-slate-600">
+                    이런 증상은 보통 <strong className="text-slate-800">{entry.mapQuery}</strong>{" "}
+                    전문의가 진료합니다.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openNearbyMap(entry.mapQuery)}
+                    className="mt-2 w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:bg-slate-800"
+                  >
+                    주변 {entry.mapQuery} 찾기
+                  </button>
+                  <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
+                    진료과만 안내해드려요 — 지도 검색 결과를 그대로 열어줄 뿐,
+                    저희가 특정 병원을 골라서 추천하지 않습니다.
+                  </p>
+                </section>
+              ))}
+            </div>
           )}
 
           {query.trim().length > 0 && (

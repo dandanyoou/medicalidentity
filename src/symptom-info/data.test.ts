@@ -71,4 +71,12 @@ describe("증상 데이터 무결성", () => {
     expect(keys).toContain("vomiting");
     expect(keys).toContain("nausea");
   });
+
+  it("'안 좋다' 부정 표현도 붙여 쓴 버전까지 매칭된다(사용자 테스트 사례: '머리아파 다리아파 눈이 아파 속이 안좋아')", () => {
+    const keys = searchSymptoms("머리아파 다리아파 눈이 아파 속이 안좋아").map((s) => s.key);
+    expect(keys).toContain("headache");
+    expect(keys).toContain("leg-pain");
+    expect(keys).toContain("eye-pain");
+    expect(keys).toContain("nausea");
+  });
 });
