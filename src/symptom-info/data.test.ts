@@ -92,4 +92,20 @@ describe("증상 데이터 무결성", () => {
   it("'무거워요' 단독 표현도 매칭된다(욱신욱신과 별개 경로)", () => {
     expect(searchSymptoms("다리가 무거워요").map((s) => s.key)).toContain("leg-pain");
   });
+
+  it("몸 부위 없이 어간만 짧게 치면 그 어간을 쓰는 다른 부위들까지 전부 걸리지 않는다(사용자 테스트 사례: '욱신거리다'만 쳤는데 12개 부위가 한꺼번에 뜨던 버그)", () => {
+    // painPhrases()가 만든 "다리가 욱신욱신" 같은 긴 조합 문구 안에는
+    // 어간("욱신욱신")이 글자 그대로 들어있다 — 역방향 prefix 매칭이
+    // alias까지 뒤지면, 몸 부위 없이 어간만 짧게 쳐도 그 어간을 쓰는
+    // 모든 부위가 동시에 걸려버린다. label에만 역방향 매칭을 제한해서
+    // 막는다.
+    expect(searchSymptoms("욱신거리다")).toEqual([]);
+    expect(searchSymptoms("욱신거림")).toEqual([]);
+    expect(searchSymptoms("무거워")).toEqual([]);
+    expect(searchSymptoms("아프")).toEqual([]);
+  });
+
+  it("'다리가 욱신거림'(명사형 어미)도 매칭된다", () => {
+    expect(searchSymptoms("다리가 욱신거림").map((s) => s.key)).toContain("leg-pain");
+  });
 });
