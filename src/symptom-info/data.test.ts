@@ -79,4 +79,17 @@ describe("증상 데이터 무결성", () => {
     expect(keys).toContain("eye-pain");
     expect(keys).toContain("nausea");
   });
+
+  it("'아프다' 계열이 아닌 통증 표현(욱신욱신 거림, 무거워짐)도 잡는다(사용자 테스트 사례)", () => {
+    const keys = searchSymptoms(
+      "머리가 아프고 다리도 욱신욱신 거리는데 다리가 좀 어제부터 무거워지는데 어제 새벽쯤에 구토도 했어",
+    ).map((s) => s.key);
+    expect(keys).toContain("headache");
+    expect(keys).toContain("vomiting");
+    expect(keys).toContain("leg-pain");
+  });
+
+  it("'무거워요' 단독 표현도 매칭된다(욱신욱신과 별개 경로)", () => {
+    expect(searchSymptoms("다리가 무거워요").map((s) => s.key)).toContain("leg-pain");
+  });
 });
