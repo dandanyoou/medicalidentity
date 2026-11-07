@@ -3,6 +3,32 @@ import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { WalletScreen } from "./WalletScreen";
+import { listVisits, payVisit, resetVisits } from "../visits/store";
+import { addClaim, resetClaims } from "../insurance/store";
+
+describe("WalletScreen — 오늘 챙길 것", () => {
+  afterEach(() => {
+    cleanup();
+    resetVisits();
+    resetClaims();
+  });
+
+  it("미납·청구·예약이 모두 없으면 '오늘은 급한 게 없어요'를 보여준다", async () => {
+    resetVisits();
+    resetClaims();
+    for (const v of listVisits("self")) {
+      payVisit(v.id);
+      addClaim(v.id, "삼성화재");
+    }
+    render(
+      <MemoryRouter>
+        <WalletScreen />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText("오늘은 급한 게 없어요")).toBeTruthy();
+    expect(screen.queryByText(/미납 진료비/)).toBeNull();
+  });
+});
 
 describe("WalletScreen — 응급 모드 토글 진단", () => {
   afterEach(() => cleanup());

@@ -113,10 +113,35 @@ body {
   animation: fade-in 0.25s ease-out both;
 }
 
+/* 스켈레톤 — 왼쪽에서 오른쪽으로 흐르는 하이라이트. */
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--mist) 25%, var(--paper) 50%, var(--mist) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-light {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.12) 25%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0.12) 75%
+  );
+  background-size: 200% 100%;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-reveal-in,
   .animate-sheet-up,
-  .animate-fade-in {
+  .animate-fade-in,
+  .skeleton {
     animation: none;
   }
   .vital-dot {

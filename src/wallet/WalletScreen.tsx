@@ -9,6 +9,7 @@ import { unpaidVisits, listVisits } from "../visits/store";
 import { getClaimByVisit } from "../insurance/store";
 import { CountUp } from "../shell/CountUp";
 import { BottomSheet } from "../shell/BottomSheet";
+import { Skeleton } from "../shell/Skeleton";
 
 /**
  * 가족 환자 의료지갑 — 보호자(자녀)가 가족 구성원의 의료를 한 곳에서 관리.
@@ -189,7 +190,7 @@ export function WalletScreen() {
                   </span>
                 </div>
                 <span className="font-data text-[10px] text-white/55">
-                  {isSelf ? "SD-JWT ✓" : "시연 프로필"}
+                  {!isSelf ? "시연 프로필" : vcs ? "SD-JWT ✓" : <Skeleton light className="h-3 w-14 align-middle" />}
                 </span>
               </div>
 
@@ -237,13 +238,14 @@ export function WalletScreen() {
                   <button
                     onClick={() => (emergencyOn ? setEmergencyOn(false) : setConfirmOpen(true))}
                     aria-pressed={emergencyOn}
+                    disabled={!vcs}
                     className={`mt-5 w-full rounded-2xl py-3.5 text-base font-bold tracking-tight transition ${
                       emergencyOn
                         ? "bg-white/10 text-white ring-1 ring-white/25 active:bg-white/15"
-                        : "bg-[var(--vital)] text-white active:brightness-95"
+                        : "bg-[var(--vital)] text-white active:brightness-95 disabled:opacity-60"
                     }`}
                   >
-                    {emergencyOn ? "공개 중단" : "응급 공개 · QR 생성"}
+                    {emergencyOn ? "공개 중단" : vcs ? "응급 공개 · QR 생성" : "신원 자료 준비 중…"}
                   </button>
                   <p className="mt-2 text-center text-[11px] leading-relaxed text-white/55">
                     혈액형 + 알레르기만 공개합니다. 이름·주민번호·주소는 공개되지 않아요.
@@ -357,6 +359,19 @@ export function WalletScreen() {
               오늘 챙길 것
             </p>
             <div className="flex flex-col gap-2">
+              {unpaid.length === 0 && claimable.length === 0 && upcoming.length === 0 && (
+                <div className="flex items-center gap-3 rounded-3xl bg-[var(--refund)]/10 px-5 py-4">
+                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[var(--refund)] font-data text-sm font-bold text-white">
+                    ✓
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-[var(--refund-ink)]">오늘은 급한 게 없어요</p>
+                    <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">
+                      미납·청구·예약 모두 정리됐어요. 숨은 환급금만 한 번 확인해 보세요.
+                    </p>
+                  </div>
+                </div>
+              )}
               {unpaid.length > 0 && (
                 <Link
                   to="/billing"
