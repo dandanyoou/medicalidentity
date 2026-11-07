@@ -170,6 +170,12 @@ export function WalletScreen() {
             >
               증상 일기
             </Link>
+            <Link
+              to="/labels"
+              className="flex-1 rounded-2xl bg-white px-4 py-3 text-center text-sm font-medium text-slate-700 shadow-sm active:bg-slate-50"
+            >
+              라벨링 현황
+            </Link>
           </div>
 
           {!emergencyOn && (
