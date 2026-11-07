@@ -38,7 +38,8 @@ describe("InsuranceScreen (실손 청구)", () => {
     fireEvent.click(screen.getByRole("button", { name: /실손 청구 제출/ }));
 
     expect(screen.getByText("청구 현황")).toBeTruthy();
-    expect(screen.getByText("접수")).toBeTruthy();
+    // 상태 뱃지 + 스텝퍼 라벨 둘 다 "접수"라 복수 매칭
+    expect(screen.getAllByText("접수").length).toBeGreaterThan(0);
     expect(screen.getAllByText("삼성화재").length).toBeGreaterThan(0);
   });
 });
