@@ -7,7 +7,16 @@ import {
   addClaim,
   getClaimByVisit,
   type Claim,
+  type ClaimStatus,
 } from "./store";
+import { Stepper } from "../shell/Stepper";
+
+const CLAIM_STEPS = [
+  { label: "접수", desc: "서류 자동 첨부" },
+  { label: "심사", desc: "보험사 확인" },
+  { label: "지급", desc: "3~5영업일" },
+];
+const STATUS_INDEX: Record<ClaimStatus, number> = { 접수: 0, 심사중: 1, 지급완료: 2 };
 
 const MEMBER = "self";
 
@@ -211,6 +220,9 @@ function ClaimCard({ claim, visit }: { claim: Claim; visit?: Visit }) {
         <span className="rounded-full bg-[var(--refund)]/12 px-2.5 py-1 font-data text-[10px] font-bold text-[var(--refund-ink)]">
           {claim.status}
         </span>
+      </div>
+      <div className="mt-4">
+        <Stepper steps={CLAIM_STEPS} current={STATUS_INDEX[claim.status]} />
       </div>
     </div>
   );
