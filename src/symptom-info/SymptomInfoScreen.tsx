@@ -108,17 +108,17 @@ export function SymptomInfoScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 md:px-6 md:py-10">
-      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-50 shadow-xl md:max-w-2xl md:min-h-0 md:overflow-hidden md:rounded-3xl md:shadow-2xl">
-        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur">
+    <div className="min-h-screen bg-[var(--paper)] md:px-6 md:py-10">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-[var(--paper)] shadow-xl md:max-w-2xl md:min-h-0 md:overflow-hidden md:rounded-3xl md:shadow-2xl">
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-[var(--mist)] bg-[var(--paper)]/92 px-4 py-3 backdrop-blur">
           <Link
             to="/wallet"
             aria-label="지갑으로 돌아가기"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--ink-2)] hover:bg-[var(--paper)]"
           >
             ‹
           </Link>
-          <h1 className="text-base font-semibold text-slate-900">증상 정보</h1>
+          <h1 className="text-base font-semibold text-[var(--ink)]">증상 정보</h1>
         </header>
 
         <main className="flex-1 overflow-y-auto px-4 pb-8 pt-5">
@@ -131,8 +131,8 @@ export function SymptomInfoScreen() {
             연락하세요.
           </div>
 
-          <section className="mb-4 rounded-3xl bg-white p-5 shadow-sm">
-            <label className="mb-2 block text-sm font-medium text-slate-600" htmlFor="symptom-input">
+          <section className="mb-4 rounded-3xl bg-[var(--surface)] p-5 shadow-sm">
+            <label className="mb-2 block text-sm font-medium text-[var(--ink-2)]" htmlFor="symptom-input">
               어떻게 아프신지 편하게 적어보세요
             </label>
             <textarea
@@ -141,22 +141,22 @@ export function SymptomInfoScreen() {
               onChange={(event) => handleQueryChange(event.target.value)}
               placeholder="예: 어제 저녁부터 머리가 아프고 속이 메스꺼워요"
               rows={3}
-              className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-blue-600"
+              className="w-full resize-none rounded-2xl border border-[var(--mist)] px-4 py-3 text-sm outline-none focus:border-[var(--ink)]"
             />
-            <p className="mt-1.5 text-[10px] leading-relaxed text-slate-400">
+            <p className="mt-1.5 text-[10px] leading-relaxed text-[var(--ink-2)]">
               문장 안에서 등록된 증상 단어를 찾아드려요 — 아직 모든 표현을
               완벽히 이해하진 못해요. 못 찾으면 아래에서 솔직하게 말씀드려요.
             </p>
 
             {noMatch && (
-              <div className="mt-3 rounded-2xl bg-slate-50 px-4 py-3 text-xs text-slate-500">
+              <div className="mt-3 rounded-2xl bg-[var(--paper)] px-4 py-3 text-xs text-[var(--ink-2)]">
                 아직 등록된 정보가 없는 증상이에요 — 지어내지 않고 솔직하게
                 말씀드려요. 증상이 계속되거나 걱정되면 병원에서 상담받는 게
                 가장 정확합니다.
                 <button
                   type="button"
                   onClick={() => openNearbyMap("병원")}
-                  className="mt-2 block w-full rounded-full bg-slate-900 py-2.5 text-sm font-semibold text-white active:bg-slate-800"
+                  className="mt-2 block w-full rounded-full bg-[var(--ink)] py-2.5 text-sm font-semibold text-white active:brightness-110"
                 >
                   주변 병원 찾기
                 </button>
@@ -173,7 +173,7 @@ export function SymptomInfoScreen() {
           {visibleMatches.length > 0 && (
             <div className="mt-4 flex flex-col gap-3">
               {matches.length > 1 && (
-                <p className="px-1 text-xs leading-relaxed text-slate-400">
+                <p className="px-1 text-xs leading-relaxed text-[var(--ink-2)]">
                   증상을 {matches.length}개 찾았어요. 여러 개가 같이 있다면
                   특정 전문과보다 내과·가정의학과에서 먼저 전체적으로 보고
                   필요하면 전문과로 안내받는 것도 좋은 방법이에요 — 증상이
@@ -182,9 +182,9 @@ export function SymptomInfoScreen() {
                 </p>
               )}
               {visibleMatches.map((entry) => (
-                <section key={entry.key} className="rounded-3xl bg-white p-5 shadow-sm">
-                  <h2 className="mb-2 text-sm font-semibold text-slate-800">{entry.label}</h2>
-                  <p className="mb-4 text-sm leading-relaxed text-slate-600">
+                <section key={entry.key} className="rounded-3xl bg-[var(--surface)] p-5 shadow-sm">
+                  <h2 className="mb-2 text-sm font-semibold text-[var(--ink)]">{entry.label}</h2>
+                  <p className="mb-4 text-sm leading-relaxed text-[var(--ink-2)]">
                     {entry.generalInfo}
                   </p>
 
@@ -199,18 +199,18 @@ export function SymptomInfoScreen() {
                     </ul>
                   </div>
 
-                  <p className="mt-4 text-sm text-slate-600">
-                    이런 증상은 보통 <strong className="text-slate-800">{entry.mapQuery}</strong>{" "}
+                  <p className="mt-4 text-sm text-[var(--ink-2)]">
+                    이런 증상은 보통 <strong className="text-[var(--ink)]">{entry.mapQuery}</strong>{" "}
                     전문의가 진료합니다.
                   </p>
                   <button
                     type="button"
                     onClick={() => openNearbyMap(entry.mapQuery)}
-                    className="mt-2 w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:bg-slate-800"
+                    className="mt-2 w-full rounded-full bg-[var(--ink)] py-3 text-sm font-semibold text-white active:brightness-110"
                   >
                     주변 {entry.mapQuery} 찾기
                   </button>
-                  <p className="mt-2 text-[10px] leading-relaxed text-slate-400">
+                  <p className="mt-2 text-[10px] leading-relaxed text-[var(--ink-2)]">
                     진료과만 안내해드려요 — 지도 검색 결과를 그대로 열어줄 뿐,
                     저희가 특정 병원을 골라서 추천하지 않습니다.
                   </p>
@@ -223,9 +223,9 @@ export function SymptomInfoScreen() {
               "실사용자 자유서술 → 검증 라벨" 데이터셋을 쌓는다. 종합 진단은
               하지 않는다(의료기기 영역) — 라벨이 맞는지만 확인받는다. */}
           {visibleMatches.length > 0 && (
-            <section className="mt-4 rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
-              <h2 className="mb-1 text-sm font-semibold text-slate-800">이 분류가 맞나요?</h2>
-              <p className="mb-3 text-xs leading-relaxed text-slate-400">
+            <section className="mt-4 rounded-3xl border border-[var(--mist)] bg-[var(--surface)] p-5 shadow-sm">
+              <h2 className="mb-1 text-sm font-semibold text-[var(--ink)]">이 분류가 맞나요?</h2>
+              <p className="mb-3 text-xs leading-relaxed text-[var(--ink-2)]">
                 자동으로 붙인 증상 라벨을 확인·교정해 주시면 익명 의료 라벨
                 데이터로 쌓여 더 정확한 분류에 쓰여요. 입력하신 문장이 그대로
                 저장되니, 외부 공유 전 개인정보는 비식별하세요.
@@ -237,9 +237,9 @@ export function SymptomInfoScreen() {
                   return (
                     <div
                       key={entry.key}
-                      className="flex items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-2"
+                      className="flex items-center justify-between gap-2 rounded-2xl bg-[var(--paper)] px-3 py-2"
                     >
-                      <span className="text-sm text-slate-700">{entry.label}</span>
+                      <span className="text-sm text-[var(--ink)]">{entry.label}</span>
                       <div className="flex gap-1.5">
                         <button
                           type="button"
@@ -249,7 +249,7 @@ export function SymptomInfoScreen() {
                           className={`rounded-full px-3 py-1 text-xs font-semibold ${
                             st === "confirm"
                               ? "bg-emerald-600 text-white"
-                              : "border border-slate-200 bg-white text-slate-500"
+                              : "border border-[var(--mist)] bg-[var(--surface)] text-[var(--ink-2)]"
                           }`}
                         >
                           👍 맞아요
@@ -262,7 +262,7 @@ export function SymptomInfoScreen() {
                           className={`rounded-full px-3 py-1 text-xs font-semibold ${
                             st === "reject"
                               ? "bg-rose-600 text-white"
-                              : "border border-slate-200 bg-white text-slate-500"
+                              : "border border-[var(--mist)] bg-[var(--surface)] text-[var(--ink-2)]"
                           }`}
                         >
                           👎 아니에요
@@ -278,7 +278,7 @@ export function SymptomInfoScreen() {
                   {addedTags.map((t) => (
                     <span
                       key={t}
-                      className="flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700"
+                      className="flex items-center gap-1 rounded-full bg-[var(--paper)] px-2.5 py-1 text-[11px] font-medium text-[var(--refund-ink)]"
                     >
                       {t}
                       <button
@@ -288,7 +288,7 @@ export function SymptomInfoScreen() {
                           setAddedTags((a) => a.filter((x) => x !== t));
                           setContributed(false);
                         }}
-                        className="text-blue-400"
+                        className="text-[var(--ink-2)]"
                       >
                         ×
                       </button>
@@ -299,7 +299,7 @@ export function SymptomInfoScreen() {
 
               <div className="mt-3">
                 <label
-                  className="mb-1 block text-xs font-medium text-slate-500"
+                  className="mb-1 block text-xs font-medium text-[var(--ink-2)]"
                   htmlFor="add-symptom"
                 >
                   빠진 증상 추가
@@ -313,7 +313,7 @@ export function SymptomInfoScreen() {
                     setAddedTags((a) => (a.includes(v) ? a : [...a, v]));
                     setContributed(false);
                   }}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-600"
+                  className="w-full rounded-xl border border-[var(--mist)] px-3 py-2 text-sm outline-none focus:border-[var(--ink)]"
                 >
                   <option value="">증상 선택…</option>
                   {SYMPTOMS.filter(
@@ -345,7 +345,7 @@ export function SymptomInfoScreen() {
                 <button
                   type="button"
                   onClick={handleContribute}
-                  className="mt-3 w-full rounded-full bg-blue-600 py-3 text-sm font-semibold text-white active:bg-blue-700"
+                  className="mt-3 w-full rounded-full bg-[var(--ink)] py-3 text-sm font-semibold text-white active:brightness-110"
                 >
                   이 라벨 데이터셋에 기여
                 </button>
@@ -354,15 +354,15 @@ export function SymptomInfoScreen() {
           )}
 
           {query.trim().length > 0 && (
-            <section className="mt-4 rounded-3xl bg-white p-5 shadow-sm">
-              <h2 className="mb-1 text-sm font-semibold text-slate-800">증상 일기에 저장</h2>
-              <p className="mb-3 text-xs leading-relaxed text-slate-400">
+            <section className="mt-4 rounded-3xl bg-[var(--surface)] p-5 shadow-sm">
+              <h2 className="mb-1 text-sm font-semibold text-[var(--ink)]">증상 일기에 저장</h2>
+              <p className="mb-3 text-xs leading-relaxed text-[var(--ink-2)]">
                 적으신 내용을 그대로 저장해둬요. 다음에 다른 병원에 가서 또
                 설명하지 않아도 되게, 그 병원에서 이 기록을 보여주시면 됩니다.
               </p>
 
               <label className="mb-3 block" htmlFor="symptom-onset">
-                <span className="mb-1 block text-xs font-medium text-slate-500">언제부터인가요?</span>
+                <span className="mb-1 block text-xs font-medium text-[var(--ink-2)]">언제부터인가요?</span>
                 <input
                   id="symptom-onset"
                   type="text"
@@ -372,12 +372,12 @@ export function SymptomInfoScreen() {
                     setSaved(false);
                   }}
                   placeholder="예: 어제 저녁부터"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-600"
+                  className="w-full rounded-xl border border-[var(--mist)] px-3 py-2 text-sm outline-none focus:border-[var(--ink)]"
                 />
               </label>
 
               <div className="mb-3">
-                <span className="mb-1 block text-xs font-medium text-slate-500">
+                <span className="mb-1 block text-xs font-medium text-[var(--ink-2)]">
                   어느 정도인가요? (본인 느낌으로)
                 </span>
                 <div className="flex gap-2">
@@ -392,8 +392,8 @@ export function SymptomInfoScreen() {
                       aria-pressed={severity === level}
                       className={`h-9 w-9 rounded-full text-sm font-semibold transition ${
                         severity === level
-                          ? "bg-blue-600 text-white"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          ? "bg-[var(--ink)] text-white"
+                          : "bg-[var(--paper)] text-[var(--ink-2)] hover:bg-[var(--mist)]"
                       }`}
                     >
                       {level}
@@ -403,7 +403,7 @@ export function SymptomInfoScreen() {
               </div>
 
               <label className="mb-4 block" htmlFor="symptom-note">
-                <span className="mb-1 block text-xs font-medium text-slate-500">
+                <span className="mb-1 block text-xs font-medium text-[var(--ink-2)]">
                   더 적어두고 싶은 내용(선택)
                 </span>
                 <input
@@ -415,7 +415,7 @@ export function SymptomInfoScreen() {
                     setSaved(false);
                   }}
                   placeholder="예: 빛을 보면 더 아파요"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-600"
+                  className="w-full rounded-xl border border-[var(--mist)] px-3 py-2 text-sm outline-none focus:border-[var(--ink)]"
                 />
               </label>
 
@@ -436,7 +436,7 @@ export function SymptomInfoScreen() {
                 <button
                   type="button"
                   onClick={handleSaveToDiary}
-                  className="w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:bg-slate-800"
+                  className="w-full rounded-full bg-[var(--ink)] py-3 text-sm font-semibold text-white active:brightness-110"
                 >
                   증상 일기에 저장
                 </button>
