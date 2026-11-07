@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listVisits, unpaidVisits, payVisit, type Visit } from "../visits/store";
 import { CountUp } from "../shell/CountUp";
+import { Stepper } from "../shell/Stepper";
+
+// 방문 진행 상태 — 예약 → 방문 → 수납.
+const VISIT_STEPS = [{ label: "예약" }, { label: "방문" }, { label: "수납" }];
+const VISIT_STEP_INDEX: Record<Visit["status"], number> = { 예약: 0, 수납대기: 1, 완료: 2 };
 
 /**
  * 수납 · 진료기록 — 시연(데모).
@@ -171,6 +176,9 @@ function VisitCard({
 
       {open && (
         <div className="animate-reveal-in border-t border-[var(--mist)] px-5 py-4 pl-6">
+          <div className="mb-4">
+            <Stepper steps={VISIT_STEPS} current={VISIT_STEP_INDEX[visit.status]} />
+          </div>
           <Section label="방문 사유">
             <p className="text-sm text-[var(--ink)]">{visit.reason}</p>
           </Section>

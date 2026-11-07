@@ -44,6 +44,9 @@ const InsuranceScreen = lazy(() =>
 const MoreScreen = lazy(() =>
   import("./shell/MoreScreen").then((m) => ({ default: m.MoreScreen })),
 );
+const SettingsScreen = lazy(() =>
+  import("./settings/SettingsScreen").then((m) => ({ default: m.SettingsScreen })),
+);
 const OnboardingScreen = lazy(() =>
   import("./shell/OnboardingScreen").then((m) => ({ default: m.OnboardingScreen })),
 );
@@ -82,6 +85,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/" element={<RootRedirect />} />
           <Route path="/onboarding" element={<OnboardingScreen />} />
           <Route path="/more" element={<MoreScreen />} />
+          <Route path="/settings" element={<SettingsScreen />} />
           <Route path="/wallet" element={<WalletScreen />} />
           <Route path="/doctor" element={<DoctorScreen />} />
           <Route path="/checker" element={<CheckerScreen />} />

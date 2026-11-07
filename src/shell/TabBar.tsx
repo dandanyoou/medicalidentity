@@ -10,7 +10,7 @@ const TABS = [
   { to: "/billing", label: "진료", match: ["/billing", "/booking"], icon: VisitIcon },
   { to: "/checker", label: "환급", match: ["/checker", "/insurance"], icon: RefundIcon },
   { to: "/family", label: "가족", match: ["/family"], icon: FamilyIcon },
-  { to: "/more", label: "더보기", match: ["/more", "/subscribe", "/symptom", "/diary", "/labels"], icon: MoreIcon },
+  { to: "/more", label: "더보기", match: ["/more", "/settings", "/subscribe", "/symptom", "/diary", "/labels"], icon: MoreIcon },
 ] as const;
 
 const HIDDEN_ON = ["/doctor", "/onboarding"];

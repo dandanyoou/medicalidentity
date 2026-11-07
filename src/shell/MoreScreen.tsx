@@ -13,6 +13,10 @@ const GROUPS = [
     ],
   },
   {
+    title: "설정",
+    items: [{ to: "/settings", label: "알림 설정", desc: "미납·예약·환급 알림" }],
+  },
+  {
     title: "데이터",
     items: [{ to: "/labels", label: "라벨링 현황", desc: "검증 라벨 데이터셋" }],
   },
