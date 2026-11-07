@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { searchSymptoms } from "../symptom-info/data";
 import { addVisit } from "../visits/store";
+import { Stepper } from "../shell/Stepper";
+import { downloadICS, slotToTime } from "./ics";
+
+// 예약 진행 단계(상단) · 완료 후 방문 타임라인(완료 카드).
+const FLOW_STEPS = [{ label: "증상" }, { label: "병원" }, { label: "시간" }];
+const FLOW_INDEX: Record<string, number> = { symptom: 0, hospital: 1, time: 2 };
+const VISIT_STEPS = [{ label: "예약" }, { label: "방문" }, { label: "수납" }];
 
 /**
  * 진료 예약 — 증상에서 출발하는 파이프라인.
@@ -114,6 +121,12 @@ export function BookingScreen() {
             시스템과 연동되면 실제 예약이 됩니다. 지금은 시연이며, 예약 내역은 지갑의
             진료기록에 저장돼요.
           </p>
+
+          {step !== "done" && (
+            <div className="mb-5 rounded-2xl bg-[var(--surface)] px-4 py-3 shadow-[0_1px_12px_rgba(11,59,60,0.07)]">
+              <Stepper steps={FLOW_STEPS} current={FLOW_INDEX[step]} />
+            </div>
+          )}
 
           {step === "symptom" && (
             <div>
@@ -240,20 +253,45 @@ export function BookingScreen() {
                 ✓
               </div>
               <p className="text-lg font-extrabold text-[var(--ink)]">예약 완료 (시연)</p>
-              <p className="mt-2 font-data text-sm text-[var(--ink-2)]">
-                {hospital} · {dept}
-              </p>
-              <p className="font-data text-sm font-bold text-[var(--ink)]">{slot}</p>
-              {query.trim() && (
-                <p className="mt-1 text-xs text-[var(--ink-2)]">사유: {query.trim()}</p>
-              )}
+              {/* 티켓: 병원·진료과·시각을 한 덩어리로 */}
+              <div className="mx-auto mt-4 rounded-2xl bg-[var(--paper)] px-4 py-3 text-left">
+                <p className="text-sm font-bold text-[var(--ink)]">{hospital}</p>
+                <p className="font-data text-[11px] text-[var(--ink-2)]">{dept}</p>
+                <p className="mt-2 font-data text-[28px] font-bold leading-none tracking-tight text-[var(--ink)]">
+                  {slot}
+                </p>
+                {query.trim() && (
+                  <p className="mt-2 text-xs text-[var(--ink-2)]">사유: {query.trim()}</p>
+                )}
+              </div>
+              <div className="mt-4">
+                <Stepper steps={VISIT_STEPS} current={0} />
+              </div>
               <p className="mt-3 text-[11px] leading-relaxed text-[var(--ink-2)]">
                 지갑의 진료기록에 저장됐어요. 실제 서비스에서는 병원에서 예약이 확정되고
                 알림톡으로 안내됩니다.
               </p>
+              <button
+                type="button"
+                onClick={() =>
+                  hospital &&
+                  dept &&
+                  slot &&
+                  downloadICS({
+                    hospital,
+                    dept,
+                    date: slotToDate(slot),
+                    slot,
+                    reason: query.trim() || undefined,
+                  })
+                }
+                className="mt-4 w-full rounded-2xl bg-[var(--ink)] py-3 text-sm font-bold text-white active:brightness-110"
+              >
+                캘린더에 추가 · {slot ? slotToTime(slot).replace(/(\d{2})(\d{2})/, "$1:$2") : ""}
+              </button>
               <Link
                 to="/billing"
-                className="mt-4 block w-full rounded-2xl bg-[var(--ink)] py-3 text-sm font-bold text-white active:brightness-110"
+                className="mt-2 block w-full rounded-2xl border border-[var(--mist)] py-3 text-sm font-bold text-[var(--ink)] active:bg-[var(--paper)]"
               >
                 진료기록에서 보기
               </Link>

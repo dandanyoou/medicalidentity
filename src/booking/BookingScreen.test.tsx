@@ -42,6 +42,9 @@ describe("BookingScreen (예약 · 증상→병원 파이프라인)", () => {
     fireEvent.click(screen.getByRole("button", { name: /예약하기/ }));
 
     expect(screen.getByText(/예약 완료/)).toBeTruthy();
+    // 완료 카드: 예약→방문→수납 타임라인과 캘린더 추가 CTA
+    expect(screen.getByText("방문")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /캘린더에 추가/ })).toBeTruthy();
     // 진료기록(Visit)으로 저장됐는지
     const booked = listVisits("self").find((v) => v.status === "예약");
     expect(booked?.hospital).toBe("서울대학교병원");
