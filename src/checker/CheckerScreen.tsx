@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { CheckerInputError, computeOverage, type IncomeTier, type OverageResult } from "./calc";
 import { buildIcsEvent, triggerIcsDownload } from "./ics";
 import { trackCheckerEvent } from "./analytics";
+import { CountUp } from "../shell/CountUp";
 
 /**
  * 의료비 환급 — "계산기"가 아니라 "환급을 실제로 받게 해주는" 파이프라인.
@@ -259,7 +260,7 @@ export function CheckerScreen() {
                       숨은 환급금 발견
                     </p>
                     <p className="mt-2 font-data text-[40px] font-bold leading-none">
-                      {formatWon(result.overageWon)}
+                      <CountUp value={result.overageWon} suffix="원" />
                     </p>
                     <p className="mt-2 text-sm text-white/85">
                       {SUPPORTED_YEAR}년 소득분위 상한액 {formatWon(result.capAmountWon)} 초과분.
@@ -397,7 +398,7 @@ export function CheckerScreen() {
         </main>
 
         {!result && (
-          <div className="pointer-events-none fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 md:static md:left-auto md:w-full md:max-w-none md:translate-x-0">
+          <div className="pointer-events-none fixed bottom-[calc(var(--tabbar-h)+env(safe-area-inset-bottom))] left-1/2 z-10 w-full max-w-md -translate-x-1/2 md:static md:left-auto md:w-full md:max-w-none md:translate-x-0">
             <div className="pointer-events-auto border-t border-[var(--mist)] bg-[var(--paper)]/95 px-5 py-3 backdrop-blur md:rounded-b-[32px]">
               <button
                 type="submit"

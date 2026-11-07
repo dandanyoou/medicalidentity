@@ -21,6 +21,12 @@
   --ink-deep: #072a2b; /* 신원증 카드용 더 깊은 잉크 */
   --refund: #0e9f6e; /* 환급(돈) */
   --refund-ink: #0a6b4a;
+  --tabbar-h: 4.25rem; /* 하단 탭바 높이(safe-area 제외) */
+}
+
+/* 하단 탭바가 콘텐츠를 가리지 않게 — 모든 화면 main 하단에 탭바+safe-area 여백. */
+main {
+  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 1.5rem) !important;
 }
 
 body {

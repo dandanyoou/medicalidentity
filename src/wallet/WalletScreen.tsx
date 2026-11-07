@@ -5,6 +5,9 @@ import { getPatientVCs, type PatientVCs } from "../data/patient-vcs";
 import { buildBundle, buildVPPayload } from "./bundle";
 import { listMembers, getMember, SELF_ID, type FamilyMember } from "../family/store";
 import { isPremium } from "../subscribe/plan";
+import { unpaidVisits, listVisits } from "../visits/store";
+import { getClaimByVisit } from "../insurance/store";
+import { CountUp } from "../shell/CountUp";
 
 /**
  * 가족 환자 의료지갑 — 보호자(자녀)가 가족 구성원의 의료를 한 곳에서 관리.
@@ -22,6 +25,12 @@ export function WalletScreen() {
   const [selectedId, setSelectedId] = useState<string>(SELF_ID);
   const selected: FamilyMember = getMember(selectedId) ?? members[0];
   const isSelf = selected.id === SELF_ID;
+
+  // 오늘 챙길 것 — 토스식 개인화 액션 피드(금액 포함).
+  const unpaid = unpaidVisits(SELF_ID);
+  const unpaidTotal = unpaid.reduce((s, v) => s + v.amount, 0);
+  const claimable = listVisits(SELF_ID).filter((v) => v.amount > 0 && !getClaimByVisit(v.id));
+  const upcoming = listVisits(SELF_ID).filter((v) => v.status === "예약");
 
   const [vcs, setVCs] = useState<PatientVCs | null>(null);
   const [emergencyOn, setEmergencyOn] = useState(false);
@@ -298,6 +307,72 @@ export function WalletScreen() {
                 )}
               </div>
             )}
+          </section>
+
+          {/* ───────── 오늘 챙길 것 (개인화 액션 피드) ───────── */}
+          <section className="mt-5">
+            <p className="mb-2 px-1 font-data text-[10px] uppercase tracking-[0.2em] text-[var(--ink-2)]">
+              오늘 챙길 것
+            </p>
+            <div className="flex flex-col gap-2">
+              {unpaid.length > 0 && (
+                <Link
+                  to="/billing"
+                  className="relative flex items-center justify-between overflow-hidden rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)] transition active:scale-[0.99]"
+                >
+                  <div className="absolute inset-y-0 left-0 w-1 bg-[var(--vital)]" />
+                  <div className="pl-1">
+                    <p className="text-sm font-bold text-[var(--ink)]">미납 진료비 {unpaid.length}건</p>
+                    <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">
+                      {unpaid[0].hospital}
+                      {unpaid.length > 1 ? ` 외 ${unpaid.length - 1}곳` : ""}
+                    </p>
+                  </div>
+                  <p className="font-data text-lg font-bold text-[var(--vital-ink)]">
+                    <CountUp value={unpaidTotal} suffix="원" />
+                  </p>
+                </Link>
+              )}
+              {claimable.length > 0 && (
+                <Link
+                  to="/insurance"
+                  className="relative flex items-center justify-between overflow-hidden rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)] transition active:scale-[0.99]"
+                >
+                  <div className="absolute inset-y-0 left-0 w-1 bg-[var(--refund)]" />
+                  <div className="pl-1">
+                    <p className="text-sm font-bold text-[var(--ink)]">실손 청구 가능 {claimable.length}건</p>
+                    <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">낸 병원비, 보험으로 돌려받기</p>
+                  </div>
+                  <span className="font-data text-sm font-bold text-[var(--refund-ink)]">청구 →</span>
+                </Link>
+              )}
+              {upcoming.length > 0 && (
+                <Link
+                  to="/billing"
+                  className="relative flex items-center justify-between overflow-hidden rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)] transition active:scale-[0.99]"
+                >
+                  <div className="absolute inset-y-0 left-0 w-1 bg-[var(--ink)]" />
+                  <div className="pl-1">
+                    <p className="text-sm font-bold text-[var(--ink)]">다가오는 예약 {upcoming.length}건</p>
+                    <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">
+                      {upcoming[0].hospital} · {upcoming[0].dept} · {upcoming[0].date}
+                    </p>
+                  </div>
+                  <span className="font-data text-sm font-bold text-[var(--ink)]">보기 →</span>
+                </Link>
+              )}
+              <Link
+                to="/checker"
+                className="relative flex items-center justify-between overflow-hidden rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)] transition active:scale-[0.99]"
+              >
+                <div className="absolute inset-y-0 left-0 w-1 bg-[var(--refund)]" />
+                <div className="pl-1">
+                  <p className="text-sm font-bold text-[var(--ink)]">숨은 의료비 환급 찾기</p>
+                  <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">전국 미신청 3,617억원 · 1분이면 확인</p>
+                </div>
+                <span className="font-data text-sm font-bold text-[var(--refund-ink)]">확인 →</span>
+              </Link>
+            </div>
           </section>
 
           {/* ───────── 빠른 작업: 환급 · 실손 · 예약 · 수납 ───────── */}

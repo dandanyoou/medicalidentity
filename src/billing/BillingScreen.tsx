@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listVisits, unpaidVisits, payVisit, type Visit } from "../visits/store";
+import { CountUp } from "../shell/CountUp";
 
 /**
  * 수납 · 진료기록 — 시연(데모).
@@ -95,7 +96,7 @@ export function BillingScreen() {
                 미납 {unpaid.length}건
               </span>
               <span className="font-data text-sm font-bold text-[var(--ink)]">
-                {won(unpaid.reduce((s, v) => s + v.amount, 0))}
+                <CountUp value={unpaid.reduce((s, v) => s + v.amount, 0)} suffix="원" />
               </span>
             </div>
           )}

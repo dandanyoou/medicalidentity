@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import "./index.css";
 import { CheckerScreen } from "./checker/CheckerScreen";
+import { TabBar } from "./shell/TabBar";
 
 // /wallet·/doctor는 html5-qrcode/qrcode(QR 스캔·생성) 번들을 쓴다 — 체커로
 // 들어온 사용자(주 획득 채널, Distribution Plan 참고)가 그 무게를 다운로드할
@@ -80,6 +81,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/insurance" element={<InsuranceScreen />} />
         </Routes>
       </Suspense>
+      <TabBar />
     </BrowserRouter>
     <Analytics />
   </React.StrictMode>,
