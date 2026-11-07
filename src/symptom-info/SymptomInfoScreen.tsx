@@ -188,11 +188,11 @@ export function SymptomInfoScreen() {
                     {entry.generalInfo}
                   </p>
 
-                  <div className="rounded-2xl border border-rose-100 bg-rose-50 p-3">
-                    <p className="mb-1.5 text-sm font-semibold text-rose-900">
+                  <div className="rounded-2xl border-l-4 border-[var(--vital)] bg-[var(--vital)]/8 p-3">
+                    <p className="mb-1.5 text-sm font-semibold text-[var(--vital-ink)]">
                       이런 증상이 함께 있으면 바로 응급실/119
                     </p>
-                    <ul className="list-disc space-y-0.5 pl-4 text-xs text-rose-800">
+                    <ul className="list-disc space-y-0.5 pl-4 text-xs text-[var(--vital-ink)]">
                       {entry.redFlags.map((flag) => (
                         <li key={flag}>{flag}</li>
                       ))}
@@ -248,7 +248,7 @@ export function SymptomInfoScreen() {
                           onClick={() => toggleTag(entry.label, "confirm")}
                           className={`rounded-full px-3 py-1 text-xs font-semibold ${
                             st === "confirm"
-                              ? "bg-emerald-600 text-white"
+                              ? "bg-[var(--refund)] text-white"
                               : "border border-[var(--mist)] bg-[var(--surface)] text-[var(--ink-2)]"
                           }`}
                         >
@@ -261,7 +261,7 @@ export function SymptomInfoScreen() {
                           onClick={() => toggleTag(entry.label, "reject")}
                           className={`rounded-full px-3 py-1 text-xs font-semibold ${
                             st === "reject"
-                              ? "bg-rose-600 text-white"
+                              ? "bg-[var(--vital)] text-white"
                               : "border border-[var(--mist)] bg-[var(--surface)] text-[var(--ink-2)]"
                           }`}
                         >
@@ -329,13 +329,13 @@ export function SymptomInfoScreen() {
               </div>
 
               {contributeError && (
-                <p className="mt-2 rounded-2xl bg-rose-50 px-4 py-3 text-xs text-rose-700">
+                <p className="mt-2 rounded-2xl bg-[var(--vital)]/10 px-4 py-3 text-xs text-[var(--vital-ink)]">
                   {contributeError}
                 </p>
               )}
 
               {contributed ? (
-                <div className="mt-3 flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                <div className="mt-3 flex items-center justify-between rounded-2xl bg-[var(--refund)]/10 px-4 py-3 text-sm text-[var(--refund-ink)]">
                   <span>데이터셋에 기여됐어요. 고마워요!</span>
                   <Link to="/labels" className="font-semibold underline">
                     라벨 현황
@@ -420,13 +420,13 @@ export function SymptomInfoScreen() {
               </label>
 
               {saveError && (
-                <p role="alert" className="mb-2 rounded-2xl bg-rose-50 px-4 py-3 text-xs text-rose-700">
+                <p role="alert" className="mb-2 rounded-2xl bg-[var(--vital)]/10 px-4 py-3 text-xs text-[var(--vital-ink)]">
                   {saveError}
                 </p>
               )}
 
               {saved ? (
-                <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                <div className="flex items-center justify-between rounded-2xl bg-[var(--refund)]/10 px-4 py-3 text-sm text-[var(--refund-ink)]">
                   <span>일기에 저장됐어요.</span>
                   <Link to="/diary" className="font-semibold underline">
                     일기 보기

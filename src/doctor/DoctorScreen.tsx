@@ -239,9 +239,9 @@ export function DoctorScreen() {
           {error && (
             <div
               role="alert"
-              className="mt-4 flex items-start gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+              className="mt-4 flex items-start gap-2 rounded-2xl border-l-4 border-[var(--vital)] bg-[var(--vital)]/8 px-4 py-3 text-sm text-[var(--vital-ink)]"
             >
-              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">
+              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-[var(--vital)] text-xs font-bold text-white">
                 !
               </span>
               <div className="flex-1">
@@ -422,10 +422,10 @@ function PatientPanel({ bundle }: { bundle: VerifiedBundle }) {
           label="알레르기"
           value={
             allergens && allergens.length > 0 ? (
-              <strong className="text-rose-600">
+              <strong className="text-[var(--vital-ink)]">
                 {allergens.join(", ")}
                 {severity && (
-                  <span className="ml-2 text-xs font-normal text-rose-400">
+                  <span className="ml-2 text-xs font-normal text-[var(--vital-ink)]/70">
                     ({severity})
                   </span>
                 )}
