@@ -44,8 +44,19 @@ const InsuranceScreen = lazy(() =>
 // 로딩 중 흰 화면이 깜빡였다(특히 느린 회선) — 최소한의 로딩 표시로 교체.
 function RouteLoadingFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
-      <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600" />
+    <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-[var(--paper)]">
+      <div className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-[var(--ink)] shadow-[0_10px_34px_rgba(11,59,60,0.28)]">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M12 3.5v17M3.5 12h17"
+            stroke="#ffffff"
+            strokeWidth="2.6"
+            strokeLinecap="round"
+          />
+          <circle cx="12" cy="12" r="2.4" fill="#ff5a4d" />
+        </svg>
+      </div>
+      <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--mist)] border-t-[var(--ink)]" />
     </div>
   );
 }

@@ -2,35 +2,40 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>의료비 체커 — 본인부담상한제 환급 확인</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>가족 의료지갑 — 신원 · 환급 · 진료</title>
+    <meta
+      name="description"
+      content="가족의 응급 의료신원·의료비 환급·진료기록을 한 곳에서. 보호자가 가족 의료를 대신 챙깁니다."
+    />
 
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#2563EB" />
+    <meta name="theme-color" content="#0B3B3C" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="의료지갑" />
 
     <!--
-      이 앱은 SPA라 og: 태그가 index.html 하나에 고정된다 — /checker 공유 링크의
-      미리보기는 항상 이 앱 전체 카드(동적 계산 결과 아님)로 뜬다. 결과별 미리보기를
-      만들려면 서버/엣지 함수가 필요한데, 이번 단계는 "백엔드 없음" 제약이라 범위 밖.
+      SPA라 og: 태그는 index.html 하나에 고정된다 — 결과별 동적 미리보기는
+      서버/엣지 함수가 필요하고 백엔드 없음 제약으로 범위 밖.
     -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="의료비 체커" />
+    <meta property="og:title" content="가족 의료지갑" />
     <meta
       property="og:description"
-      content="숫자만 입력하면 본인부담상한제 환급 여부를 1분 안에 확인할 수 있어요."
+      content="가족의 응급 의료신원·환급·진료기록을 한 곳에서."
     />
     <meta property="og:image" content="/og-image.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="의료비 체커" />
+    <meta name="twitter:title" content="가족 의료지갑" />
     <meta
       name="twitter:description"
-      content="숫자만 입력하면 본인부담상한제 환급 여부를 1분 안에 확인할 수 있어요."
+      content="가족의 응급 의료신원·환급·진료기록을 한 곳에서."
     />
     <meta name="twitter:image" content="/og-image.png" />
   </head>
-  <body class="bg-slate-50">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -1,4 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="104" fill="#2563EB"/>
-  <text x="256" y="330" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="260" font-weight="700" fill="white" text-anchor="middle">₩</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="가족 의료지갑">
+  <rect width="512" height="512" rx="112" fill="#0b3b3c" />
+  <path d="M256 120v272M120 256h272" stroke="#ffffff" stroke-width="58" stroke-linecap="round" />
+  <circle cx="256" cy="256" r="54" fill="#ff5a4d" />
 </svg>
