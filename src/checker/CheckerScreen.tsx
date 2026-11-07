@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckerInputError, computeOverage, type IncomeTier, type OverageResult } from "./calc";
+import {
+  CAP_TABLES,
+  CheckerInputError,
+  computeOverage,
+  type IncomeTier,
+  type OverageResult,
+} from "./calc";
+import { BottomSheet } from "../shell/BottomSheet";
 import { buildIcsEvent, triggerIcsDownload } from "./ics";
 import { trackCheckerEvent } from "./analytics";
 import { CountUp } from "../shell/CountUp";
@@ -71,6 +78,8 @@ export function CheckerScreen() {
 
   const [medicalCostDigits, setMedicalCostDigits] = useState("");
   const [incomeTier, setIncomeTier] = useState<IncomeTier | null>(null);
+  // 소득분위 도움말 시트 — 분위별 상한액 표에서 바로 고를 수 있게.
+  const [tierHelpOpen, setTierHelpOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<OverageResult | null>(null);
   const [icsAttempted, setIcsAttempted] = useState(false);
@@ -238,24 +247,55 @@ export function CheckerScreen() {
                   </div>
                   <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[var(--surface)] to-transparent" />
                 </div>
-                <details className="mt-2 text-xs text-[var(--ink-2)]">
-                  <summary className="cursor-pointer select-none font-semibold text-[var(--refund-ink)]">
-                    소득분위를 모르겠어요
-                  </summary>
-                  <p className="mt-1.5 leading-relaxed">
-                    건강보험공단 '본인부담상한액 사전 안내문'이나 홈페이지에서 확인할 수
-                    있어요. 모르겠으면 <strong className="text-[var(--ink)]">5분위</strong>로
-                    먼저 계산해보고 나중에 정확히 다시 확인해도 됩니다.
+                <button
+                  type="button"
+                  onClick={() => setTierHelpOpen(true)}
+                  className="mt-2 text-xs font-semibold text-[var(--refund-ink)] underline-offset-2 hover:underline"
+                >
+                  소득분위를 모르겠어요
+                </button>
+                <BottomSheet
+                  open={tierHelpOpen}
+                  title="내 소득분위는?"
+                  onClose={() => setTierHelpOpen(false)}
+                >
+                  <p className="text-sm leading-relaxed text-[var(--ink-2)]">
+                    건강보험료를 기준으로 1~10분위로 나뉘어요. 분위마다 1년 본인부담 상한액이
+                    달라서, 그 이상 낸 병원비를 돌려받아요. 모르겠으면{" "}
+                    <strong className="text-[var(--ink)]">5분위</strong>로 먼저 계산해 보세요.
                   </p>
+                  <ul className="mt-3 overflow-hidden rounded-2xl bg-[var(--paper)]">
+                    {CAP_TABLES[SUPPORTED_YEAR].map((row, i) => (
+                      <li key={row.tiers.join("-")} className={i > 0 ? "border-t border-[var(--mist)]" : ""}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIncomeTier(row.tiers[row.tiers.length - 1]);
+                            setTierHelpOpen(false);
+                          }}
+                          className="flex w-full items-center justify-between px-4 py-3 text-left active:bg-[var(--surface)]"
+                        >
+                          <span className="text-sm font-bold text-[var(--ink)]">
+                            {row.tiers.length > 1
+                              ? `${row.tiers[0]}~${row.tiers[row.tiers.length - 1]}분위`
+                              : `${row.tiers[0]}분위`}
+                          </span>
+                          <span className="font-data text-sm text-[var(--ink-2)]">
+                            상한 {formatWon(row.capAmountWon)}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
                   <a
                     href={INCOME_TIER_INFO_URL}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-1.5 inline-block font-semibold text-[var(--refund-ink)] underline"
+                    className="mt-3 block w-full rounded-2xl border border-[var(--mist)] py-3 text-center text-sm font-bold text-[var(--ink)] active:bg-[var(--paper)]"
                   >
-                    공단에서 확인하기
+                    공단에서 내 분위 확인하기 ↗
                   </a>
-                </details>
+                </BottomSheet>
               </div>
             </section>
           </form>

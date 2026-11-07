@@ -40,4 +40,19 @@ describe("CheckerScreen (환급 파이프라인)", () => {
     fireEvent.click(screen.getByRole("button", { name: /The건강보험 앱에서 내 환급금 조회·신청 완료 표시/ }));
     expect(screen.getByText("1/3 완료")).toBeTruthy();
   });
+
+  it("소득분위를 모르면 시트에서 분위별 상한액을 보고 바로 고른다", () => {
+    render(
+      <MemoryRouter>
+        <CheckerScreen />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "소득분위를 모르겠어요" }));
+    expect(screen.getByRole("dialog", { name: "내 소득분위는?" })).toBeTruthy();
+    expect(screen.getByText(/1,730,000/)).toBeTruthy(); // 4~5분위 상한
+
+    fireEvent.click(screen.getByRole("button", { name: /4~5분위/ }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("button", { name: "5" }).getAttribute("aria-pressed")).toBe("true");
+  });
 });
