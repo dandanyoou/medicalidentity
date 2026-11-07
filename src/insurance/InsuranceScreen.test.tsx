@@ -27,6 +27,17 @@ describe("InsuranceScreen (실손 청구)", () => {
     expect(screen.getAllByText(/시연/).length).toBeGreaterThan(0);
   });
 
+  it("청구 가능 합계 요약과, 청구 0건일 때 청구 현황 빈 상태를 보여준다", () => {
+    render(
+      <MemoryRouter>
+        <InsuranceScreen />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("청구 가능 3건")).toBeTruthy();
+    expect(screen.getByText("청구 현황")).toBeTruthy();
+    expect(screen.getByText(/아직 청구한 건이 없어요/)).toBeTruthy();
+  });
+
   it("보험사를 골라 청구하면 청구 현황에 접수로 뜬다", () => {
     render(
       <MemoryRouter>

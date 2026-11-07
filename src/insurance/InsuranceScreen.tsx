@@ -10,6 +10,7 @@ import {
   type ClaimStatus,
 } from "./store";
 import { Stepper } from "../shell/Stepper";
+import { CountUp } from "../shell/CountUp";
 
 const CLAIM_STEPS = [
   { label: "접수", desc: "서류 자동 첨부" },
@@ -88,6 +89,19 @@ export function InsuranceScreen() {
             <strong className="text-[var(--ink)]">실제 보험사 제출은 보험사·실손24 연동이
             선결이라 시연</strong>이고, 서류를 자동으로 모아주는 건 진짜입니다.
           </p>
+
+          {/* 보맵식 요약 스트립 — 청구 가능 건수·합계를 한눈에 */}
+          {claimable.length > 0 && (
+            <div className="mb-5 flex items-center justify-between rounded-3xl bg-[var(--ink)] px-5 py-4 text-white shadow-[0_10px_34px_rgba(11,59,60,0.28)]">
+              <div>
+                <p className="text-sm font-bold">청구 가능 {claimable.length}건</p>
+                <p className="mt-0.5 text-[11px] text-white/70">진료기록으로 서류가 자동 준비돼요</p>
+              </div>
+              <p className="font-data text-xl font-bold">
+                <CountUp value={claimable.reduce((s, v) => s + v.amount, 0)} suffix="원" />
+              </p>
+            </div>
+          )}
 
           {/* 청구 가능한 진료 */}
           <p className="mb-2 px-1 font-data text-[10px] uppercase tracking-[0.2em] text-[var(--ink-2)]">
@@ -182,12 +196,22 @@ export function InsuranceScreen() {
             </div>
           )}
 
-          {/* 청구 현황 */}
-          {claims.length > 0 && (
-            <>
-              <p className="mb-2 px-1 font-data text-[10px] uppercase tracking-[0.2em] text-[var(--ink-2)]">
-                청구 현황
+          {/* 청구 현황 — 0건이어도 섹션을 보여줘 "여기서 추적한다"는 걸 알게 한다 */}
+          <p className="mb-2 px-1 font-data text-[10px] uppercase tracking-[0.2em] text-[var(--ink-2)]">
+            청구 현황
+          </p>
+          {claims.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-[var(--mist)] bg-[var(--surface)]/60 px-5 py-6 text-center">
+              <div className="mx-auto mb-2 w-full max-w-[220px] opacity-50">
+                <Stepper steps={CLAIM_STEPS} current={-1} />
+              </div>
+              <p className="text-sm font-bold text-[var(--ink)]">아직 청구한 건이 없어요</p>
+              <p className="mt-1 text-xs leading-relaxed text-[var(--ink-2)]">
+                위에서 진료를 골라 청구하면 접수 → 심사 → 지급 진행 상황을 여기서 볼 수 있어요.
               </p>
+            </div>
+          ) : (
+            <>
               <div className="flex flex-col gap-3">
                 {claims.map((c) => (
                   <ClaimCard key={c.id} claim={c} visit={visitById.get(c.visitId)} />
