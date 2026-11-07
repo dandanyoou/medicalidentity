@@ -22,6 +22,15 @@ describe("BookingScreen (예약 · 증상→병원 파이프라인)", () => {
     expect(screen.getByText(/실제 병원 연동이 아닙니다/)).toBeTruthy();
   });
 
+  it("증상 정보에서 ?q=로 넘어오면 문장이 채워진 채 추천 진료과가 바로 뜬다", () => {
+    render(
+      <MemoryRouter initialEntries={["/booking?q=머리가 아파요"]}>
+        <BookingScreen />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("button", { name: /가정의학과 예약/ })).toBeTruthy();
+  });
+
   it("증상을 쓰면 추천 진료과가 뜨고, 병원·시간을 골라 예약하면 진료기록이 생긴다", () => {
     render(
       <MemoryRouter>

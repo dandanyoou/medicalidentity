@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { searchSymptoms } from "../symptom-info/data";
 import { addVisit } from "../visits/store";
 import { Stepper } from "../shell/Stepper";
@@ -45,8 +45,10 @@ export function BookingScreen() {
     document.title = "진료 예약 (시연) — 가족 의료지갑";
   }, []);
 
+  // 증상 정보 화면에서 "이 증상으로 예약하기"로 넘어오면 ?q=에 문장이 실려 온다.
+  const [params] = useSearchParams();
   const [step, setStep] = useState<Step>("symptom");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(() => params.get("q") ?? "");
   const [dept, setDept] = useState<string | null>(null);
   const [hospital, setHospital] = useState<string | null>(null);
   const [slot, setSlot] = useState<string | null>(null);

@@ -109,19 +109,19 @@ export function SymptomInfoScreen() {
 
   return (
     <div className="min-h-screen bg-[var(--paper)] md:px-6 md:py-10">
-      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-[var(--paper)] shadow-xl md:max-w-2xl md:min-h-0 md:overflow-hidden md:rounded-3xl md:shadow-2xl">
-        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-[var(--mist)] bg-[var(--paper)]/92 px-4 py-3 backdrop-blur">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-[var(--paper)] md:max-w-xl md:min-h-0 md:overflow-hidden md:rounded-[32px] md:shadow-[0_8px_60px_rgba(11,59,60,0.14)]">
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-[var(--mist)] bg-[var(--paper)]/92 px-5 py-4 backdrop-blur">
           <Link
             to="/wallet"
             aria-label="지갑으로 돌아가기"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--ink-2)] hover:bg-[var(--paper)]"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--ink-2)] hover:bg-[var(--surface)]"
           >
             ‹
           </Link>
-          <h1 className="text-base font-semibold text-[var(--ink)]">증상 정보</h1>
+          <h1 className="text-base font-extrabold tracking-tight text-[var(--ink)]">증상 정보</h1>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 pb-8 pt-5">
+        <main className="flex-1 overflow-y-auto px-5 pb-10 pt-5">
           <div
             role="alert"
             className="mb-4 rounded-2xl border-l-4 border-[var(--ink-2)] bg-[var(--surface)] px-4 py-3 text-xs leading-relaxed text-[var(--ink-2)]"
@@ -131,8 +131,8 @@ export function SymptomInfoScreen() {
             연락하세요.
           </div>
 
-          <section className="mb-4 rounded-3xl bg-[var(--surface)] p-5 shadow-sm">
-            <label className="mb-2 block text-sm font-medium text-[var(--ink-2)]" htmlFor="symptom-input">
+          <section className="mb-4 rounded-3xl bg-[var(--surface)] p-5 shadow-[0_2px_24px_rgba(11,59,60,0.09)]">
+            <label className="mb-2 block text-sm font-bold text-[var(--ink)]" htmlFor="symptom-input">
               어떻게 아프신지 편하게 적어보세요
             </label>
             <textarea
@@ -141,7 +141,7 @@ export function SymptomInfoScreen() {
               onChange={(event) => handleQueryChange(event.target.value)}
               placeholder="예: 어제 저녁부터 머리가 아프고 속이 메스꺼워요"
               rows={3}
-              className="w-full resize-none rounded-2xl border border-[var(--mist)] px-4 py-3 text-sm outline-none focus:border-[var(--ink)]"
+              className="w-full resize-none rounded-2xl border border-[var(--mist)] bg-[var(--paper)] px-4 py-3 text-sm text-[var(--ink)] outline-none focus:border-[var(--ink)]"
             />
             <p className="mt-1.5 text-[10px] leading-relaxed text-[var(--ink-2)]">
               문장 안에서 등록된 증상 단어를 찾아드려요 — 아직 모든 표현을
@@ -156,7 +156,7 @@ export function SymptomInfoScreen() {
                 <button
                   type="button"
                   onClick={() => openNearbyMap("병원")}
-                  className="mt-2 block w-full rounded-full bg-[var(--ink)] py-2.5 text-sm font-semibold text-white active:brightness-110"
+                  className="mt-2 block w-full rounded-2xl bg-[var(--ink)] py-2.5 text-sm font-bold text-white active:brightness-110"
                 >
                   주변 병원 찾기
                 </button>
@@ -172,6 +172,17 @@ export function SymptomInfoScreen() {
               영역) — 그냥 찾은 걸 전부 숨김없이 보여줄 뿐이다. */}
           {visibleMatches.length > 0 && (
             <div className="mt-4 flex flex-col gap-3">
+              {/* 증상 → 예약으로 이어지는 단일 주 CTA. 입력한 문장을 그대로 넘긴다. */}
+              <Link
+                to={`/booking?q=${encodeURIComponent(query.trim())}`}
+                className="flex items-center justify-between rounded-3xl bg-[var(--ink)] px-5 py-4 text-white shadow-[0_10px_34px_rgba(11,59,60,0.28)] transition active:scale-[0.99]"
+              >
+                <div>
+                  <p className="text-sm font-bold">이 증상으로 진료 예약하기</p>
+                  <p className="mt-0.5 text-[11px] text-white/70">맞는 진료과와 병원·시간을 골라드려요 · 시연</p>
+                </div>
+                <span className="font-data text-sm font-bold">예약 →</span>
+              </Link>
               {matches.length > 1 && (
                 <p className="px-1 text-xs leading-relaxed text-[var(--ink-2)]">
                   증상을 {matches.length}개 찾았어요. 여러 개가 같이 있다면
