@@ -4,6 +4,14 @@ import { CheckerInputError, computeOverage, type IncomeTier, type OverageResult 
 import { buildIcsEvent, triggerIcsDownload } from "./ics";
 import { trackCheckerEvent } from "./analytics";
 import { CountUp } from "../shell/CountUp";
+import { Stepper } from "../shell/Stepper";
+
+// 받기 타임라인(Stepper용) — 체크리스트와 같은 3단계.
+const REFUND_STEPS = [
+  { label: "조회·신청", desc: "공단 앱" },
+  { label: "계좌 등록", desc: "자동입금" },
+  { label: "지급 대기", desc: "며칠 내" },
+];
 
 /**
  * 의료비 환급 — "계산기"가 아니라 "환급을 실제로 받게 해주는" 파이프라인.
@@ -188,17 +196,22 @@ export function CheckerScreen() {
                 <span className="mb-2 block text-sm font-bold text-[var(--ink)]">
                   {SUPPORTED_YEAR}년 본인부담 의료비
                 </span>
-                <div className="flex items-end gap-1 border-b-2 border-[var(--mist)] pb-2 focus-within:border-[var(--ink)]">
+                {/* 토스 송금 입력 패턴: 우측정렬 대형 숫자 + 단위. */}
+                <div className="flex items-baseline gap-1.5 border-b-2 border-[var(--mist)] pb-3 focus-within:border-[var(--ink)]">
                   <input
                     type="text"
                     inputMode="numeric"
                     value={formatMoneyInput(medicalCostDigits)}
                     onChange={(e) => handleMedicalCostChange(e.target.value)}
                     placeholder="0"
-                    className="w-full border-none bg-transparent font-data text-3xl font-bold text-[var(--ink)] outline-none placeholder:text-[var(--mist)]"
+                    aria-label="본인부담 의료비(원)"
+                    className="w-full min-w-0 border-none bg-transparent text-right font-data text-[44px] font-bold leading-none tracking-tight text-[var(--ink)] outline-none placeholder:text-[var(--mist)]"
                   />
-                  <span className="pb-0.5 text-lg font-medium text-[var(--ink-2)]">원</span>
+                  <span className="flex-none text-xl font-bold text-[var(--ink-2)]">원</span>
                 </div>
+                <p className="mt-2 text-right text-[11px] text-[var(--ink-2)]">
+                  올해 병원·약국에서 낸 본인부담금 합계
+                </p>
               </label>
 
               <div className="mt-5">
@@ -283,11 +296,8 @@ export function CheckerScreen() {
                         {claimCount}/3 완료
                       </span>
                     </div>
-                    <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-[var(--paper)]">
-                      <div
-                        className="h-full rounded-full bg-[var(--refund)] transition-all"
-                        style={{ width: `${(claimCount / 3) * 100}%` }}
-                      />
+                    <div className="mb-5">
+                      <Stepper steps={REFUND_STEPS} current={Math.min(claimCount, 2)} />
                     </div>
 
                     <ol className="flex flex-col gap-3">
