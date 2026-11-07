@@ -8,13 +8,9 @@ import { listMembers, getMember, SELF_ID, type FamilyMember } from "../family/st
 /**
  * 가족 환자 의료지갑 — 보호자(자녀)가 가족 구성원의 의료를 한 곳에서 관리.
  *
- *   [ 본인 · 엄마 · 아빠 · + ]        ← 가족 전환
- *   ┌ 응급 의료 신원증 (선택 구성원) ┐  신원 = vital(코랄)
- *   │ 혈액형 · 알레르기 · 복용약       │  본인만 실제 QR 공개(SD-JWT VP)
- *   └ [ 응급 공개 · QR ] ─────────────┘
- *   [ 환급 ] [ 예약·시연 ] [ 수납·시연 ]  빠른 작업
- *
- * 예약·수납은 병원 연동이 없으므로 '시연'으로 명확히 표시한다(가짜로 되는 척 안 함).
+ * 시그니처: 응급 의료 신원증을 다크 잉크 크레덴셜 카드로 — 밝은 나머지 UI 위에서
+ * 이 한 장이 튄다. 혈액형이 히어로 데이텀(응급에서 제일 먼저 보는 정보).
+ * 예약·수납은 병원 연동이 없으므로 '시연'으로 명확히 표시한다.
  */
 export function WalletScreen() {
   useEffect(() => {
@@ -40,7 +36,6 @@ export function WalletScreen() {
       .catch((e) => setSeedError(`VC seed 실패: ${(e as Error).message}`));
   }, []);
 
-  // 실제 VP/QR은 본인(실제 VC 보유)만 생성한다.
   useEffect(() => {
     if (!emergencyOn || !isSelf || !vcs) {
       setQRDataUrl(null);
@@ -80,7 +75,7 @@ export function WalletScreen() {
 
   function selectMember(id: string) {
     setSelectedId(id);
-    setEmergencyOn(false); // 구성원을 바꾸면 응급 공개는 초기화
+    setEmergencyOn(false);
   }
 
   const copy = () => {
@@ -133,16 +128,21 @@ export function WalletScreen() {
                   type="button"
                   onClick={() => selectMember(m.id)}
                   aria-pressed={active}
-                  className={`flex-none rounded-full px-4 py-2 text-sm font-bold transition ${
+                  className={`flex flex-none items-center gap-2 rounded-full py-1.5 pl-1.5 pr-4 text-sm font-bold transition ${
                     active
                       ? "bg-[var(--ink)] text-white"
                       : "border border-[var(--mist)] bg-[var(--surface)] text-[var(--ink-2)]"
                   }`}
                 >
-                  {m.name}
-                  <span className="ml-1.5 text-[11px] font-medium opacity-70">
-                    {m.relation}
+                  <span
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                      active ? "bg-white/15 text-white" : "bg-[var(--paper)] text-[var(--ink)]"
+                    }`}
+                  >
+                    {m.name.slice(0, 1)}
                   </span>
+                  {m.name}
+                  <span className="text-[11px] font-medium opacity-70">{m.relation}</span>
                 </button>
               );
             })}
@@ -154,106 +154,105 @@ export function WalletScreen() {
             </Link>
           </div>
 
-          {/* ───────── 응급 의료 신원증 (선택 구성원) ───────── */}
-          <section className="relative overflow-hidden rounded-[28px] bg-[var(--surface)] shadow-[0_2px_24px_rgba(11,59,60,0.09)]">
-            <div className="absolute inset-y-0 left-0 w-1.5 bg-[var(--vital)]" />
-            <div className="px-5 py-5 pl-6">
+          {/* ───────── 응급 의료 신원증 (시그니처 · 다크 크레덴셜) ───────── */}
+          <section
+            className="relative overflow-hidden rounded-[28px] text-white shadow-[0_14px_44px_rgba(7,42,43,0.34)]"
+            style={{ background: "linear-gradient(158deg, var(--ink) 0%, var(--ink-deep) 100%)" }}
+          >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-[0.06]"
+              style={{
+                background:
+                  "repeating-linear-gradient(135deg, #fff 0 1px, transparent 1px 7px)",
+              }}
+            />
+            <div className="relative px-6 py-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="vital-dot h-2 w-2 rounded-full bg-[var(--vital)]" />
-                  <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--vital-ink)]">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--vital-2)]">
                     응급 의료 신원증
                   </span>
                 </div>
-                <span className="font-data text-[10px] text-[var(--ink-2)]">
+                <span className="font-data text-[10px] text-white/55">
                   {isSelf ? "SD-JWT ✓" : "시연 프로필"}
                 </span>
               </div>
 
-              <h2 className="mt-3 text-[26px] font-extrabold leading-none tracking-tight text-[var(--ink)]">
+              <h2 className="mt-4 text-[28px] font-extrabold leading-none tracking-tight">
                 {selected.name}
-                <span className="ml-2 align-middle text-sm font-bold text-[var(--ink-2)]">
+                <span className="ml-2 align-middle text-sm font-bold text-white/55">
                   {selected.relation}
                 </span>
               </h2>
 
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-[var(--paper)] px-3.5 py-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-2)]">
+              {/* 혈액형 = 히어로 데이텀 */}
+              <div className="mt-5 flex items-stretch gap-3">
+                <div className="flex-none rounded-2xl bg-white/[0.07] px-5 py-3 text-center ring-1 ring-white/10">
+                  <div className="font-data text-[44px] font-bold leading-none">
+                    {selected.blood}
+                    <span className="text-[var(--vital-2)]">{selected.rh}</span>
+                  </div>
+                  <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/50">
                     혈액형
                   </div>
-                  <div className="font-data text-2xl font-bold leading-tight text-[var(--ink)]">
-                    {selected.blood}
-                    <span className="text-[var(--vital)]">{selected.rh}</span>
-                  </div>
                 </div>
-                <div className="rounded-2xl bg-[var(--paper)] px-3.5 py-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-2)]">
+                <div className="flex-1 rounded-2xl bg-white/[0.07] px-4 py-3 ring-1 ring-white/10">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
                     알레르기
                   </div>
-                  <div className="font-data text-base font-bold leading-tight text-[var(--vital-ink)]">
+                  <div className="font-data text-base font-bold text-[var(--vital-2)]">
                     {selected.allergen ?? "없음"}
+                    {selected.severity ? ` · ${selected.severity}` : ""}
                   </div>
-                  {selected.severity && (
-                    <div className="font-data text-[11px] text-[var(--vital-ink)]/80">
-                      {selected.severity}
-                    </div>
+                  {selected.meds && selected.meds.length > 0 && (
+                    <>
+                      <div className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">
+                        복용약
+                      </div>
+                      <div className="font-data text-[13px] text-white/90">
+                        {selected.meds.join(", ")}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
-
-              {selected.meds && selected.meds.length > 0 && (
-                <div className="mt-3">
-                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-2)]">
-                    복용 중인 약
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selected.meds.map((m) => (
-                      <span
-                        key={m}
-                        className="rounded-full bg-[var(--paper)] px-2.5 py-1 font-data text-[11px] font-medium text-[var(--ink)]"
-                      >
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {isSelf ? (
                 <>
                   <button
                     onClick={() => setEmergencyOn((v) => !v)}
                     aria-pressed={emergencyOn}
-                    className={`mt-4 w-full rounded-2xl py-3.5 text-base font-bold tracking-tight text-white transition ${
+                    className={`mt-5 w-full rounded-2xl py-3.5 text-base font-bold tracking-tight transition ${
                       emergencyOn
-                        ? "bg-[var(--ink)] active:brightness-110"
-                        : "bg-[var(--vital)] active:brightness-95"
+                        ? "bg-white/10 text-white ring-1 ring-white/25 active:bg-white/15"
+                        : "bg-[var(--vital)] text-white active:brightness-95"
                     }`}
                   >
                     {emergencyOn ? "공개 중단" : "응급 공개 · QR 생성"}
                   </button>
-                  <p className="mt-2 text-center text-[11px] leading-relaxed text-[var(--ink-2)]">
+                  <p className="mt-2 text-center text-[11px] leading-relaxed text-white/55">
                     혈액형 + 알레르기만 공개합니다. 이름·주민번호·주소는 공개되지 않아요.
                   </p>
                 </>
               ) : (
-                <p className="mt-4 rounded-2xl bg-[var(--paper)] px-4 py-3 text-center text-xs leading-relaxed text-[var(--ink-2)]">
+                <p className="mt-5 rounded-2xl bg-white/[0.07] px-4 py-3 text-center text-xs leading-relaxed text-white/70 ring-1 ring-white/10">
                   가족 데모 프로필입니다. 실제 응급 QR(SD-JWT 서명)은 본인 프로필에서만
-                  생성됩니다. 가족 구성원의 실제 발급은 추후 병원·기관 연동으로 열립니다.
+                  생성됩니다. 가족의 실제 발급은 추후 병원·기관 연동으로 열립니다.
                 </p>
               )}
             </div>
 
             {isSelf && emergencyOn && (
-              <div className="animate-reveal-in border-t border-[var(--mist)] px-5 py-5 pl-6">
+              <div className="animate-reveal-in relative border-t border-white/10 px-6 py-5">
                 {qrDataUrl && (
                   <div>
-                    <p className="mb-3 text-xs text-[var(--ink-2)]">
+                    <p className="mb-3 text-xs text-white/70">
                       의료진에게 QR을 보여주거나 아래 페이로드를 복사해 의사 화면에
                       붙여넣으세요.
                     </p>
-                    <div className="flex justify-center rounded-2xl bg-[var(--paper)] p-4">
+                    <div className="flex justify-center rounded-2xl bg-white p-4">
                       <img
                         src={qrDataUrl}
                         alt="Emergency VP QR"
@@ -262,16 +261,16 @@ export function WalletScreen() {
                     </div>
                     <button
                       onClick={copy}
-                      className="mt-3 w-full rounded-2xl bg-[var(--ink)] py-3 text-sm font-bold text-white active:brightness-110"
+                      className="mt-3 w-full rounded-2xl bg-white/10 py-3 text-sm font-bold text-white ring-1 ring-white/20 active:bg-white/15"
                     >
                       {copied ? "복사됨" : "VP 페이로드 복사"}
                     </button>
                     {vpCompact && (
-                      <details className="mt-3 text-xs text-[var(--ink-2)]">
-                        <summary className="cursor-pointer select-none font-semibold text-[var(--refund-ink)]">
+                      <details className="mt-3 text-xs text-white/60">
+                        <summary className="cursor-pointer select-none font-semibold text-[var(--vital-2)]">
                           SD-JWT VP 페이로드 (시연용)
                         </summary>
-                        <pre className="mt-1.5 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-[var(--paper)] p-3 font-data text-[10px]">
+                        <pre className="mt-1.5 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-white/[0.06] p-3 font-data text-[10px] text-white/80">
                           {vpCompact}
                         </pre>
                       </details>
@@ -281,12 +280,12 @@ export function WalletScreen() {
 
                 {!qrDataUrl && qrError && vpCompact && (
                   <div className="flex flex-col gap-2">
-                    <p className="rounded-2xl border-l-4 border-[var(--vital)] bg-[var(--paper)] p-3 text-xs text-[var(--vital-ink)]">
+                    <p className="rounded-2xl border-l-4 border-[var(--vital)] bg-white/[0.06] p-3 text-xs text-[var(--vital-2)]">
                       {qrError}
                     </p>
                     <button
                       onClick={copy}
-                      className="w-full rounded-2xl bg-[var(--ink)] py-3 text-sm font-bold text-white active:brightness-110"
+                      className="w-full rounded-2xl bg-white/10 py-3 text-sm font-bold text-white ring-1 ring-white/20 active:bg-white/15"
                     >
                       {copied ? "복사됨" : "VP 페이로드 복사"}
                     </button>
@@ -294,7 +293,7 @@ export function WalletScreen() {
                 )}
 
                 {!qrDataUrl && !qrError && (
-                  <p className="text-xs text-[var(--ink-2)]">QR 생성 중...</p>
+                  <p className="text-xs text-white/60">QR 생성 중...</p>
                 )}
               </div>
             )}
@@ -323,9 +322,7 @@ export function WalletScreen() {
                   시연
                 </span>
               </div>
-              <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">
-                진료 예약
-              </div>
+              <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">진료 예약</div>
             </Link>
             <Link
               to="/billing"
@@ -338,9 +335,7 @@ export function WalletScreen() {
                   시연
                 </span>
               </div>
-              <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">
-                진료비 납부
-              </div>
+              <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">진료비 납부</div>
             </Link>
           </div>
 

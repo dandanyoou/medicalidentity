@@ -17,6 +17,8 @@
   --mist: #dce6e4; /* 헤어라인·구분 */
   --vital: #ff5a4d; /* 응급·신원 */
   --vital-ink: #b3261e; /* vital 텍스트용 어두운 톤 */
+  --vital-2: #ff8f82; /* 다크 카드 위 vital 텍스트(가독성) */
+  --ink-deep: #072a2b; /* 신원증 카드용 더 깊은 잉크 */
   --refund: #0e9f6e; /* 환급(돈) */
   --refund-ink: #0a6b4a;
 }
