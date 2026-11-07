@@ -124,7 +124,7 @@ export function SymptomInfoScreen() {
         <main className="flex-1 overflow-y-auto px-4 pb-8 pt-5">
           <div
             role="alert"
-            className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900"
+            className="mb-4 rounded-2xl border-l-4 border-[var(--ink-2)] bg-[var(--surface)] px-4 py-3 text-xs leading-relaxed text-[var(--ink-2)]"
           >
             이 정보는 참고용이며 의학적 진단이 아닙니다. 증상이 심하거나
             걱정되면 반드시 의료진과 상담하세요. 응급 상황이면 즉시 119에
