@@ -12,6 +12,10 @@ import { getPatientVCs } from "../data/patient-vcs";
 import { buildVPPayload } from "../wallet/bundle";
 import { DDICheck } from "./DDICheck";
 import { ControlledSubstancePanel } from "./ControlledSubstancePanel";
+import { Skeleton } from "../shell/Skeleton";
+
+// 검증 중에 "무엇을 확인하는지" 보여주는 체크 목록 — 스피너보다 신뢰가 간다.
+const VERIFY_CHECKS = ["발급자 서명", "신뢰 앵커(mDL)", "폐기·만료 여부"];
 
 interface PresentationBundle {
   blood: string;
@@ -230,9 +234,31 @@ export function DoctorScreen() {
           )}
 
           {verifying && (
-            <section className="flex flex-col items-center justify-center rounded-3xl bg-[var(--surface)] p-10 shadow-sm">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--mist)] border-t-[var(--ink)]" />
-              <p className="mt-3 text-sm text-[var(--ink-2)]">서명·신뢰앵커·폐기 여부 확인 중...</p>
+            <section
+              aria-busy="true"
+              className="rounded-3xl bg-[var(--surface)] p-5 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold text-[var(--ink)]">검증 중이에요</p>
+                <span className="font-data text-[10px] font-bold text-[var(--ink-2)]">SD-JWT</span>
+              </div>
+              <ul className="mt-3 flex flex-col gap-2">
+                {VERIFY_CHECKS.map((label) => (
+                  <li key={label} className="flex items-center gap-3 text-sm text-[var(--ink-2)]">
+                    <span className="h-5 w-5 flex-none animate-spin rounded-full border-2 border-[var(--mist)] border-t-[var(--ink)]" />
+                    {label}
+                  </li>
+                ))}
+              </ul>
+              {/* 환자 카드 자리 — 결과가 들어올 곳을 미리 잡아둔다 */}
+              <div className="mt-4 rounded-2xl bg-[var(--paper)] p-4">
+                <Skeleton className="h-3 w-24" />
+                <div className="mt-3 flex gap-3">
+                  <Skeleton className="h-10 w-16" />
+                  <Skeleton className="h-10 flex-1" />
+                </div>
+                <Skeleton className="mt-3 h-3 w-40" />
+              </div>
             </section>
           )}
 
@@ -266,9 +292,12 @@ export function DoctorScreen() {
                   <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[var(--ink)] text-base text-white">
                     ✓
                   </span>
-                  <div>
-                    <div className="text-sm font-semibold text-[var(--ink)]">
-                      Korean mDL Reference Issuer 서명 검증됨
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-[var(--ink)]">
+                      <span className="truncate">Korean mDL Reference Issuer 서명 검증됨</span>
+                      <span className="flex-none rounded-full bg-[var(--refund)]/12 px-2 py-0.5 font-data text-[10px] font-bold text-[var(--refund-ink)]">
+                        검증됨
+                      </span>
                     </div>
                     <div className="mt-0.5 text-xs text-[var(--refund-ink)]">
                       환자 신원이 한국 mDL 표준 reference issuer로 anchor됨 (demo). 식별
@@ -278,7 +307,7 @@ export function DoctorScreen() {
                 </div>
               )}
               {!bundle.mDL && (
-                <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                <div className="rounded-2xl border-l-4 border-[var(--ink-2)] bg-[var(--surface)] px-4 py-3 text-xs leading-relaxed text-[var(--ink-2)]">
                   ID anchor: QR fast-path (mDL 미포함). 신원 확인이 필요하면 환자
                   wallet에서 페이로드 복사 후 페이스트로 mDL 포함된 full bundle 검증.
                 </div>
@@ -333,7 +362,7 @@ export function DoctorScreen() {
                     }
                   />
                 ) : (
-                  <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+                  <div className="rounded-2xl border-l-4 border-[var(--ink-2)] bg-[var(--surface)] px-4 py-3 text-xs leading-relaxed text-[var(--ink-2)]">
                     관리약물 이력은 QR fast-path에 포함되지 않습니다. 환자 wallet에서
                     페이로드 복사 후 페이스트로 full bundle을 검증하세요.
                   </div>
