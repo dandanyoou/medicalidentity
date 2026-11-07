@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { listVisits, unpaidVisits, payVisit, type Visit } from "../visits/store";
 import { CountUp } from "../shell/CountUp";
 import { Stepper } from "../shell/Stepper";
+import { BottomSheet } from "../shell/BottomSheet";
 
 // 방문 진행 상태 — 예약 → 방문 → 수납.
 const VISIT_STEPS = [{ label: "예약" }, { label: "방문" }, { label: "수납" }];
@@ -34,13 +35,17 @@ export function BillingScreen() {
   const [tick, setTick] = useState(0); // 수납 후 재조회용
   const [openId, setOpenId] = useState<string | null>(null);
   const [geofence, setGeofence] = useState(true);
+  // 수납 확인 시트 — 토스 결제창처럼 병원·금액을 한 번 더 보여준 뒤에만 수납한다.
+  const [payTarget, setPayTarget] = useState<Visit | null>(null);
 
   const visits = listVisits(MEMBER);
   const unpaid = unpaidVisits(MEMBER);
   void tick;
 
-  function handlePay(id: string) {
-    payVisit(id);
+  function confirmPay() {
+    if (!payTarget) return;
+    payVisit(payTarget.id);
+    setPayTarget(null);
     setTick((t) => t + 1);
   }
 
@@ -116,11 +121,49 @@ export function BillingScreen() {
                 visit={v}
                 open={openId === v.id}
                 onToggle={() => setOpenId((id) => (id === v.id ? null : v.id))}
-                onPay={() => handlePay(v.id)}
+                onPay={() => setPayTarget(v)}
               />
             ))}
           </div>
         </main>
+
+        <BottomSheet
+          open={payTarget !== null}
+          title="진료비를 수납할까요?"
+          onClose={() => setPayTarget(null)}
+        >
+          {payTarget && (
+            <>
+              <div className="rounded-2xl bg-[var(--paper)] px-4 py-3">
+                <p className="text-sm font-bold text-[var(--ink)]">{payTarget.hospital}</p>
+                <p className="font-data text-[11px] text-[var(--ink-2)]">
+                  {payTarget.date} · {payTarget.dept}
+                </p>
+                <p className="mt-3 text-right font-data text-[34px] font-bold leading-none tracking-tight text-[var(--ink)]">
+                  {won(payTarget.amount)}
+                </p>
+              </div>
+              <p className="mt-3 rounded-2xl border-l-4 border-[var(--ink)] bg-[var(--surface)] px-3 py-2 text-[11px] leading-relaxed text-[var(--ink-2)]">
+                <strong className="text-[var(--ink)]">시연</strong> — 실제로 돈이 움직이지 않아요.
+                병원 수납·결제(PG) 연동 후 같은 흐름으로 결제됩니다.
+              </p>
+              <button
+                type="button"
+                onClick={confirmPay}
+                className="mt-4 w-full rounded-2xl bg-[var(--ink)] py-3.5 text-base font-bold text-white active:brightness-110"
+              >
+                {won(payTarget.amount)} 수납하기
+              </button>
+              <button
+                type="button"
+                onClick={() => setPayTarget(null)}
+                className="mt-2 w-full rounded-2xl py-3 text-sm font-bold text-[var(--ink-2)] active:bg-[var(--paper)]"
+              >
+                취소
+              </button>
+            </>
+          )}
+        </BottomSheet>
       </div>
     </div>
   );
