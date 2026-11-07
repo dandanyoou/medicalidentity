@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { isPremium } from "../subscribe/plan";
+import { getInstallState, onInstallStateChange, promptInstall } from "./installPrompt";
 
 /** 더보기 — 탭바의 다섯 번째 탭. 부가 도구·구독·정보를 한 곳에. */
 const GROUPS = [
@@ -27,6 +28,9 @@ export function MoreScreen() {
     document.title = "더보기 — 가족 의료지갑";
   }, []);
   const premium = isPremium();
+
+  const [install, setInstall] = useState(() => getInstallState());
+  useEffect(() => onInstallStateChange(() => setInstall(getInstallState())), []);
 
   return (
     <div className="min-h-screen bg-[var(--paper)] md:px-6 md:py-10">
@@ -103,6 +107,44 @@ export function MoreScreen() {
               </div>
               <span className="text-[var(--ink-2)]">↗</span>
             </Link>
+          </section>
+
+          {/* 홈 화면 설치 — 플랫폼별로 지금 할 수 있는 한 가지만 */}
+          <section className="mb-5 flex items-center justify-between gap-3 rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)]">
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-[var(--ink)]">
+                {install === "installed" ? "홈 화면 앱으로 쓰는 중" : "홈 화면에 추가"}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--ink-2)]">
+                {install === "installed" && "오프라인에서도 응급 신원증을 바로 열 수 있어요."}
+                {install === "promptable" && "앱처럼 설치하면 오프라인에서도 열려요."}
+                {install === "ios" && (
+                  <>
+                    Safari 하단 <strong className="text-[var(--ink)]">공유</strong> 버튼 →{" "}
+                    <strong className="text-[var(--ink)]">홈 화면에 추가</strong>를 누르면 설치돼요.
+                  </>
+                )}
+                {install === "manual" && (
+                  <>
+                    브라우저 메뉴에서 <strong className="text-[var(--ink)]">홈 화면에 추가</strong>(또는
+                    앱 설치)를 누르면 앱처럼 쓸 수 있어요.
+                  </>
+                )}
+              </p>
+            </div>
+            {install === "installed" ? (
+              <span className="flex-none rounded-full bg-[var(--refund)]/12 px-2.5 py-1 font-data text-[10px] font-bold text-[var(--refund-ink)]">
+                설치됨 ✓
+              </span>
+            ) : install === "promptable" ? (
+              <button
+                type="button"
+                onClick={() => void promptInstall()}
+                className="flex-none rounded-full bg-[var(--ink)] px-4 py-2 text-sm font-bold text-white active:brightness-110"
+              >
+                설치
+              </button>
+            ) : null}
           </section>
 
           <section className="rounded-3xl bg-[var(--surface)] px-5 py-4 text-[11px] leading-relaxed text-[var(--ink-2)] shadow-[0_1px_12px_rgba(11,59,60,0.07)]">

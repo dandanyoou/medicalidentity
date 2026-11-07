@@ -6,6 +6,10 @@ import "./index.css";
 import { CheckerScreen } from "./checker/CheckerScreen";
 import { TabBar } from "./shell/TabBar";
 import { hasSeenOnboarding } from "./shell/onboarding";
+import { captureInstallPrompt } from "./shell/installPrompt";
+
+// beforeinstallprompt는 아주 이른 시점에 오므로 렌더 전에 붙잡아 둔다(더보기 → 설치 버튼).
+captureInstallPrompt();
 
 // /wallet·/doctor는 html5-qrcode/qrcode(QR 스캔·생성) 번들을 쓴다 — 체커로
 // 들어온 사용자(주 획득 채널, Distribution Plan 참고)가 그 무게를 다운로드할
