@@ -8,6 +8,7 @@ import { isPremium } from "../subscribe/plan";
 import { unpaidVisits, listVisits } from "../visits/store";
 import { getClaimByVisit } from "../insurance/store";
 import { CountUp } from "../shell/CountUp";
+import { BottomSheet } from "../shell/BottomSheet";
 
 /**
  * 가족 환자 의료지갑 — 보호자(자녀)가 가족 구성원의 의료를 한 곳에서 관리.
@@ -34,6 +35,8 @@ export function WalletScreen() {
 
   const [vcs, setVCs] = useState<PatientVCs | null>(null);
   const [emergencyOn, setEmergencyOn] = useState(false);
+  // 공개 전 확인 바텀시트 — 실수로 응급 정보를 공개하는 일을 막는다. 중단은 즉시.
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [qrDataUrl, setQRDataUrl] = useState<string | null>(null);
   const [vpCompact, setVpCompact] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -232,7 +235,7 @@ export function WalletScreen() {
               {isSelf ? (
                 <>
                   <button
-                    onClick={() => setEmergencyOn((v) => !v)}
+                    onClick={() => (emergencyOn ? setEmergencyOn(false) : setConfirmOpen(true))}
                     aria-pressed={emergencyOn}
                     className={`mt-5 w-full rounded-2xl py-3.5 text-base font-bold tracking-tight transition ${
                       emergencyOn
@@ -308,6 +311,45 @@ export function WalletScreen() {
               </div>
             )}
           </section>
+
+          <BottomSheet
+            open={confirmOpen}
+            title="응급 정보를 공개할까요?"
+            onClose={() => setConfirmOpen(false)}
+          >
+            <p className="text-sm leading-relaxed text-[var(--ink-2)]">
+              의료진이 QR을 스캔하면 아래 정보만 볼 수 있어요.
+            </p>
+            <ul className="mt-3 flex flex-col gap-2">
+              <ShareRow label="혈액형" value={selected.blood} shared />
+              <ShareRow
+                label="알레르기"
+                value={selected.allergen ? `${selected.allergen}${selected.severity ? ` · ${selected.severity}` : ""}` : "없음"}
+                shared
+              />
+              {selected.meds && selected.meds.length > 0 && (
+                <ShareRow label="복용약" value={selected.meds.join(", ")} shared />
+              )}
+              <ShareRow label="이름 · 주민번호 · 주소" value="공개 안 함" />
+            </ul>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmOpen(false);
+                setEmergencyOn(true);
+              }}
+              className="mt-5 w-full rounded-2xl bg-[var(--vital)] py-3.5 text-base font-bold text-white active:brightness-95"
+            >
+              공개하고 QR 만들기
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(false)}
+              className="mt-2 w-full rounded-2xl py-3 text-sm font-bold text-[var(--ink-2)] active:bg-[var(--paper)]"
+            >
+              취소
+            </button>
+          </BottomSheet>
 
           {/* ───────── 오늘 챙길 것 (개인화 액션 피드) ───────── */}
           <section className="mt-5">
@@ -453,6 +495,32 @@ export function WalletScreen() {
         </main>
       </div>
     </div>
+  );
+}
+
+/** 공개 확인 시트의 한 줄 — 공개되는 항목은 초록 체크, 아닌 항목은 회색 대시. */
+function ShareRow({ label, value, shared }: { label: string; value: string; shared?: boolean }) {
+  return (
+    <li className="flex items-center justify-between gap-3 rounded-xl bg-[var(--paper)] px-3 py-2.5">
+      <span className="flex items-center gap-2 text-sm text-[var(--ink)]">
+        <span
+          aria-hidden="true"
+          className={`flex h-5 w-5 items-center justify-center rounded-full font-data text-[11px] font-bold ${
+            shared ? "bg-[var(--refund)] text-white" : "bg-[var(--mist)] text-[var(--ink-2)]"
+          }`}
+        >
+          {shared ? "✓" : "–"}
+        </span>
+        {label}
+      </span>
+      <span
+        className={`truncate font-data text-sm font-bold ${
+          shared ? "text-[var(--ink)]" : "text-[var(--ink-2)]"
+        }`}
+      >
+        {value}
+      </span>
+    </li>
   );
 }
 
