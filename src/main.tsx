@@ -93,6 +93,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/family" element={<FamilyScreen />} />
           <Route path="/subscribe" element={<SubscribeScreen />} />
           <Route path="/insurance" element={<InsuranceScreen />} />
+          {/* 없는 경로는 홈으로 — 빈 화면 대신. */}
+          <Route path="*" element={<Navigate to="/wallet" replace />} />
         </Routes>
       </Suspense>
       <TabBar />

@@ -24,6 +24,20 @@
   --tabbar-h: 4.25rem; /* 하단 탭바 높이(safe-area 제외) */
 }
 
+/* 품질 바닥 — 성공 앱이 당연히 갖춘 디테일. */
+* {
+  -webkit-tap-highlight-color: transparent; /* 터치 시 회색 번쩍임 제거 */
+}
+:focus-visible {
+  outline: 2px solid var(--vital);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* 노치/다이내믹 아일랜드: sticky 헤더 상단에 safe-area만큼 여백(비노치에선 0). */
+header {
+  padding-top: calc(1rem + env(safe-area-inset-top)) !important;
+}
+
 /* 하단 탭바가 콘텐츠를 가리지 않게 — 모든 화면 main 하단에 탭바+safe-area 여백. */
 main {
   padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 1.5rem) !important;
