@@ -1,8 +1,29 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * 디자인 토큰 — "공식 의료 기록물" 미학.
+ * 두 간판이 각자 의미색을 가진다: 신원/응급 = vital(코랄레드), 환급 = refund(그린).
+ * 의료 데이터·금액·ID는 mono로 — 공식 기록/인식표 느낌.
+ */
+:root {
+  --ink: #0b3b3c; /* 딥 틸-블랙: 본문·프레임·신뢰 */
+  --ink-2: #2d5a5b; /* 보조 텍스트 */
+  --paper: #f2f5f4; /* 쿨 오프화이트 배경 */
+  --surface: #ffffff; /* 카드 면 */
+  --mist: #dce6e4; /* 헤어라인·구분 */
+  --vital: #ff5a4d; /* 응급·신원 */
+  --vital-ink: #b3261e; /* vital 텍스트용 어두운 톤 */
+  --refund: #0e9f6e; /* 환급(돈) */
+  --refund-ink: #0a6b4a;
+}
+
 body {
+  background: var(--paper);
+  color: var(--ink);
   font-family:
     "Pretendard",
     -apple-system,
@@ -10,6 +31,12 @@ body {
     "Apple SD Gothic Neo",
     "Noto Sans KR",
     sans-serif;
+}
+
+/* 의료 데이터·금액·ID 전용 — 숫자가 많은 제품이라 숫자에 개성을 싣는다. */
+.font-data {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-feature-settings: "tnum" 1;
 }
 
 /* 검증 결과가 나타날 때 쓰는 연출용 트랜지션 — DoctorScreen 참고. */
@@ -25,4 +52,26 @@ body {
 }
 .animate-reveal-in {
   animation: reveal-in 0.35s ease-out both;
+}
+
+/* 응급 신원증의 vital 엣지가 살아있다는 신호 — reduced-motion이면 끈다. */
+@keyframes vital-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.vital-dot {
+  animation: vital-pulse 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-reveal-in {
+    animation: none;
+  }
+  .vital-dot {
+    animation: none;
+  }
 }

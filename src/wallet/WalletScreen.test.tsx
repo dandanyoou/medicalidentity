@@ -13,7 +13,7 @@ describe("WalletScreen — 응급 모드 토글 진단", () => {
         <WalletScreen />
       </MemoryRouter>,
     );
-    const toggle = await screen.findByText("응급 모드 켜기");
+    const toggle = await screen.findByText("응급 공개 · QR 생성");
     fireEvent.click(toggle);
 
     const img = await screen.findByAltText("Emergency VP QR", {}, { timeout: 3000 });
