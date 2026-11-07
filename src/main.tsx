@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/react";
 import "./index.css";
 import { CheckerScreen } from "./checker/CheckerScreen";
 import { TabBar } from "./shell/TabBar";
+import { hasSeenOnboarding } from "./shell/onboarding";
 
 // /wallet·/doctor는 html5-qrcode/qrcode(QR 스캔·생성) 번들을 쓴다 — 체커로
 // 들어온 사용자(주 획득 채널, Distribution Plan 참고)가 그 무게를 다운로드할
@@ -40,6 +41,17 @@ const SubscribeScreen = lazy(() =>
 const InsuranceScreen = lazy(() =>
   import("./insurance/InsuranceScreen").then((m) => ({ default: m.InsuranceScreen })),
 );
+const MoreScreen = lazy(() =>
+  import("./shell/MoreScreen").then((m) => ({ default: m.MoreScreen })),
+);
+const OnboardingScreen = lazy(() =>
+  import("./shell/OnboardingScreen").then((m) => ({ default: m.OnboardingScreen })),
+);
+
+/** 첫 실행이면 온보딩, 아니면 홈. */
+function RootRedirect() {
+  return <Navigate to={hasSeenOnboarding() ? "/wallet" : "/onboarding"} replace />;
+}
 
 // VC 루프 iter 4: fallback={null}이었을 때 /wallet·/doctor 진입 시 청크
 // 로딩 중 흰 화면이 깜빡였다(특히 느린 회선) — 최소한의 로딩 표시로 교체.
@@ -67,7 +79,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <BrowserRouter>
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
-          <Route path="/" element={<Navigate to="/wallet" replace />} />
+          <Route path="/" element={<RootRedirect />} />
+          <Route path="/onboarding" element={<OnboardingScreen />} />
+          <Route path="/more" element={<MoreScreen />} />
           <Route path="/wallet" element={<WalletScreen />} />
           <Route path="/doctor" element={<DoctorScreen />} />
           <Route path="/checker" element={<CheckerScreen />} />
