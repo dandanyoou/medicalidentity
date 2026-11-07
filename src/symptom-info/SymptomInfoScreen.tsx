@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { searchSymptoms } from "./data";
+import { searchSymptoms, SYMPTOMS } from "./data";
 import { openNearbyMap } from "./nearbyMap";
 import { addDiaryEntry, DiarySaveError } from "../wallet/diary";
+import { addRecord, LabelStoreError } from "../labeling/store";
 
 const SEVERITY_LEVELS = [1, 2, 3, 4, 5] as const;
 
@@ -28,6 +29,12 @@ export function SymptomInfoScreen() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // 라벨 확인·교정 루프: 자동 태그(label)별 confirm/reject + 수동 추가 태그.
+  const [tagStatus, setTagStatus] = useState<Record<string, "confirm" | "reject">>({});
+  const [addedTags, setAddedTags] = useState<string[]>([]);
+  const [contributed, setContributed] = useState(false);
+  const [contributeError, setContributeError] = useState<string | null>(null);
+
   const matches = useMemo(() => searchSymptoms(query), [query]);
   // 매칭이 너무 많으면(짧고 모호한 입력) 전부 펼치는 대신 상위 N개만 —
   // 그래도 "한 번에 다 보여준다"는 원칙은 유지, 그냥 벽처럼 안 쌓는다.
@@ -37,6 +44,45 @@ export function SymptomInfoScreen() {
   function handleQueryChange(value: string) {
     setQuery(value);
     setSaved(false);
+    // 입력이 바뀌면 이전 라벨 교정 상태는 무효 — 새 문장에 대한 라벨이므로.
+    setTagStatus({});
+    setAddedTags([]);
+    setContributed(false);
+    setContributeError(null);
+  }
+
+  function toggleTag(label: string, status: "confirm" | "reject") {
+    setContributed(false);
+    setTagStatus((prev) => {
+      const next = { ...prev };
+      if (next[label] === status) delete next[label];
+      else next[label] = status;
+      return next;
+    });
+  }
+
+  function handleContribute() {
+    setContributeError(null);
+    const autoTags = matches.map((m) => m.label);
+    const confirmedTags = autoTags.filter((l) => tagStatus[l] === "confirm");
+    const rejectedTags = autoTags.filter((l) => tagStatus[l] === "reject");
+    try {
+      addRecord({
+        rawText: query.trim(),
+        autoTags,
+        confirmedTags,
+        rejectedTags,
+        addedTags,
+      });
+      setContributed(true);
+    } catch (e) {
+      // 조용히 "기여됨"이라 거짓말하지 않는다 — store.ts의 LabelStoreError 참고.
+      setContributeError(
+        e instanceof LabelStoreError
+          ? e.message
+          : "기여 저장에 실패했습니다. 다시 시도해주세요.",
+      );
+    }
   }
 
   function handleSaveToDiary() {
@@ -171,6 +217,140 @@ export function SymptomInfoScreen() {
                 </section>
               ))}
             </div>
+          )}
+
+          {/* 라벨 확인·교정 루프 — 자동으로 붙인 증상 라벨을 사용자가 검증해
+              "실사용자 자유서술 → 검증 라벨" 데이터셋을 쌓는다. 종합 진단은
+              하지 않는다(의료기기 영역) — 라벨이 맞는지만 확인받는다. */}
+          {visibleMatches.length > 0 && (
+            <section className="mt-4 rounded-3xl border border-blue-100 bg-white p-5 shadow-sm">
+              <h2 className="mb-1 text-sm font-semibold text-slate-800">이 분류가 맞나요?</h2>
+              <p className="mb-3 text-xs leading-relaxed text-slate-400">
+                자동으로 붙인 증상 라벨을 확인·교정해 주시면 익명 의료 라벨
+                데이터로 쌓여 더 정확한 분류에 쓰여요. 입력하신 문장이 그대로
+                저장되니, 외부 공유 전 개인정보는 비식별하세요.
+              </p>
+
+              <div className="flex flex-col gap-2">
+                {matches.map((entry) => {
+                  const st = tagStatus[entry.label];
+                  return (
+                    <div
+                      key={entry.key}
+                      className="flex items-center justify-between gap-2 rounded-2xl bg-slate-50 px-3 py-2"
+                    >
+                      <span className="text-sm text-slate-700">{entry.label}</span>
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          aria-pressed={st === "confirm"}
+                          aria-label={`${entry.label} 맞아요`}
+                          onClick={() => toggleTag(entry.label, "confirm")}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            st === "confirm"
+                              ? "bg-emerald-600 text-white"
+                              : "border border-slate-200 bg-white text-slate-500"
+                          }`}
+                        >
+                          👍 맞아요
+                        </button>
+                        <button
+                          type="button"
+                          aria-pressed={st === "reject"}
+                          aria-label={`${entry.label} 아니에요`}
+                          onClick={() => toggleTag(entry.label, "reject")}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            st === "reject"
+                              ? "bg-rose-600 text-white"
+                              : "border border-slate-200 bg-white text-slate-500"
+                          }`}
+                        >
+                          👎 아니에요
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {addedTags.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {addedTags.map((t) => (
+                    <span
+                      key={t}
+                      className="flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-medium text-blue-700"
+                    >
+                      {t}
+                      <button
+                        type="button"
+                        aria-label={`${t} 제거`}
+                        onClick={() => {
+                          setAddedTags((a) => a.filter((x) => x !== t));
+                          setContributed(false);
+                        }}
+                        className="text-blue-400"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-3">
+                <label
+                  className="mb-1 block text-xs font-medium text-slate-500"
+                  htmlFor="add-symptom"
+                >
+                  빠진 증상 추가
+                </label>
+                <select
+                  id="add-symptom"
+                  value=""
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (!v) return;
+                    setAddedTags((a) => (a.includes(v) ? a : [...a, v]));
+                    setContributed(false);
+                  }}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-600"
+                >
+                  <option value="">증상 선택…</option>
+                  {SYMPTOMS.filter(
+                    (s) =>
+                      !matches.some((m) => m.label === s.label) &&
+                      !addedTags.includes(s.label),
+                  ).map((s) => (
+                    <option key={s.key} value={s.label}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {contributeError && (
+                <p className="mt-2 rounded-2xl bg-rose-50 px-4 py-3 text-xs text-rose-700">
+                  {contributeError}
+                </p>
+              )}
+
+              {contributed ? (
+                <div className="mt-3 flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  <span>데이터셋에 기여됐어요. 고마워요!</span>
+                  <Link to="/labels" className="font-semibold underline">
+                    라벨 현황
+                  </Link>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleContribute}
+                  className="mt-3 w-full rounded-full bg-blue-600 py-3 text-sm font-semibold text-white active:bg-blue-700"
+                >
+                  이 라벨 데이터셋에 기여
+                </button>
+              )}
+            </section>
           )}
 
           {query.trim().length > 0 && (
