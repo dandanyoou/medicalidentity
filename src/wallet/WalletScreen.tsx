@@ -300,44 +300,33 @@ export function WalletScreen() {
             )}
           </section>
 
-          {/* ───────── 빠른 작업: 환급 · 예약 · 수납 ───────── */}
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <Link
-              to="/checker"
-              className="relative overflow-hidden rounded-3xl bg-[var(--surface)] p-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
-            >
-              <div className="absolute inset-x-0 top-0 h-1 bg-[var(--refund)]" />
-              <div className="text-sm font-bold text-[var(--ink)]">환급</div>
-              <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">
-                병원비 돌려받기
-              </div>
-            </Link>
-            <Link
-              to="/booking"
-              className="relative overflow-hidden rounded-3xl bg-[var(--surface)] p-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
-            >
-              <div className="absolute inset-x-0 top-0 h-1 bg-[var(--ink)]" />
-              <div className="text-sm font-bold text-[var(--ink)]">
-                예약
-                <span className="ml-1 font-data text-[9px] font-medium text-[var(--ink-2)]">
-                  시연
-                </span>
-              </div>
-              <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">진료 예약</div>
-            </Link>
-            <Link
-              to="/billing"
-              className="relative overflow-hidden rounded-3xl bg-[var(--surface)] p-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
-            >
-              <div className="absolute inset-x-0 top-0 h-1 bg-[var(--ink)]" />
-              <div className="text-sm font-bold text-[var(--ink)]">
-                수납
-                <span className="ml-1 font-data text-[9px] font-medium text-[var(--ink-2)]">
-                  시연
-                </span>
-              </div>
-              <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">진료비 납부</div>
-            </Link>
+          {/* ───────── 빠른 작업: 환급 · 실손 · 예약 · 수납 ───────── */}
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            {[
+              { to: "/checker", title: "환급", desc: "병원비 돌려받기", accent: "refund" },
+              { to: "/insurance", title: "실손 청구", desc: "낸 병원비 보험 청구", accent: "refund", demo: true },
+              { to: "/booking", title: "예약", desc: "진료 예약", accent: "ink", demo: true },
+              { to: "/billing", title: "수납", desc: "진료비·진료기록", accent: "ink", demo: true },
+            ].map((a) => (
+              <Link
+                key={a.to}
+                to={a.to}
+                className="relative overflow-hidden rounded-3xl bg-[var(--surface)] p-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+              >
+                <div
+                  className={`absolute inset-x-0 top-0 h-1 ${a.accent === "refund" ? "bg-[var(--refund)]" : "bg-[var(--ink)]"}`}
+                />
+                <div className="text-sm font-bold text-[var(--ink)]">
+                  {a.title}
+                  {a.demo && (
+                    <span className="ml-1 font-data text-[9px] font-medium text-[var(--ink-2)]">
+                      시연
+                    </span>
+                  )}
+                </div>
+                <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">{a.desc}</div>
+              </Link>
+            ))}
           </div>
 
           {/* ───────── 가족 프리미엄 ───────── */}
