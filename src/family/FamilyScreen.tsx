@@ -8,6 +8,9 @@ import {
   type Relation,
   type FamilyMember,
 } from "./store";
+import { isPremium } from "../subscribe/plan";
+
+const FREE_LIMIT = 3; // 본인 포함 무료 3명까지, 이상은 프리미엄
 
 /**
  * 가족 관리 — 보호자가 부모·배우자·자녀의 의료 프로필을 등록/관리한다.
@@ -28,9 +31,14 @@ export function FamilyScreen() {
   const [rh, setRh] = useState<"+" | "-">("+");
   const [allergen, setAllergen] = useState("");
   const [medsText, setMedsText] = useState("");
+  const [gated, setGated] = useState(false);
 
   function handleAdd() {
     if (!name.trim()) return;
+    if (!isPremium() && members.length >= FREE_LIMIT) {
+      setGated(true);
+      return;
+    }
     addMember({
       name: name.trim(),
       relation,
@@ -111,6 +119,21 @@ export function FamilyScreen() {
               </div>
             ))}
           </div>
+
+          {gated && (
+            <Link
+              to="/subscribe"
+              className="mb-4 block rounded-2xl border-l-4 border-[var(--refund)] bg-[var(--surface)] px-4 py-3 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+            >
+              <p className="text-sm font-bold text-[var(--ink)]">
+                무료는 {FREE_LIMIT}명까지예요
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-[var(--ink-2)]">
+                가족 프리미엄(월 3,900원)으로 바꾸면 가족을 무제한 등록할 수 있어요.{" "}
+                <span className="font-bold text-[var(--refund-ink)]">구독하기 →</span>
+              </p>
+            </Link>
+          )}
 
           <section className="rounded-[28px] bg-[var(--surface)] p-5 shadow-[0_2px_24px_rgba(11,59,60,0.09)]">
             <h2 className="mb-4 text-sm font-extrabold text-[var(--ink)]">가족 추가</h2>

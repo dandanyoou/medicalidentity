@@ -33,6 +33,9 @@ const BillingScreen = lazy(() =>
 const FamilyScreen = lazy(() =>
   import("./family/FamilyScreen").then((m) => ({ default: m.FamilyScreen })),
 );
+const SubscribeScreen = lazy(() =>
+  import("./subscribe/SubscribeScreen").then((m) => ({ default: m.SubscribeScreen })),
+);
 
 // VC 루프 iter 4: fallback={null}이었을 때 /wallet·/doctor 진입 시 청크
 // 로딩 중 흰 화면이 깜빡였다(특히 느린 회선) — 최소한의 로딩 표시로 교체.
@@ -59,6 +62,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/booking" element={<BookingScreen />} />
           <Route path="/billing" element={<BillingScreen />} />
           <Route path="/family" element={<FamilyScreen />} />
+          <Route path="/subscribe" element={<SubscribeScreen />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

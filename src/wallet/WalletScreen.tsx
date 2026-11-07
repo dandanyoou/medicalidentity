@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { getPatientVCs, type PatientVCs } from "../data/patient-vcs";
 import { buildBundle, buildVPPayload } from "./bundle";
 import { listMembers, getMember, SELF_ID, type FamilyMember } from "../family/store";
+import { isPremium } from "../subscribe/plan";
 
 /**
  * 가족 환자 의료지갑 — 보호자(자녀)가 가족 구성원의 의료를 한 곳에서 관리.
@@ -338,6 +339,31 @@ export function WalletScreen() {
               <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">진료비 납부</div>
             </Link>
           </div>
+
+          {/* ───────── 가족 프리미엄 ───────── */}
+          <Link
+            to="/subscribe"
+            className="mt-4 flex items-center justify-between rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+          >
+            <div>
+              <p className="text-sm font-bold text-[var(--ink)]">
+                가족 프리미엄
+                {isPremium() && (
+                  <span className="ml-2 rounded-full bg-[var(--refund)]/12 px-2 py-0.5 font-data text-[10px] font-bold text-[var(--refund-ink)]">
+                    이용 중
+                  </span>
+                )}
+              </p>
+              <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">
+                {isPremium()
+                  ? "가족 무제한 · 환급 자동 알림이 켜져 있어요"
+                  : "가족 무제한 · 환급 자동 재확인 · 기록 백업 · 월 3,900원"}
+              </p>
+            </div>
+            <span className="font-data text-sm font-bold text-[var(--refund-ink)]">
+              {isPremium() ? "관리 →" : "구독 →"}
+            </span>
+          </Link>
 
           {/* ───────── 보조 ───────── */}
           <nav className="mt-6">
