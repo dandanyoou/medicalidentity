@@ -2,69 +2,29 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import QRCode from "qrcode";
 import { getPatientVCs, type PatientVCs } from "../data/patient-vcs";
-import { DEMO_HOLDER } from "../data/issuer-keys";
 import { buildBundle, buildVPPayload } from "./bundle";
+import { listMembers, getMember, SELF_ID, type FamilyMember } from "../family/store";
 
 /**
- * 환자 의료지갑 — 두 간판(응급 의료신원 + 의료비 환급)을 히어로로 세운 홈.
+ * 가족 환자 의료지갑 — 보호자(자녀)가 가족 구성원의 의료를 한 곳에서 관리.
  *
- *   PILLAR 1 응급 의료 신원증 (시그니처)   PILLAR 2 의료비 환급
- *   ┌ vital edge ───────────────┐          ┌ refund edge ─────────┐
- *   │ 혈액형 A+ · 알레르기        │          │ 낸 병원비 돌려받기     │
- *   │ [ 응급 공개 · QR 생성 ] ───►│ QR+VP    │ [ 내 환급액 확인 → ]   │
- *   └────────────────────────────┘          └──────────────────────┘
+ *   [ 본인 · 엄마 · 아빠 · + ]        ← 가족 전환
+ *   ┌ 응급 의료 신원증 (선택 구성원) ┐  신원 = vital(코랄)
+ *   │ 혈액형 · 알레르기 · 복용약       │  본인만 실제 QR 공개(SD-JWT VP)
+ *   └ [ 응급 공개 · QR ] ─────────────┘
+ *   [ 환급 ] [ 예약·시연 ] [ 수납·시연 ]  빠른 작업
  *
- * 응급 공개 시 혈액형 + 알레르기만 선택 공개(SD-JWT VP) — 이름·주민번호는 비공개.
+ * 예약·수납은 병원 연동이 없으므로 '시연'으로 명확히 표시한다(가짜로 되는 척 안 함).
  */
-
-// 응급 상황에서 의료진이 즉시 봐야 하는 핵심 정보(히어로 카드에 노출).
-const EMERGENCY = {
-  name: "김단유",
-  blood: "A",
-  rh: "+",
-  allergen: "페니실린",
-  severity: "중증",
-};
-
-// 지갑이 보유한 전체 자격증명(응급 공개 시 "보유 정보"로 펼침).
-const PATIENT_CARDS: VCCardProps[] = [
-  {
-    title: "모바일 운전면허증 (mDL)",
-    issuerLabel: "Korean mDL Reference Issuer (Demo)",
-    subtitle: "reference implementation, not gov-signed",
-    accent: "ink",
-    claims: [
-      ["이름", "김단유"],
-      ["주민번호", "940123-1******"],
-      ["생년월일", "1994-01-23"],
-      ["면허 등급", "1종 보통"],
-    ],
-  },
-  {
-    title: "혈액형 정보",
-    issuerLabel: "Demo Hospital Issuer",
-    accent: "vital",
-    claims: [
-      ["혈액형", "A형"],
-      ["Rh", "+"],
-    ],
-  },
-  {
-    title: "알레르기 정보",
-    issuerLabel: "Demo Hospital Issuer",
-    accent: "vital",
-    claims: [
-      ["알레르기", "페니실린"],
-      ["중증도", "중증"],
-      ["최종 갱신", "2026-03-10"],
-    ],
-  },
-];
-
 export function WalletScreen() {
   useEffect(() => {
-    document.title = "환자 의료지갑 — 신원 · 환급";
+    document.title = "가족 의료지갑 — 신원 · 환급 · 예약";
   }, []);
+
+  const members = listMembers();
+  const [selectedId, setSelectedId] = useState<string>(SELF_ID);
+  const selected: FamilyMember = getMember(selectedId) ?? members[0];
+  const isSelf = selected.id === SELF_ID;
 
   const [vcs, setVCs] = useState<PatientVCs | null>(null);
   const [emergencyOn, setEmergencyOn] = useState(false);
@@ -80,16 +40,14 @@ export function WalletScreen() {
       .catch((e) => setSeedError(`VC seed 실패: ${(e as Error).message}`));
   }, []);
 
+  // 실제 VP/QR은 본인(실제 VC 보유)만 생성한다.
   useEffect(() => {
-    if (!emergencyOn || !vcs) {
+    if (!emergencyOn || !isSelf || !vcs) {
       setQRDataUrl(null);
       setVpCompact(null);
       setQrError(null);
       return;
     }
-    // 토글을 빠르게 켬/끔/켬 하면 이전 비동기 VP 생성이 나중에 끝나면서
-    // 최신 상태를 덮어쓸 수 있다 — 이 effect 실행이 더 이상 "최신"이
-    // 아니게 되면 결과를 반영하지 않는다.
     let cancelled = false;
     (async () => {
       try {
@@ -102,7 +60,6 @@ export function WalletScreen() {
       } catch (e) {
         if (cancelled) return;
         const msg = (e as Error)?.message ?? String(e);
-        // QR overflow is recoverable — keep paste path alive.
         try {
           const compact = await buildVPPayload(vcs);
           if (cancelled) return;
@@ -119,7 +76,12 @@ export function WalletScreen() {
     return () => {
       cancelled = true;
     };
-  }, [emergencyOn, vcs]);
+  }, [emergencyOn, isSelf, vcs]);
+
+  function selectMember(id: string) {
+    setSelectedId(id);
+    setEmergencyOn(false); // 구성원을 바꾸면 응급 공개는 초기화
+  }
 
   const copy = () => {
     if (!vpCompact) return;
@@ -145,10 +107,10 @@ export function WalletScreen() {
         <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[var(--mist)] bg-[var(--paper)]/92 px-5 py-4 backdrop-blur">
           <div>
             <p className="font-data text-[10px] uppercase tracking-[0.22em] text-[var(--ink-2)]">
-              의료 신원 · 환급
+              가족 의료지갑
             </p>
             <h1 className="text-lg font-extrabold tracking-tight text-[var(--ink)]">
-              환자 의료지갑
+              우리 가족 의료
             </h1>
           </div>
           <Link
@@ -160,8 +122,39 @@ export function WalletScreen() {
           </Link>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-5 pb-10 pt-5">
-          {/* ───────── PILLAR 1 · 응급 의료 신원증 (시그니처) ───────── */}
+        <main className="flex-1 overflow-y-auto px-5 pb-10 pt-4">
+          {/* ───────── 가족 구성원 전환 ───────── */}
+          <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1">
+            {members.map((m) => {
+              const active = m.id === selected.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => selectMember(m.id)}
+                  aria-pressed={active}
+                  className={`flex-none rounded-full px-4 py-2 text-sm font-bold transition ${
+                    active
+                      ? "bg-[var(--ink)] text-white"
+                      : "border border-[var(--mist)] bg-[var(--surface)] text-[var(--ink-2)]"
+                  }`}
+                >
+                  {m.name}
+                  <span className="ml-1.5 text-[11px] font-medium opacity-70">
+                    {m.relation}
+                  </span>
+                </button>
+              );
+            })}
+            <Link
+              to="/family"
+              className="flex flex-none items-center rounded-full border border-dashed border-[var(--mist)] px-4 py-2 text-sm font-bold text-[var(--ink-2)] active:bg-[var(--surface)]"
+            >
+              + 가족
+            </Link>
+          </div>
+
+          {/* ───────── 응급 의료 신원증 (선택 구성원) ───────── */}
           <section className="relative overflow-hidden rounded-[28px] bg-[var(--surface)] shadow-[0_2px_24px_rgba(11,59,60,0.09)]">
             <div className="absolute inset-y-0 left-0 w-1.5 bg-[var(--vital)]" />
             <div className="px-5 py-5 pl-6">
@@ -172,15 +165,17 @@ export function WalletScreen() {
                     응급 의료 신원증
                   </span>
                 </div>
-                <span className="font-data text-[10px] text-[var(--ink-2)]">SD-JWT ✓</span>
+                <span className="font-data text-[10px] text-[var(--ink-2)]">
+                  {isSelf ? "SD-JWT ✓" : "시연 프로필"}
+                </span>
               </div>
 
               <h2 className="mt-3 text-[26px] font-extrabold leading-none tracking-tight text-[var(--ink)]">
-                {EMERGENCY.name}
+                {selected.name}
+                <span className="ml-2 align-middle text-sm font-bold text-[var(--ink-2)]">
+                  {selected.relation}
+                </span>
               </h2>
-              <p className="mt-1 font-data text-[11px] text-[var(--ink-2)]">
-                holder {DEMO_HOLDER.did.slice(0, 18)}…
-              </p>
 
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <div className="rounded-2xl bg-[var(--paper)] px-3.5 py-3">
@@ -188,8 +183,8 @@ export function WalletScreen() {
                     혈액형
                   </div>
                   <div className="font-data text-2xl font-bold leading-tight text-[var(--ink)]">
-                    {EMERGENCY.blood}
-                    <span className="text-[var(--vital)]">{EMERGENCY.rh}</span>
+                    {selected.blood}
+                    <span className="text-[var(--vital)]">{selected.rh}</span>
                   </div>
                 </div>
                 <div className="rounded-2xl bg-[var(--paper)] px-3.5 py-3">
@@ -197,32 +192,60 @@ export function WalletScreen() {
                     알레르기
                   </div>
                   <div className="font-data text-base font-bold leading-tight text-[var(--vital-ink)]">
-                    {EMERGENCY.allergen}
+                    {selected.allergen ?? "없음"}
                   </div>
-                  <div className="font-data text-[11px] text-[var(--vital-ink)]/80">
-                    {EMERGENCY.severity}
-                  </div>
+                  {selected.severity && (
+                    <div className="font-data text-[11px] text-[var(--vital-ink)]/80">
+                      {selected.severity}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <button
-                onClick={() => setEmergencyOn((v) => !v)}
-                aria-pressed={emergencyOn}
-                className={`mt-4 w-full rounded-2xl py-3.5 text-base font-bold tracking-tight text-white transition ${
-                  emergencyOn
-                    ? "bg-[var(--ink)] active:brightness-110"
-                    : "bg-[var(--vital)] active:brightness-95"
-                }`}
-              >
-                {emergencyOn ? "공개 중단" : "응급 공개 · QR 생성"}
-              </button>
-              <p className="mt-2 text-center text-[11px] leading-relaxed text-[var(--ink-2)]">
-                혈액형 + 알레르기만 공개합니다. 이름·주민번호·주소는 공개되지 않아요.
-              </p>
+              {selected.meds && selected.meds.length > 0 && (
+                <div className="mt-3">
+                  <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-2)]">
+                    복용 중인 약
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selected.meds.map((m) => (
+                      <span
+                        key={m}
+                        className="rounded-full bg-[var(--paper)] px-2.5 py-1 font-data text-[11px] font-medium text-[var(--ink)]"
+                      >
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {isSelf ? (
+                <>
+                  <button
+                    onClick={() => setEmergencyOn((v) => !v)}
+                    aria-pressed={emergencyOn}
+                    className={`mt-4 w-full rounded-2xl py-3.5 text-base font-bold tracking-tight text-white transition ${
+                      emergencyOn
+                        ? "bg-[var(--ink)] active:brightness-110"
+                        : "bg-[var(--vital)] active:brightness-95"
+                    }`}
+                  >
+                    {emergencyOn ? "공개 중단" : "응급 공개 · QR 생성"}
+                  </button>
+                  <p className="mt-2 text-center text-[11px] leading-relaxed text-[var(--ink-2)]">
+                    혈액형 + 알레르기만 공개합니다. 이름·주민번호·주소는 공개되지 않아요.
+                  </p>
+                </>
+              ) : (
+                <p className="mt-4 rounded-2xl bg-[var(--paper)] px-4 py-3 text-center text-xs leading-relaxed text-[var(--ink-2)]">
+                  가족 데모 프로필입니다. 실제 응급 QR(SD-JWT 서명)은 본인 프로필에서만
+                  생성됩니다. 가족 구성원의 실제 발급은 추후 병원·기관 연동으로 열립니다.
+                </p>
+              )}
             </div>
 
-            {/* 응급 공개 중 — 의료진이 바로 볼 QR을 카드 하단에 펼친다. */}
-            {emergencyOn && (
+            {isSelf && emergencyOn && (
               <div className="animate-reveal-in border-t border-[var(--mist)] px-5 py-5 pl-6">
                 {qrDataUrl && (
                   <div>
@@ -267,14 +290,6 @@ export function WalletScreen() {
                     >
                       {copied ? "복사됨" : "VP 페이로드 복사"}
                     </button>
-                    <details className="text-xs text-[var(--ink-2)]">
-                      <summary className="cursor-pointer select-none font-semibold text-[var(--refund-ink)]">
-                        SD-JWT VP 페이로드 ({new TextEncoder().encode(vpCompact).length} bytes)
-                      </summary>
-                      <pre className="mt-1.5 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-[var(--paper)] p-3 font-data text-[10px]">
-                        {vpCompact}
-                      </pre>
-                    </details>
                   </div>
                 )}
 
@@ -285,29 +300,49 @@ export function WalletScreen() {
             )}
           </section>
 
-          {/* ───────── PILLAR 2 · 의료비 환급 ───────── */}
-          <Link
-            to="/checker"
-            className="group relative mt-4 block overflow-hidden rounded-[28px] bg-[var(--surface)] shadow-[0_2px_24px_rgba(11,59,60,0.09)]"
-          >
-            <div className="absolute inset-y-0 left-0 w-1.5 bg-[var(--refund)]" />
-            <div className="px-5 py-5 pl-6">
-              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--refund-ink)]">
-                숨은 의료비 환급
-              </span>
-              <p className="mt-2 text-xl font-extrabold leading-snug tracking-tight text-[var(--ink)]">
-                낸 병원비, 돌려받을 수 있어요
-              </p>
-              <p className="mt-1.5 text-sm leading-relaxed text-[var(--ink-2)]">
-                본인부담상한제 초과분을 1분 안에 확인. 소득분위와 금액만 입력하면
-                돼요.
-              </p>
-              <span className="mt-3 inline-flex items-center gap-1.5 font-data text-sm font-bold text-[var(--refund-ink)]">
-                내 환급액 확인
-                <span className="transition-transform group-active:translate-x-0.5">→</span>
-              </span>
-            </div>
-          </Link>
+          {/* ───────── 빠른 작업: 환급 · 예약 · 수납 ───────── */}
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <Link
+              to="/checker"
+              className="relative overflow-hidden rounded-3xl bg-[var(--surface)] p-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+            >
+              <div className="absolute inset-x-0 top-0 h-1 bg-[var(--refund)]" />
+              <div className="text-sm font-bold text-[var(--ink)]">환급</div>
+              <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">
+                병원비 돌려받기
+              </div>
+            </Link>
+            <Link
+              to="/booking"
+              className="relative overflow-hidden rounded-3xl bg-[var(--surface)] p-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+            >
+              <div className="absolute inset-x-0 top-0 h-1 bg-[var(--ink)]" />
+              <div className="text-sm font-bold text-[var(--ink)]">
+                예약
+                <span className="ml-1 font-data text-[9px] font-medium text-[var(--ink-2)]">
+                  시연
+                </span>
+              </div>
+              <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">
+                진료 예약
+              </div>
+            </Link>
+            <Link
+              to="/billing"
+              className="relative overflow-hidden rounded-3xl bg-[var(--surface)] p-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+            >
+              <div className="absolute inset-x-0 top-0 h-1 bg-[var(--ink)]" />
+              <div className="text-sm font-bold text-[var(--ink)]">
+                수납
+                <span className="ml-1 font-data text-[9px] font-medium text-[var(--ink-2)]">
+                  시연
+                </span>
+              </div>
+              <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">
+                진료비 납부
+              </div>
+            </Link>
+          </div>
 
           {/* ───────── 보조 ───────── */}
           <nav className="mt-6">
@@ -330,62 +365,7 @@ export function WalletScreen() {
               ))}
             </div>
           </nav>
-
-          {/* 응급 공개 중에만 전체 보유 정보를 펼친다(평소엔 숨겨 홈을 깔끔하게). */}
-          {emergencyOn && (
-            <div className="mt-6">
-              <p className="mb-2 px-1 font-data text-[10px] uppercase tracking-[0.2em] text-[var(--ink-2)]">
-                보유 정보 · QR엔 혈액형·알레르기만 포함
-              </p>
-              <div className="flex flex-col gap-3 md:grid md:grid-cols-2">
-                {PATIENT_CARDS.map((card) => (
-                  <VCCard key={card.title} {...card} />
-                ))}
-              </div>
-            </div>
-          )}
         </main>
-      </div>
-    </div>
-  );
-}
-
-interface VCCardProps {
-  title: string;
-  issuerLabel: string;
-  subtitle?: string;
-  claims: [string, string][];
-  accent: "ink" | "vital" | "refund";
-}
-
-function VCCard({ title, issuerLabel, subtitle, claims, accent }: VCCardProps) {
-  const edge = {
-    ink: "bg-[var(--ink)]",
-    vital: "bg-[var(--vital)]",
-    refund: "bg-[var(--refund)]",
-  }[accent];
-
-  return (
-    <div className="relative overflow-hidden rounded-3xl bg-[var(--surface)] shadow-[0_1px_12px_rgba(11,59,60,0.07)]">
-      <div className={`absolute inset-y-0 left-0 w-1 ${edge}`} />
-      <div className="p-4 pl-5">
-        <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
-          <h3 className="truncate text-sm font-bold text-[var(--ink)]">{title}</h3>
-          <span className="max-w-[55%] flex-none truncate rounded-full bg-[var(--paper)] px-2 py-0.5 font-data text-[10px] text-[var(--ink-2)]">
-            {issuerLabel}
-          </span>
-        </div>
-        {subtitle && (
-          <p className="mt-0.5 text-[10px] italic text-[var(--ink-2)]">{subtitle}</p>
-        )}
-        <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-[var(--ink)]">
-          {claims.map(([k, v]) => (
-            <div key={k} className="contents">
-              <dt className="text-[var(--ink-2)]">{k}</dt>
-              <dd className="font-data font-medium">{v}</dd>
-            </div>
-          ))}
-        </dl>
       </div>
     </div>
   );
