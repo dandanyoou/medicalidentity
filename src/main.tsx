@@ -7,6 +7,7 @@ import { CheckerScreen } from "./checker/CheckerScreen";
 import { TabBar } from "./shell/TabBar";
 import { hasSeenOnboarding } from "./shell/onboarding";
 import { captureInstallPrompt } from "./shell/installPrompt";
+import { ChunkErrorBoundary } from "./shell/ChunkErrorBoundary";
 
 // beforeinstallprompt는 아주 이른 시점에 오므로 렌더 전에 붙잡아 둔다(더보기 → 설치 버튼).
 captureInstallPrompt();
@@ -84,6 +85,7 @@ function RouteLoadingFallback() {
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
+      <ChunkErrorBoundary>
       <Suspense fallback={<RouteLoadingFallback />}>
         <Routes>
           <Route path="/" element={<RootRedirect />} />
@@ -105,6 +107,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="*" element={<Navigate to="/wallet" replace />} />
         </Routes>
       </Suspense>
+      </ChunkErrorBoundary>
       <TabBar />
     </BrowserRouter>
     <Analytics />

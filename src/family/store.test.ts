@@ -37,6 +37,28 @@ describe("family store", () => {
     expect(getMember(added.id)?.name).toBe("김복순");
   });
 
+  it("저장된 가족 중 형태가 깨진 항목은 빼고, 본인은 항상 상수로 맨 앞에 둔다", () => {
+    localStorage.setItem(
+      "medid.family.v1",
+      JSON.stringify([
+        { id: "a" }, // 이름 없음
+        { id: "b", name: 3, relation: "부모", blood: "A", rh: "+" }, // 이름이 문자열 아님
+        { id: SELF_ID, name: "위조", relation: "본인", blood: "O", rh: "-" },
+        { id: "c", name: "홍길동", relation: "자녀", blood: "B", rh: "-" },
+      ]),
+    );
+    const members = listMembers();
+    expect(members.map((m) => m.id)).toEqual([SELF_ID, "c"]);
+    expect(members[0].name).toBe("김단유");
+  });
+
+  it("저장된 값이 배열이 아니거나 JSON이 아니면 본인만 남는다", () => {
+    localStorage.setItem("medid.family.v1", "{}");
+    expect(listMembers().map((m) => m.id)).toEqual([SELF_ID]);
+    localStorage.setItem("medid.family.v1", "{not json");
+    expect(listMembers().map((m) => m.id)).toEqual([SELF_ID]);
+  });
+
   it("추가한 가족은 삭제되지만 본인은 삭제되지 않는다", () => {
     const added = addMember({ name: "홍길동", relation: "자녀", blood: "B", rh: "-" });
     removeMember(added.id);

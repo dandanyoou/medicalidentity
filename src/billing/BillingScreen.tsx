@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { listVisits, unpaidVisits, payVisit, type Visit } from "../visits/store";
+import { listVisits, unpaidVisits, payVisit, isUnpaid, type Visit } from "../visits/store";
 import { CountUp } from "../shell/CountUp";
 import { Stepper } from "../shell/Stepper";
 import { BottomSheet } from "../shell/BottomSheet";
@@ -8,6 +8,12 @@ import { BottomSheet } from "../shell/BottomSheet";
 // 방문 진행 상태 — 예약 → 방문 → 수납.
 const VISIT_STEPS = [{ label: "예약" }, { label: "방문" }, { label: "수납" }];
 const VISIT_STEP_INDEX: Record<Visit["status"], number> = { 예약: 0, 수납대기: 1, 완료: 2 };
+// 카드 배지 — paid 여부가 아니라 상태로 정한다(예약은 미납이 아니다).
+const STATUS_BADGE: Record<Visit["status"], { label: string; cls: string }> = {
+  예약: { label: "예약", cls: "bg-[var(--ink)]/8 text-[var(--ink)]" },
+  수납대기: { label: "수납대기", cls: "bg-[var(--vital)]/12 text-[var(--vital-ink)]" },
+  완료: { label: "수납완료", cls: "bg-[var(--refund)]/12 text-[var(--refund-ink)]" },
+};
 
 /**
  * 수납 · 진료기록 — 시연(데모).
@@ -184,7 +190,11 @@ function VisitCard({
     <div className="relative overflow-hidden rounded-3xl bg-[var(--surface)] shadow-[0_1px_12px_rgba(11,59,60,0.07)]">
       <div
         className={`absolute inset-y-0 left-0 w-1 ${
-          visit.paid ? "bg-[var(--refund)]" : "bg-[var(--vital)]"
+          visit.status === "수납대기"
+            ? "bg-[var(--vital)]"
+            : visit.status === "예약"
+              ? "bg-[var(--ink)]"
+              : "bg-[var(--refund)]"
         }`}
       />
       <button
@@ -205,13 +215,9 @@ function VisitCard({
               {won(visit.amount)}
             </p>
             <span
-              className={`mt-1 inline-block rounded-full px-2 py-0.5 font-data text-[10px] font-bold ${
-                visit.paid
-                  ? "bg-[var(--refund)]/12 text-[var(--refund-ink)]"
-                  : "bg-[var(--vital)]/12 text-[var(--vital-ink)]"
-              }`}
+              className={`mt-1 inline-block rounded-full px-2 py-0.5 font-data text-[10px] font-bold ${STATUS_BADGE[visit.status].cls}`}
             >
-              {visit.paid ? "수납완료" : "수납대기"}
+              {STATUS_BADGE[visit.status].label}
             </span>
           </div>
         </div>
@@ -252,7 +258,7 @@ function VisitCard({
             )}
           </Section>
 
-          {!visit.paid && (
+          {isUnpaid(visit) && (
             <button
               type="button"
               onClick={onPay}

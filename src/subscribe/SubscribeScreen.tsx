@@ -1,7 +1,13 @@
-import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { FAMILY_PREMIUM, isPremium, setPremium } from "./plan";
-import { isPaymentConfigured, startCheckout, PaymentNotConfiguredError } from "./payment";
+import {
+  isPaymentConfigured,
+  startCheckout,
+  PaymentNotConfiguredError,
+  readPendingOrder,
+  clearPendingOrder,
+} from "./payment";
 
 function won(n: number) {
   return `${n.toLocaleString("ko-KR")}원`;
@@ -22,39 +28,70 @@ export function SubscribeScreen() {
   }, []);
 
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const status = params.get("status");
   const [premium, setPremiumState] = useState(isPremium());
   const [confirm, setConfirm] = useState<Confirm>("idle");
   const [confirmMsg, setConfirmMsg] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  // 결제 후 successUrl로 돌아오면 서버에서 승인한다.
+  // 같은 성공 URL에 대해 승인 요청은 한 번만(StrictMode 이중 실행·재렌더 방지).
+  const confirmedFor = useRef<string | null>(null);
+
+  // 결제 후 successUrl/failUrl로 돌아오면 처리한다.
   useEffect(() => {
+    if (status === "fail") {
+      setConfirm("error");
+      setConfirmMsg(params.get("message") ?? "결제가 완료되지 않았어요. 다시 시도해 주세요.");
+      return;
+    }
     if (status !== "success") return;
+    if (isPremium()) return; // 이미 승인됨 — 새로고침·뒤로가기로 다시 와도 재승인하지 않는다.
+
     const paymentKey = params.get("paymentKey");
     const orderId = params.get("orderId");
-    const amount = params.get("amount");
+    const amount = Number(params.get("amount"));
     if (!paymentKey || !orderId || !amount) return;
+    if (confirmedFor.current === orderId) return;
+    confirmedFor.current = orderId;
+
+    // 이 기기에서 연 결제창의 주문인지 대조 — 위조·재사용된 성공 URL은 승인하지 않는다.
+    const pending = readPendingOrder();
+    if (!pending || pending.orderId !== orderId || pending.amount !== amount) {
+      setConfirm("error");
+      setConfirmMsg("이 기기에서 시작한 결제가 아니에요. 구독 화면에서 다시 결제해 주세요.");
+      return;
+    }
 
     setConfirm("confirming");
     fetch("/api/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ paymentKey, orderId, amount: Number(amount) }),
+      body: JSON.stringify({ paymentKey, orderId, amount }),
     })
       .then(async (res) => {
-        if (res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const approved =
+          res.ok &&
+          body?.status === "DONE" &&
+          body?.orderId === orderId &&
+          Number(body?.totalAmount) === pending.amount;
+        if (approved) {
+          clearPendingOrder();
           setPremium(true);
           setPremiumState(true);
           setConfirm("ok");
-        } else {
-          const body = await res.json().catch(() => ({}));
-          setConfirm("error");
-          setConfirmMsg(
-            body?.message ??
-              "결제 승인 서버(/api/confirm)가 아직 설정되지 않았습니다. Vercel에 TOSS_SECRET_KEY를 넣고 재배포하면 승인됩니다.",
-          );
+          // 결제 키가 주소창·방문 기록에 남지 않게 쿼리를 지운다.
+          navigate("/subscribe", { replace: true });
+          return;
         }
+        setConfirm("error");
+        setConfirmMsg(
+          res.ok
+            ? "승인 결과를 확인하지 못했어요. 결제 내역을 확인한 뒤 다시 시도해 주세요."
+            : (body?.message ??
+                "결제 승인 서버(/api/confirm)가 아직 설정되지 않았습니다. Vercel에 TOSS_SECRET_KEY를 넣고 재배포하면 승인됩니다."),
+        );
       })
       .catch(() => {
         setConfirm("error");
@@ -62,7 +99,7 @@ export function SubscribeScreen() {
           "승인 요청에 실패했습니다. 결제 승인 서버리스 함수(/api/confirm)가 배포돼 있어야 합니다.",
         );
       });
-  }, [status, params]);
+  }, [status, params, navigate]);
 
   async function handleSubscribe() {
     setCheckoutError(null);

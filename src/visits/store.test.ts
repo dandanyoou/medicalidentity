@@ -34,6 +34,48 @@ describe("visits store", () => {
     expect(unpaidVisits("self").some((v) => v.id === target.id)).toBe(false);
   });
 
+  it("예약(진료 전)은 미납이 아니다", () => {
+    const before = unpaidVisits("self").length;
+    addVisit({
+      memberId: "self",
+      hospital: "세브란스병원",
+      dept: "내과",
+      date: "2026-12-01",
+      reason: "복통",
+      amount: 0,
+      paid: false,
+      status: "예약",
+    });
+    expect(unpaidVisits("self")).toHaveLength(before);
+    expect(unpaidVisits("self").every((v) => v.status === "수납대기")).toBe(true);
+  });
+
+  it("저장된 값에 형태가 깨진 항목이 있으면 그 항목만 뺀다", () => {
+    const good = {
+      id: "v-ok",
+      memberId: "self",
+      hospital: "서울대학교병원",
+      dept: "내과",
+      date: "2026-11-01",
+      reason: "기침",
+      amount: 10000,
+      paid: false,
+      status: "수납대기",
+    };
+    localStorage.setItem(
+      "medid.visits.v1",
+      JSON.stringify([{ id: "broken" }, { ...good, id: "v-nan", amount: "만원" }, good]),
+    );
+    const all = listVisits();
+    expect(all.map((v) => v.id)).toEqual(["v-ok"]);
+    expect(unpaidVisits().reduce((s, v) => s + v.amount, 0)).toBe(10000);
+  });
+
+  it("저장된 값이 JSON이 아니면 시드로 돌아간다", () => {
+    localStorage.setItem("medid.visits.v1", "{not json");
+    expect(listVisits("self").length).toBeGreaterThan(0);
+  });
+
   it("방문을 추가하면 목록에 들어간다(예약 생성 등)", () => {
     const added = addVisit({
       memberId: "self",

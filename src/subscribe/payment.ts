@@ -21,6 +21,43 @@ export class PaymentNotConfiguredError extends Error {
   }
 }
 
+/**
+ * 이 기기에서 연 결제창의 주문 — 결제 후 successUrl로 돌아왔을 때 "내가 시작한
+ * 주문인지"를 대조한다. 위조·재사용된 성공 URL로는 승인 요청을 보내지 않는다.
+ */
+export interface PendingOrder {
+  orderId: string;
+  amount: number;
+}
+const PENDING_KEY = "medid.pendingOrder.v1";
+
+export function savePendingOrder(order: PendingOrder): void {
+  try {
+    sessionStorage.setItem(PENDING_KEY, JSON.stringify(order));
+  } catch {
+    /* no-op */
+  }
+}
+
+export function readPendingOrder(): PendingOrder | null {
+  try {
+    const raw = sessionStorage.getItem(PENDING_KEY);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    return typeof o?.orderId === "string" && typeof o?.amount === "number" ? o : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPendingOrder(): void {
+  try {
+    sessionStorage.removeItem(PENDING_KEY);
+  } catch {
+    /* no-op */
+  }
+}
+
 export function isPaymentConfigured(): boolean {
   return typeof CLIENT_KEY === "string" && CLIENT_KEY.length > 0;
 }
@@ -38,6 +75,7 @@ export async function startCheckout(opts: {
   const payment = toss.payment({ customerKey: ANONYMOUS });
 
   const orderId = `sub_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  savePendingOrder({ orderId, amount: opts.amount });
   await payment.requestPayment({
     method: "CARD",
     amount: { currency: "KRW", value: opts.amount },

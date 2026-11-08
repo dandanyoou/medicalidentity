@@ -17,6 +17,18 @@ export function slotToTime(slot: string): string {
   return `${m[1].padStart(2, "0")}${m[2]}`;
 }
 
+/**
+ * "오늘/내일/모레 HH:MM" → 로컬 달력 날짜 YYYY-MM-DD.
+ * toISOString()은 UTC 날짜라 한국 시간 오전 9시 전에는 하루 전으로 나온다 — 쓰지 않는다.
+ */
+export function slotToDate(slot: string, now: Date = new Date()): string {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (slot.startsWith("내일")) d.setDate(d.getDate() + 1);
+  else if (slot.startsWith("모레")) d.setDate(d.getDate() + 2);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 function escapeText(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 }

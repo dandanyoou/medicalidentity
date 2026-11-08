@@ -51,14 +51,32 @@ const SELF: FamilyMember = {
 
 type StoredMember = Omit<FamilyMember, "isSelf">;
 
+const STORED_RELATIONS: readonly Relation[] = ["부모", "배우자", "자녀", "형제", "기타"];
+
+/** 화면이 바로 쓰는 필드만이라도 형태가 맞는지 — 깨진 항목 하나로 홈이 흰 화면이 되지 않게. */
+function isStoredMember(v: unknown): v is StoredMember {
+  if (!v || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+  return (
+    typeof o.id === "string" &&
+    o.id !== SELF_ID &&
+    typeof o.name === "string" &&
+    o.name.trim().length > 0 &&
+    STORED_RELATIONS.includes(o.relation as Relation) &&
+    typeof o.blood === "string" &&
+    (o.rh === "+" || o.rh === "-") &&
+    (o.meds === undefined || (Array.isArray(o.meds) && o.meds.every((x) => typeof x === "string")))
+  );
+}
+
 function read(): FamilyMember[] {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return [SELF];
-    const parsed = JSON.parse(raw) as StoredMember[];
+    const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return [SELF];
-    // 본인은 항상 목록 맨 앞에 유지한다.
-    const others = parsed.filter((m) => m.id !== SELF_ID);
+    // 본인은 항상 상수로 맨 앞에 둔다(저장소의 'self' 항목은 무시).
+    const others = parsed.filter(isStoredMember);
     return [SELF, ...others.map((m) => ({ ...m }))];
   } catch {
     return [SELF];

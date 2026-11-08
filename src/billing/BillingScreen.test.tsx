@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { BillingScreen } from "./BillingScreen";
-import { resetVisits } from "../visits/store";
+import { addVisit, resetVisits } from "../visits/store";
 
 beforeEach(() => resetVisits());
 afterEach(() => {
@@ -21,6 +21,28 @@ describe("BillingScreen (수납 · 진료기록 · 시연)", () => {
     expect(screen.getAllByText(/시연/).length).toBeGreaterThan(0);
     expect(screen.getByText(/실제 결제가 아닙니다/)).toBeTruthy();
     expect(screen.getByText("미납 2건")).toBeTruthy();
+  });
+
+  it("예약은 미납으로 세지 않고, 예약 배지를 달며 수납 버튼이 없다", () => {
+    addVisit({
+      memberId: "self",
+      hospital: "세브란스병원",
+      dept: "가정의학과",
+      date: "2099-01-01",
+      reason: "머리가 아파요",
+      amount: 0,
+      paid: false,
+      status: "예약",
+    });
+    render(
+      <MemoryRouter>
+        <BillingScreen />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("미납 2건")).toBeTruthy();
+    expect(screen.getByText("예약")).toBeTruthy(); // 접힌 카드의 상태 배지
+    fireEvent.click(screen.getByText("머리가 아파요"));
+    expect(screen.queryByRole("button", { name: /수납하기/ })).toBeNull();
   });
 
   it("방문을 펼쳐 소견서·처방전을 보고, 수납하면 미납 수가 준다", () => {

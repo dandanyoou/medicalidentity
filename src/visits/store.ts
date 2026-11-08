@@ -83,13 +83,33 @@ const SEED: Visit[] = [
   },
 ];
 
+const STATUSES: readonly VisitStatus[] = ["예약", "수납대기", "완료"];
+
+function isVisit(v: unknown): v is Visit {
+  if (!v || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+  return (
+    typeof o.id === "string" &&
+    typeof o.memberId === "string" &&
+    typeof o.hospital === "string" &&
+    typeof o.dept === "string" &&
+    typeof o.date === "string" &&
+    typeof o.reason === "string" &&
+    typeof o.amount === "number" &&
+    Number.isFinite(o.amount) &&
+    typeof o.paid === "boolean" &&
+    STATUSES.includes(o.status as VisitStatus)
+  );
+}
+
 function read(): Visit[] {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return [...SEED];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [...SEED];
-    return parsed as Visit[];
+    // 형태가 깨진 항목 하나 때문에 화면 전체가 죽거나 "NaN원"이 뜨지 않게 걸러낸다.
+    return parsed.filter(isVisit);
   } catch {
     return [...SEED];
   }
@@ -113,8 +133,16 @@ export function getVisit(id: string): Visit | undefined {
   return read().find((v) => v.id === id);
 }
 
+/**
+ * 미납 = 진료를 받고 수납을 기다리는 방문(status "수납대기").
+ * 예약(진료 전)은 paid가 false여도 미납이 아니다 — 홈·수납 화면이 이 한 규칙을 쓴다.
+ */
+export function isUnpaid(v: Visit): boolean {
+  return v.status === "수납대기";
+}
+
 export function unpaidVisits(memberId?: string): Visit[] {
-  return listVisits(memberId).filter((v) => !v.paid);
+  return listVisits(memberId).filter(isUnpaid);
 }
 
 export function addVisit(input: Omit<Visit, "id">): Visit {

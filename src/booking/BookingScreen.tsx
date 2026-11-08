@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { searchSymptoms } from "../symptom-info/data";
 import { addVisit } from "../visits/store";
 import { Stepper } from "../shell/Stepper";
-import { downloadICS, slotToTime } from "./ics";
+import { downloadICS, slotToDate, slotToTime } from "./ics";
 
 // 예약 진행 단계(상단) · 완료 후 방문 타임라인(완료 카드).
 const FLOW_STEPS = [{ label: "증상" }, { label: "병원" }, { label: "시간" }];
@@ -32,13 +32,6 @@ const DEMO_SLOTS = ["오늘 15:30", "내일 10:00", "내일 14:00", "모레 09:3
 const MEMBER = "self";
 
 type Step = "symptom" | "hospital" | "time" | "done";
-
-function slotToDate(slot: string): string {
-  const d = new Date();
-  if (slot.startsWith("내일")) d.setDate(d.getDate() + 1);
-  else if (slot.startsWith("모레")) d.setDate(d.getDate() + 2);
-  return d.toISOString().slice(0, 10);
-}
 
 export function BookingScreen() {
   useEffect(() => {

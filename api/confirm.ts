@@ -8,6 +8,11 @@
 //
 // 참고: 이 파일은 Vercel이 별도 Node 런타임으로 빌드한다(앱 번들과 무관).
 
+import { FAMILY_PREMIUM } from "../src/subscribe/plan";
+
+/** startCheckout이 만드는 주문번호 형식(토스 허용 문자 6~64자 안). */
+const ORDER_ID_PATTERN = /^sub_[A-Za-z0-9_-]{6,60}$/;
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
@@ -25,8 +30,23 @@ export default async function handler(req: any, res: any) {
   }
 
   const { paymentKey, orderId, amount } = req.body ?? {};
-  if (!paymentKey || !orderId || !amount) {
-    res.status(400).json({ message: "paymentKey·orderId·amount가 필요합니다." });
+  if (!paymentKey || !orderId || amount === undefined || amount === null || amount === "") {
+    res.status(400).json({ code: "INVALID_REQUEST", message: "paymentKey·orderId·amount가 필요합니다." });
+    return;
+  }
+
+  // 토스 가이드: 승인 전에 서버가 아는 주문 금액과 대조해야 한다. 클라이언트가
+  // 보낸 금액을 그대로 승인하면 100원으로 결제창을 열어도 승인된다.
+  if (
+    typeof paymentKey !== "string" ||
+    typeof orderId !== "string" ||
+    !ORDER_ID_PATTERN.test(orderId)
+  ) {
+    res.status(400).json({ code: "INVALID_ORDER", message: "주문 정보가 올바르지 않습니다." });
+    return;
+  }
+  if (Number(amount) !== FAMILY_PREMIUM.priceMonthly) {
+    res.status(400).json({ code: "AMOUNT_MISMATCH", message: "결제 금액이 플랜 가격과 다릅니다." });
     return;
   }
 
