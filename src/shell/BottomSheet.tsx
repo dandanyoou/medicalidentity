@@ -42,7 +42,7 @@ export function BottomSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="animate-sheet-up relative w-full max-w-md rounded-t-[28px] bg-[var(--surface)] px-5 pb-6 pt-3 shadow-[0_-12px_40px_rgba(11,59,60,0.22)] md:max-w-xl"
+        className="animate-sheet-up relative max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-[28px] bg-[var(--surface)] px-5 pb-6 pt-3 shadow-[0_-12px_40px_rgba(11,59,60,0.22)] md:max-w-xl"
         style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[var(--mist)]" aria-hidden="true" />

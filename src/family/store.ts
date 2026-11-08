@@ -8,6 +8,8 @@
  * 추가 가족은 데모 프로필(실제 발급 서명 없음) — UI에서 '시연'으로 표시한다.
  */
 
+import type { ProofMethod } from "./verify";
+
 const KEY = "medid.family.v1";
 export const SELF_ID = "self";
 
@@ -23,6 +25,15 @@ export interface FamilyMember {
   severity?: string;
   meds?: string[]; // 복용 중인 약 — 응급 시 중요
   isSelf?: boolean; // 실제 VC 보유자(본인)
+  phone?: string; // 숫자만 — 회원 대조·중복 확인용
+  /** 가족 증명 — 어떤 서류로 확인했는지. 원본·주민번호는 저장하지 않는다. */
+  verification?: {
+    method: ProofMethod;
+    docRef?: string; // 가린 문서확인번호(온라인 증명서)
+    verifiedAt: number;
+  };
+  /** 서비스 회원이면 연결 요청(상대 수락 대기), 아니면 보호자 관리 프로필. */
+  link?: { status: "연결 요청됨" | "관리 프로필"; userId?: string };
 }
 
 // 지갑의 기존 데모 신원과 일치하는 본인 프로필(실제 VC 보유자).
