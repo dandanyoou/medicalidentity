@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { SubscribeScreen } from "./SubscribeScreen";
 import { clearPremium, isPremium, setPremium } from "./plan";
@@ -34,6 +34,14 @@ describe("SubscribeScreen (가족 프리미엄)", () => {
     expect(screen.getAllByText(/가족 프리미엄/).length).toBeGreaterThan(0);
     expect(screen.getByText(/3,900원/)).toBeTruthy();
     expect(screen.getByText(/가족 구성원 무제한 등록/)).toBeTruthy();
+  });
+
+  it("해지·환불(청약철회 7일)·자동결제 없음을 결제 전에 알리고 약관으로 연결한다", () => {
+    renderAt();
+    const notice = screen.getByRole("region", { name: "해지·환불 안내" });
+    expect(within(notice).getByText(/7일 이내/)).toBeTruthy();
+    expect(within(notice).getByText(/자동으로 결제되지 않/)).toBeTruthy();
+    expect(within(notice).getByRole("link", { name: /이용약관/ }).getAttribute("href")).toBe("/terms");
   });
 
   it("결제 키가 없으면 가짜 결제 대신 연동 설정 안내를 보여준다", () => {

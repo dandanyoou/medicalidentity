@@ -147,12 +147,31 @@ export function MoreScreen() {
             ) : null}
           </section>
 
+          <section className="mb-5">
+            <p className="mb-2 px-1 font-data text-[10px] uppercase tracking-[0.2em] text-[var(--ink-2)]">
+              약관·정책
+            </p>
+            <div className="overflow-hidden rounded-3xl bg-[var(--surface)] shadow-[0_1px_12px_rgba(11,59,60,0.07)]">
+              <Link to="/terms" className="flex items-center justify-between px-5 py-4 transition active:bg-[var(--paper)]">
+                <p className="text-sm font-bold text-[var(--ink)]">이용약관</p>
+                <span className="text-[var(--ink-2)]">›</span>
+              </Link>
+              <Link
+                to="/privacy"
+                className="flex items-center justify-between border-t border-[var(--mist)] px-5 py-4 transition active:bg-[var(--paper)]"
+              >
+                <p className="text-sm font-bold text-[var(--ink)]">개인정보처리방침</p>
+                <span className="text-[var(--ink-2)]">›</span>
+              </Link>
+            </div>
+          </section>
+
           <section className="rounded-3xl bg-[var(--surface)] px-5 py-4 text-[11px] leading-relaxed text-[var(--ink-2)] shadow-[0_1px_12px_rgba(11,59,60,0.07)]">
             <p className="font-data text-[10px] uppercase tracking-[0.2em]">앱 정보</p>
             <p className="mt-1 text-[var(--ink)]">가족 의료지갑 · v0.1.0</p>
             <p className="mt-2">
-              모든 데이터는 이 기기에만 저장되며 서버로 전송되지 않습니다. "시연" 표시 기능은
-              병원·보험사·결제 연동 전의 흐름 미리보기입니다.
+              건강 정보는 이 기기에만 저장되며 서버로 전송되지 않습니다(결제 시 주문번호·금액만
+              토스페이먼츠로). "시연" 표시 기능은 병원·보험사·결제 연동 전의 흐름 미리보기입니다.
             </p>
           </section>
         </main>

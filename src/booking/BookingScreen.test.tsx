@@ -156,5 +156,7 @@ describe("BookingScreen (예약 · 증상→병원 파이프라인)", () => {
     const alert = screen.getByRole("alert");
     expect(within(alert).getByText("지금 119에 연락하세요")).toBeTruthy();
     expect(within(alert).getByRole("link", { name: /119에 전화/ }).getAttribute("href")).toBe("tel:119");
+    // 면책: 의료 조언이 아니며 앱이 응급 대응을 대신하지 않는다.
+    expect(within(alert).getByText(/의료 조언이 아니/)).toBeTruthy();
   });
 });

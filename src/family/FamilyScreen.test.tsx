@@ -36,6 +36,8 @@ function fillPerson(name: string, phone: string) {
   fireEvent.change(screen.getByLabelText("성함"), { target: { value: name } });
   fireEvent.change(screen.getByLabelText("연락처"), { target: { value: phone } });
   fireEvent.click(screen.getByLabelText(/증명서에 이 가족이 기재되어 있어요/));
+  // 2026-11-09 L1: 당사자 동의 확인이 필수 단계로 추가돼 도우미도 함께 누른다.
+  fireEvent.click(screen.getByLabelText(/이 가족에게.*동의를 받았어요/));
   next();
 }
 
@@ -101,6 +103,17 @@ describe("FamilyScreen (가족 관리)", () => {
     fireEvent.change(screen.getByLabelText("성함"), { target: { value: "김복순" } });
     fireEvent.change(screen.getByLabelText("연락처"), { target: { value: "010-1234-5678" } });
     expect((screen.getByRole("button", { name: "다음" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("당사자(그 가족) 동의 확인 없이는 회원 확인으로 못 간다 — 남의 건강정보 등록이기 때문", () => {
+    renderScreen();
+    proveOnline();
+    fireEvent.change(screen.getByLabelText("성함"), { target: { value: "김복순" } });
+    fireEvent.change(screen.getByLabelText("연락처"), { target: { value: "010-1234-5678" } });
+    fireEvent.click(screen.getByLabelText(/증명서에 이 가족이 기재되어 있어요/));
+    expect((screen.getByRole("button", { name: "다음" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText(/이 가족에게.*동의를 받았어요/));
+    expect((screen.getByRole("button", { name: "다음" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("연락처의 회원 이름이 증명서 성함과 다르면 추가를 막는다", () => {

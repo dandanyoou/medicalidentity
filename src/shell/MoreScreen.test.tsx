@@ -20,6 +20,16 @@ describe("MoreScreen (더보기)", () => {
     expect(screen.getByText(/서버로 전송되지 않습니다/)).toBeTruthy();
   });
 
+  it("약관·개인정보처리방침으로 가는 링크가 있다", () => {
+    render(
+      <MemoryRouter>
+        <MoreScreen />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("link", { name: /이용약관/ }).getAttribute("href")).toBe("/terms");
+    expect(screen.getByRole("link", { name: /개인정보처리방침/ }).getAttribute("href")).toBe("/privacy");
+  });
+
   it("설치 신호가 없으면 '홈 화면에 추가' 수동 안내를 보여준다", () => {
     render(
       <MemoryRouter>

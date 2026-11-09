@@ -6,6 +6,7 @@ import "./index.css";
 import { CheckerScreen } from "./checker/CheckerScreen";
 import { TabBar } from "./shell/TabBar";
 import { hasSeenOnboarding } from "./shell/onboarding";
+import { hasConsented } from "./shell/consent";
 import { captureInstallPrompt } from "./shell/installPrompt";
 import { ChunkErrorBoundary } from "./shell/ChunkErrorBoundary";
 import { BrandMark } from "./shell/BrandMark";
@@ -56,10 +57,13 @@ const SettingsScreen = lazy(() =>
 const OnboardingScreen = lazy(() =>
   import("./shell/OnboardingScreen").then((m) => ({ default: m.OnboardingScreen })),
 );
+const LegalScreen = lazy(() =>
+  import("./legal/LegalScreen").then((m) => ({ default: m.LegalScreen })),
+);
 
-/** 첫 실행이면 온보딩, 아니면 홈. */
+/** 첫 실행이거나 약관·건강정보 동의가 없으면(약관 버전이 바뀐 경우 포함) 온보딩, 아니면 홈. */
 function RootRedirect() {
-  return <Navigate to={hasSeenOnboarding() ? "/wallet" : "/onboarding"} replace />;
+  return <Navigate to={hasSeenOnboarding() && hasConsented() ? "/wallet" : "/onboarding"} replace />;
 }
 
 // VC 루프 iter 4: fallback={null}이었을 때 /wallet·/doctor 진입 시 청크
@@ -96,6 +100,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/family" element={<FamilyScreen />} />
           <Route path="/subscribe" element={<SubscribeScreen />} />
           <Route path="/insurance" element={<InsuranceScreen />} />
+          <Route path="/privacy" element={<LegalScreen kind="privacy" />} />
+          <Route path="/terms" element={<LegalScreen kind="terms" />} />
           {/* 없는 경로는 홈으로 — 빈 화면 대신. */}
           <Route path="*" element={<Navigate to="/wallet" replace />} />
         </Routes>

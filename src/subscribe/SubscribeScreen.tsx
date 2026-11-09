@@ -199,6 +199,21 @@ export function SubscribeScreen() {
                   </p>
                 )}
 
+                <section
+                  aria-label="해지·환불 안내"
+                  className="mt-4 rounded-2xl bg-[var(--paper)] px-4 py-3 text-[11px] leading-relaxed text-[var(--ink-2)]"
+                >
+                  <p className="text-xs font-bold text-[var(--ink)]">결제 전에 알아두세요</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                    <li>1개월분을 한 번 결제하며, 다음 달에 자동으로 결제되지 않아요.</li>
+                    <li>결제일로부터 7일 이내에는 청약철회(전액 환불)할 수 있어요(전자상거래법).</li>
+                    <li>해지는 이 화면에서 하고, 결제한 기간 끝까지 쓸 수 있어요.</li>
+                  </ul>
+                  <Link to="/terms" className="mt-1.5 inline-block font-bold text-[var(--ink)] underline">
+                    이용약관 전문 보기
+                  </Link>
+                </section>
+
                 {isPaymentConfigured() ? (
                   <button
                     type="button"

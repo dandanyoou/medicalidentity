@@ -42,6 +42,8 @@ export function AddFamilyFlow({
   const [relation, setRelation] = useState<Relation>("부모");
   const [phone, setPhone] = useState("");
   const [listed, setListed] = useState(false);
+  // 당사자 동의 — 남의 건강 정보(민감정보)를 대신 등록하는 것이라 확인을 받는다.
+  const [consented, setConsented] = useState(false);
 
   // 4. 의료 정보
   const [blood, setBlood] = useState("A");
@@ -53,7 +55,7 @@ export function AddFamilyFlow({
     method === "family-cert" ? isValidDocNumber(docNumber) : method === "resident-register" ? !!photoName : false;
   const phoneValid = isValidMobile(phone);
   const duplicate = phoneValid && isDuplicatePhone(phone, members);
-  const personOk = name.trim().length > 0 && phoneValid && !duplicate && listed;
+  const personOk = name.trim().length > 0 && phoneValid && !duplicate && listed && consented;
   const lookup = step >= 2 ? lookupServiceUser(name, phone) : null;
 
   function finish() {
@@ -197,6 +199,20 @@ export function AddFamilyFlow({
               className="mt-0.5 h-4 w-4 flex-none accent-[var(--ink)]"
             />
             <span>증명서에 이 가족이 기재되어 있어요</span>
+          </label>
+          <label className="mb-4 flex items-start gap-2 rounded-xl bg-[var(--paper)] px-3 py-3 text-sm text-[var(--ink)]">
+            <input
+              type="checkbox"
+              checked={consented}
+              onChange={(e) => setConsented(e.target.checked)}
+              className="mt-0.5 h-4 w-4 flex-none accent-[var(--ink)]"
+            />
+            <span>
+              이 가족에게 건강 정보를 대신 기록하는 것에 대해 동의를 받았어요
+              <span className="mt-0.5 block text-[11px] text-[var(--ink-2)]">
+                남의 건강 정보라 본인 동의가 필요해요. 만 14세 미만 자녀는 보호자로서 동의해요.
+              </span>
+            </span>
           </label>
           <div className="flex gap-2">
             <BackButton onClick={() => setStep(0)} />
