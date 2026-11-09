@@ -250,6 +250,12 @@ export function WalletScreen() {
                   <p className="mt-2 text-center text-[11px] leading-relaxed text-white/55">
                     혈액형 + 알레르기만 공개합니다. 이름·주민번호·주소는 공개되지 않아요.
                   </p>
+                  <Link
+                    to="/emergency-card"
+                    className="mt-3 block w-full rounded-2xl bg-white/10 py-3 text-center text-sm font-bold text-white ring-1 ring-white/20 active:bg-white/15"
+                  >
+                    의식이 없을 때를 위해 · 응급 잠금화면 만들기
+                  </Link>
                 </>
               ) : (
                 <p className="mt-5 rounded-2xl bg-white/[0.07] px-4 py-3 text-center text-xs leading-relaxed text-white/70 ring-1 ring-white/10">

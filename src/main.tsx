@@ -60,6 +60,9 @@ const OnboardingScreen = lazy(() =>
 const LegalScreen = lazy(() =>
   import("./legal/LegalScreen").then((m) => ({ default: m.LegalScreen })),
 );
+const LockScreenScreen = lazy(() =>
+  import("./emergency/LockScreenScreen").then((m) => ({ default: m.LockScreenScreen })),
+);
 
 /** 첫 실행이거나 약관·건강정보 동의가 없으면(약관 버전이 바뀐 경우 포함) 온보딩, 아니면 홈. */
 function RootRedirect() {
@@ -100,6 +103,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/family" element={<FamilyScreen />} />
           <Route path="/subscribe" element={<SubscribeScreen />} />
           <Route path="/insurance" element={<InsuranceScreen />} />
+          <Route path="/emergency-card" element={<LockScreenScreen />} />
           <Route path="/privacy" element={<LegalScreen kind="privacy" />} />
           <Route path="/terms" element={<LegalScreen kind="terms" />} />
           {/* 없는 경로는 홈으로 — 빈 화면 대신. */}
