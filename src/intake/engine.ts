@@ -307,3 +307,26 @@ export function summarize(a: IntakeAnswers): string {
   }
   return sentences.join(" ");
 }
+
+// ── 화면 표시용 조회 — 저장된 값(예: "욱신")을 사람이 읽는 말로 ─────────────
+
+export function qualityInfo(value: string | undefined): { label: string; hint: string } | undefined {
+  const q = QUALITIES.find((x) => x.value === value);
+  return q ? { label: q.label, hint: q.hint ?? "" } : undefined;
+}
+
+export function onsetLabel(value: string | undefined): string | undefined {
+  return ONSETS.find((o) => o.value === value)?.label;
+}
+
+export function severityInfo(value: number | undefined): { score: number; hint: string } | undefined {
+  const s = SEVERITIES.find((x) => x.value === value);
+  return s ? { score: Number(s.value), hint: s.hint ?? "" } : undefined;
+}
+
+export const NONE_TRIGGER = NO_TRIGGER;
+export const NONE_ASSOCIATED = NO_ASSOCIATED;
+/** "같이 있는 증상" 질문에서 물어보는 증상들("없음" 제외). */
+export const ASKED_ASSOCIATED: readonly string[] = ASSOCIATED.filter((o) => !o.exclusive).map((o) =>
+  String(o.value),
+);

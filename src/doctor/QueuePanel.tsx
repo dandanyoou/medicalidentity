@@ -1,7 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { listVisits } from "../visits/store";
 import { getMember } from "../family/store";
 import { todayQueue } from "./queue";
+import { IntakeCard } from "./IntakeCard";
 
 /**
  * 오늘 진료 대기열 — 환자가 예약 화면에서 잡은 오늘 예약을 시각 순으로 보여준다.
@@ -11,6 +12,7 @@ import { todayQueue } from "./queue";
  */
 export function QueuePanel() {
   const queue = useMemo(() => todayQueue(listVisits()), []);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   return (
     <section
@@ -33,23 +35,34 @@ export function QueuePanel() {
         </p>
       ) : (
         <ol className="mt-3 flex flex-col gap-2">
-          {queue.map((v) => (
-            <li
-              key={v.id}
-              className="flex items-start gap-3 rounded-2xl bg-[var(--paper)] px-4 py-3"
-            >
-              <span className="w-12 flex-none font-data text-sm font-bold text-[var(--ink)]">
-                {v.time ?? "—"}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-[var(--ink)]">
-                  {getMember(v.memberId)?.name ?? "환자"}
-                </p>
-                <p className="font-data text-[11px] text-[var(--ink-2)]">{v.dept}</p>
-                <p className="mt-1 text-xs leading-relaxed text-[var(--ink-2)]">{v.reason}</p>
-              </div>
-            </li>
-          ))}
+          {queue.map((v) => {
+            const name = getMember(v.memberId)?.name ?? "환자";
+            const open = openId === v.id;
+            return (
+              <li key={v.id} className="rounded-2xl bg-[var(--paper)] px-4 py-3">
+                <div className="flex items-start gap-3">
+                  <span className="w-12 flex-none font-data text-sm font-bold text-[var(--ink)]">
+                    {v.time ?? "—"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-[var(--ink)]">{name}</p>
+                    <p className="font-data text-[11px] text-[var(--ink-2)]">{v.dept}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-[var(--ink-2)]">{v.reason}</p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    aria-label={`${name} 사전 문진 보기`}
+                    onClick={() => setOpenId(open ? null : v.id)}
+                    className="flex min-h-[44px] flex-none items-center rounded-xl border border-[var(--mist)] px-3 text-xs font-bold text-[var(--ink)] active:bg-[var(--mist)]"
+                  >
+                    {open ? "닫기" : "문진"}
+                  </button>
+                </div>
+                {open && <IntakeCard visit={v} />}
+              </li>
+            );
+          })}
         </ol>
       )}
 

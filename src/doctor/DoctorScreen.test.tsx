@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import { addVisit, resetVisits } from "../visits/store";
 import { localDateKey } from "./queue";
+import { EMPTY_ANSWERS, answer, buildRecord, summarize, type IntakeAnswers } from "../intake/engine";
 import { MemoryRouter } from "react-router-dom";
 import { DoctorScreen } from "./DoctorScreen";
 import { getPatientVCs } from "../data/patient-vcs";
@@ -128,6 +129,69 @@ describe("DoctorScreen — 오늘 진료 대기열", () => {
     expect(within(queue).getByText("머리가 아프고 어깨가 뻐근해요")).toBeTruthy();
     // 실제 병원 예약 연동이 아니라 같은 기기 저장소를 쓰는 시연임을 밝힌다.
     expect(within(queue).getByText(/같은 기기/)).toBeTruthy();
+  });
+
+  it("대기열에서 환자를 누르면 사전 문진 카드가 열린다 — 환자 답 그대로, 우리 안내는 작게", () => {
+    resetVisits();
+    const answers = [["머리", "목·어깨"], "머리", "욱신", "뻐근", "1-3일", 5, ["움직일 때"], ["없음"]].reduce<IntakeAnswers>(
+      (a, v) => answer(a, v as string | string[] | number),
+      EMPTY_ANSWERS,
+    );
+    addVisit({
+      memberId: "self",
+      hospital: "서울대학교병원",
+      dept: "가정의학과",
+      date: localDateKey(),
+      time: "10:00",
+      reason: summarize(answers),
+      intake: buildRecord(answers, "진통제를 먹어도 그대로예요", 1),
+      amount: 0,
+      paid: false,
+      status: "예약",
+    });
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    const open = screen.getByRole("button", { name: "김단유 사전 문진 보기" });
+    expect(open.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(open);
+    expect(open.getAttribute("aria-expanded")).toBe("true");
+
+    const card = screen.getByRole("region", { name: "사전 문진" });
+    expect(within(card).getByText("가장 불편한 곳")).toBeTruthy();
+    expect(within(card).getByText("욱신욱신")).toBeTruthy();
+    expect(within(card).getByText("맥박이 뛰듯 쿵쿵")).toBeTruthy();
+    expect(within(card).getByText("5/10 · 일상이 불편한 정도")).toBeTruthy();
+    expect(within(card).getByText(/없다고 답함/)).toBeTruthy();
+    expect(within(card).getByText("“진통제를 먹어도 그대로예요”")).toBeTruthy();
+    // 우리 추천은 '환자가 받은 안내'로만 — 진단이 아님을 밝힌다.
+    expect(within(card).getByText(/환자가 받은 안내/)).toBeTruthy();
+    expect(within(card).getByText(/진단 아님/)).toBeTruthy();
+  });
+
+  it("문진 없이 예약한 환자는 그렇다고 알려주고 예약 사유만 보여준다", () => {
+    resetVisits();
+    addVisit({
+      memberId: "self",
+      hospital: "서울대학교병원",
+      dept: "내과",
+      date: localDateKey(),
+      time: "11:00",
+      reason: "직접 선택",
+      amount: 0,
+      paid: false,
+      status: "예약",
+    });
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "김단유 사전 문진 보기" }));
+    const card = screen.getByRole("region", { name: "사전 문진" });
+    expect(within(card).getByText(/대화형 문진 없이 예약/)).toBeTruthy();
   });
 
   it("오늘 예약이 없으면 빈 상태 안내를 보여준다", () => {
