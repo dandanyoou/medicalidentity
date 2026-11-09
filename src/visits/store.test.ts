@@ -7,6 +7,7 @@ import {
   getVisit,
   unpaidVisits,
   resetVisits,
+  removeVisitsByIdPrefix,
 } from "./store";
 
 beforeEach(() => resetVisits());
@@ -117,6 +118,26 @@ describe("visits store", () => {
     const v = getVisit("x");
     expect(v?.hospital).toBe("A병원");
     expect(v?.intake).toBeUndefined();
+  });
+
+  it("id 접두어로 방문을 지울 수 있다(시연 환자 정리용) — 다른 방문은 남는다", () => {
+    addVisit({ id: "demo-1", memberId: "demo", patientName: "박영희", hospital: "A", dept: "내과", date: "2026-11-09", reason: "r", amount: 0, paid: false, status: "예약" } as never);
+    const added = addVisit({ memberId: "self", hospital: "B", dept: "내과", date: "2026-11-09", reason: "r", amount: 0, paid: false, status: "예약" });
+    removeVisitsByIdPrefix("demo-");
+    expect(getVisit("demo-1")).toBeUndefined();
+    expect(getVisit(added.id)).toBeTruthy();
+  });
+
+  it("patientName은 문자열이어야 하고, 아니면 그 방문을 건너뛴다", () => {
+    localStorage.setItem(
+      "medid.visits.v1",
+      JSON.stringify([
+        { id: "ok", memberId: "demo", patientName: "박영희", hospital: "A", dept: "내과", date: "2026-11-09", reason: "r", amount: 0, paid: false, status: "예약" },
+        { id: "bad", memberId: "demo", patientName: 7, hospital: "A", dept: "내과", date: "2026-11-09", reason: "r", amount: 0, paid: false, status: "예약" },
+      ]),
+    );
+    expect(getVisit("ok")?.patientName).toBe("박영희");
+    expect(getVisit("bad")).toBeUndefined();
   });
 
   it("저장된 값이 JSON이 아니면 시드로 돌아간다", () => {

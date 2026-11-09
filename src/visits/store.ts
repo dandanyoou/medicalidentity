@@ -24,6 +24,8 @@ export interface Prescription {
 export interface Visit {
   id: string;
   memberId: string;
+  /** 회원이 아닌 환자(시연 환자 등)의 표시 이름. 회원이면 가족 저장소 이름을 쓴다. */
+  patientName?: string;
   hospital: string;
   dept: string;
   date: string; // YYYY-MM-DD
@@ -95,6 +97,7 @@ function isVisit(v: unknown): v is Visit {
   return (
     typeof o.id === "string" &&
     typeof o.memberId === "string" &&
+    (o.patientName === undefined || typeof o.patientName === "string") &&
     typeof o.hospital === "string" &&
     typeof o.dept === "string" &&
     typeof o.date === "string" &&
@@ -177,14 +180,20 @@ export function unpaidVisits(memberId?: string): Visit[] {
   return listVisits(memberId).filter(isUnpaid);
 }
 
-export function addVisit(input: Omit<Visit, "id">): Visit {
+/** id를 주면 그대로 쓴다(시연 환자처럼 고정 id가 필요할 때). 같은 id가 있으면 덮어쓴다. */
+export function addVisit(input: Omit<Visit, "id"> & { id?: string }): Visit {
   const visit: Visit = {
     ...input,
     id:
-      typeof crypto !== "undefined" && "randomUUID" in crypto
+      input.id ??
+      (typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
-        : `visit_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+        : `visit_${Date.now()}_${Math.random().toString(36).slice(2)}`),
   };
+  if (input.id) {
+    write([visit, ...read().filter((v) => v.id !== input.id)]);
+    return visit;
+  }
   write([visit, ...read()]);
   return visit;
 }
@@ -195,6 +204,11 @@ export function payVisit(id: string): void {
       v.id === id ? { ...v, paid: true, status: "완료" as VisitStatus } : v,
     ),
   );
+}
+
+/** id 접두어로 방문을 지운다(시연 환자 정리). */
+export function removeVisitsByIdPrefix(prefix: string): void {
+  write(read().filter((v) => !v.id.startsWith(prefix)));
 }
 
 /** 테스트·초기화용 — 시드 상태로 되돌린다. */

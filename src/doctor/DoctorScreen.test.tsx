@@ -194,6 +194,24 @@ describe("DoctorScreen — 오늘 진료 대기열", () => {
     expect(within(card).getByText(/대화형 문진 없이 예약/)).toBeTruthy();
   });
 
+  it("'시연 환자 불러오기'를 누르면 대기열이 4명으로 차고, '시연 환자 지우기'로 되돌린다", () => {
+    resetVisits();
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    const queue = screen.getByRole("region", { name: "오늘 진료 대기열" });
+    fireEvent.click(within(queue).getByRole("button", { name: "시연 환자 불러오기" }));
+    expect(within(queue).getByText("대기 4명")).toBeTruthy();
+    expect(within(queue).getByText("박영희")).toBeTruthy();
+    // 시연 환자임을 숨기지 않는다.
+    expect(within(queue).getAllByText("시연").length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(within(queue).getByRole("button", { name: "시연 환자 지우기" }));
+    expect(within(queue).getByText("대기 0명")).toBeTruthy();
+    expect(within(queue).getByText(/오늘 예약된 환자가 없어요/)).toBeTruthy();
+  });
+
   it("오늘 예약이 없으면 빈 상태 안내를 보여준다", () => {
     resetVisits();
     render(

@@ -3,6 +3,7 @@ import { listVisits } from "../visits/store";
 import { getMember } from "../family/store";
 import { todayQueue } from "./queue";
 import { IntakeCard } from "./IntakeCard";
+import { DEMO_ID_PREFIX, clearDemoPatients, hasDemoPatients, seedDemoPatients } from "./demo";
 
 /**
  * 오늘 진료 대기열 — 환자가 예약 화면에서 잡은 오늘 예약을 시각 순으로 보여준다.
@@ -11,8 +12,17 @@ import { IntakeCard } from "./IntakeCard";
  * 저장소를 함께 쓰는 시연이라, 이 기기에서 예약한 건만 보인다.
  */
 export function QueuePanel() {
-  const queue = useMemo(() => todayQueue(listVisits()), []);
+  const [tick, setTick] = useState(0); // 시연 환자 불러오기·지우기 후 재조회
+  const queue = useMemo(() => todayQueue(listVisits()), [tick]);
+  const demoOn = useMemo(() => hasDemoPatients(), [tick]);
   const [openId, setOpenId] = useState<string | null>(null);
+
+  function toggleDemo() {
+    if (demoOn) clearDemoPatients();
+    else seedDemoPatients();
+    setOpenId(null);
+    setTick((t) => t + 1);
+  }
 
   return (
     <section
@@ -36,7 +46,8 @@ export function QueuePanel() {
       ) : (
         <ol className="mt-3 flex flex-col gap-2">
           {queue.map((v) => {
-            const name = getMember(v.memberId)?.name ?? "환자";
+            const name = v.patientName ?? getMember(v.memberId)?.name ?? "환자";
+            const isDemo = v.id.startsWith(DEMO_ID_PREFIX);
             const open = openId === v.id;
             return (
               <li key={v.id} className="rounded-2xl bg-[var(--paper)] px-4 py-3">
@@ -45,7 +56,14 @@ export function QueuePanel() {
                     {v.time ?? "—"}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-[var(--ink)]">{name}</p>
+                    <p className="flex items-center gap-1.5 text-sm font-bold text-[var(--ink)]">
+                      {name}
+                      {isDemo && (
+                        <span className="rounded-full bg-[var(--mist)] px-1.5 py-0.5 font-data text-[9px] font-bold text-[var(--ink-2)]">
+                          시연
+                        </span>
+                      )}
+                    </p>
                     <p className="font-data text-[11px] text-[var(--ink-2)]">{v.dept}</p>
                     <p className="mt-1 text-xs leading-relaxed text-[var(--ink-2)]">{v.reason}</p>
                   </div>
@@ -66,9 +84,19 @@ export function QueuePanel() {
         </ol>
       )}
 
-      <p className="mt-3 text-[10px] leading-relaxed text-[var(--ink-2)]">
-        시연 — 병원 예약 시스템 연동 전이라, 환자 화면과 같은 기기에 저장된 예약만 보여요.
-      </p>
+      <div className="mt-3 flex items-start justify-between gap-3">
+        <p className="text-[10px] leading-relaxed text-[var(--ink-2)]">
+          시연 — 병원 예약 시스템 연동 전이라, 환자 화면과 같은 기기에 저장된 예약만 보여요.
+          {!demoOn && " 다른 기기에서 보여줄 때는 시연 환자를 불러오세요."}
+        </p>
+        <button
+          type="button"
+          onClick={toggleDemo}
+          className="flex min-h-[36px] flex-none items-center rounded-xl border border-[var(--mist)] px-3 text-[11px] font-bold text-[var(--ink-2)] active:bg-[var(--mist)]"
+        >
+          {demoOn ? "시연 환자 지우기" : "시연 환자 불러오기"}
+        </button>
+      </div>
     </section>
   );
 }
