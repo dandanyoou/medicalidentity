@@ -54,8 +54,23 @@ describe("문진 질문 순서", () => {
     );
   });
 
+  it("2곳 이상 고르면 가장 불편한 곳을 한 번 더 묻고, 그곳의 느낌부터 묻는다", () => {
+    const a = run([["머리", "다리·발"]]);
+    const q = currentQuestion(a)!;
+    expect(q.step).toBe("primary");
+    expect(q.multi).toBe(false);
+    expect(q.options.map((o) => o.value)).toEqual(["머리", "다리·발"]);
+    const next = currentQuestion(answer(a, "다리·발"))!;
+    expect(next.step).toBe("quality");
+    expect(next.prompt).toContain("다리·발은");
+  });
+
+  it("1곳만 고르면 가장 불편한 곳을 묻지 않는다", () => {
+    expect(currentQuestion(run([["머리"]]))!.step).toBe("quality");
+  });
+
   it("고른 부위마다 느낌을 따로 묻고, 비유로 설명을 붙인다", () => {
-    const a = run([["머리", "목·어깨"]]);
+    const a = run([["머리", "목·어깨"], "머리"]);
     const q1 = currentQuestion(a)!;
     expect(q1.step).toBe("quality");
     expect(q1.prompt).toContain("머리는");
@@ -83,11 +98,12 @@ describe("문진 질문 순서", () => {
   });
 
   it("이전 질문으로 되돌리면 마지막 답만 지운다", () => {
-    const a = run([["머리", "목·어깨"], "욱신", "뻐근"]);
+    const a = run([["머리", "목·어깨"], "머리", "욱신", "뻐근"]);
     const back = undo(a);
     expect(back.quality).toEqual({ 머리: "욱신" });
     expect(currentQuestion(back)!.prompt).toContain("목·어깨는");
-    expect(undo(undo(back)).parts).toBeUndefined();
+    expect(undo(undo(back)).primary).toBeUndefined();
+    expect(undo(undo(undo(back))).parts).toBeUndefined();
   });
 });
 
@@ -97,6 +113,8 @@ describe("buildRecord — 방문 기록에 항목별로 저장할 문진 기록"
     const r = buildRecord(a, "  약을 먹어도 안 나아요 ", 1700000000000);
     expect(r).toEqual({
       parts: ["머리"],
+      // 한 곳만 골랐으면 그곳이 가장 불편한 곳이다.
+      primary: "머리",
       quality: { 머리: "욱신" },
       onset: "1-3일",
       severity: 5,
@@ -117,9 +135,10 @@ describe("buildRecord — 방문 기록에 항목별로 저장할 문진 기록"
 
 describe("summarize — 의사에게 전달할 문장", () => {
   it("부위·느낌·시점·정도·심해지는 때·동반 증상을 한 문단으로 정리한다(병명은 쓰지 않는다)", () => {
-    const a = run([["머리", "목·어깨", "다리·발"], "욱신", "뻐근", "모르겠음", "1-3일", 5, ["움직일 때", "밤에·누우면"], ["없음"]]);
+    // 가장 불편한 곳(다리·발)을 맨 앞에 두고, 한 문장으로 짚어준다.
+    const a = run([["머리", "목·어깨", "다리·발"], "다리·발", "모르겠음", "욱신", "뻐근", "1-3일", 5, ["움직일 때", "밤에·누우면"], ["없음"]]);
     expect(summarize(a)).toBe(
-      "1~3일 전부터 머리가 욱신욱신 아프고, 목·어깨가 뻐근하고 결리고, 다리·발이 불편해요. 아픈 정도는 10점 중 5점(일상이 불편한 정도)이에요. 움직일 때·밤에·누우면 더 심해져요. 다른 증상은 없어요.",
+      "1~3일 전부터 다리·발이 불편하고, 머리가 욱신욱신 아프고, 목·어깨가 뻐근하고 결려요. 가장 불편한 곳은 다리·발이에요. 아픈 정도는 10점 중 5점(일상이 불편한 정도)이에요. 움직일 때·밤에·누우면 더 심해져요. 다른 증상은 없어요.",
     );
   });
 

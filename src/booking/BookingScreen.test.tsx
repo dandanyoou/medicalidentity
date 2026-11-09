@@ -104,4 +104,57 @@ describe("BookingScreen (예약 · 증상→병원 파이프라인)", () => {
     expect(booked?.intake?.severity).toBe(5);
     expect(booked?.intake?.note).toBe("약을 먹어도 안 나아요");
   });
+
+  it("여러 곳이 함께 아프면 가장 불편한 곳을 묻고, 부위 기준 진료과와 그 이유를 보여준다", () => {
+    render(
+      <MemoryRouter>
+        <BookingScreen />
+      </MemoryRouter>,
+    );
+    fireEvent.change(screen.getByPlaceholderText(/어디가 아프세요|머리가 아프고/), {
+      target: { value: "머리가 아프고 다리도 근데 좀 아프네 그리고 어깨가 왜 뻐근하지" },
+    });
+    const chat = screen.getByRole("region", { name: "대화로 증상 정리" });
+    fireEvent.click(within(chat).getByRole("button", { name: "다음" }));
+    fireEvent.click(within(chat).getByRole("button", { name: "머리" }));
+    fireEvent.click(within(chat).getByRole("button", { name: /욱신욱신/ }));
+    fireEvent.click(within(chat).getByRole("button", { name: /뻐근·결림/ }));
+    fireEvent.click(within(chat).getByRole("button", { name: /잘 모르겠어요/ }));
+    fireEvent.click(within(chat).getByRole("button", { name: "1~3일 전" }));
+    fireEvent.click(within(chat).getByRole("button", { name: /보통/ }));
+    fireEvent.click(within(chat).getByRole("button", { name: "특별히 없음" }));
+    fireEvent.click(within(chat).getByRole("button", { name: "다음" }));
+    fireEvent.click(within(chat).getByRole("button", { name: "없음" }));
+    fireEvent.click(within(chat).getByRole("button", { name: "다음" }));
+
+    expect(screen.getByText(/여러 곳이 함께 아파서, 먼저 전체를 보는 가정의학과/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /가정의학과 예약/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /신경과 예약/ })).toBeTruthy();
+    // 흔한 조합이라 위험 경고는 없다.
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("위험한 조합(가슴 + 숨이 참)이면 119 안내를 먼저 띄운다", () => {
+    render(
+      <MemoryRouter>
+        <BookingScreen />
+      </MemoryRouter>,
+    );
+    fireEvent.change(screen.getByPlaceholderText(/어디가 아프세요|머리가 아프고/), {
+      target: { value: "가슴이 아파요" },
+    });
+    const chat = screen.getByRole("region", { name: "대화로 증상 정리" });
+    fireEvent.click(within(chat).getByRole("button", { name: "다음" }));
+    fireEvent.click(within(chat).getByRole("button", { name: /쥐어짜듯/ }));
+    fireEvent.click(within(chat).getByRole("button", { name: "오늘" }));
+    fireEvent.click(within(chat).getByRole("button", { name: /보통/ }));
+    fireEvent.click(within(chat).getByRole("button", { name: "특별히 없음" }));
+    fireEvent.click(within(chat).getByRole("button", { name: "다음" }));
+    fireEvent.click(within(chat).getByRole("button", { name: "숨이 참" }));
+    fireEvent.click(within(chat).getByRole("button", { name: "다음" }));
+
+    const alert = screen.getByRole("alert");
+    expect(within(alert).getByText("지금 119에 연락하세요")).toBeTruthy();
+    expect(within(alert).getByRole("link", { name: /119에 전화/ }).getAttribute("href")).toBe("tel:119");
+  });
 });

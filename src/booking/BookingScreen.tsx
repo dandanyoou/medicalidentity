@@ -6,6 +6,7 @@ import { Stepper } from "../shell/Stepper";
 import { downloadICS, slotToDate, slotToTime } from "./ics";
 import { IntakeChat } from "../intake/IntakeChat";
 import { buildRecord, summarize, type IntakeAnswers } from "../intake/engine";
+import { checkRedFlags, recommendDepts } from "../intake/triage";
 
 // 예약 진행 단계(상단) · 완료 후 방문 타임라인(완료 카드).
 const FLOW_STEPS = [{ label: "증상" }, { label: "병원" }, { label: "시간" }];
@@ -52,14 +53,14 @@ export function BookingScreen() {
   const [intakeNote, setIntakeNote] = useState("");
   const intakeSummary = intakeAnswers ? summarize(intakeAnswers) : null;
 
-  const matches = useMemo(
-    () => searchSymptoms([query, intakeSummary ?? ""].join(" ").trim()),
-    [query, intakeSummary],
-  );
+  const matches = useMemo(() => searchSymptoms(query), [query]);
   const reason = intakeSummary ?? query.trim();
+  // 문진을 마쳤으면 고른 부위 기준 규칙(여러 증상 처리 포함)으로, 아니면 문장 키워드로 추천한다.
+  const intakeRec = useMemo(() => (intakeAnswers ? recommendDepts(intakeAnswers) : null), [intakeAnswers]);
+  const redFlag = useMemo(() => (intakeAnswers ? checkRedFlags(intakeAnswers) : null), [intakeAnswers]);
   const recommendedDepts = useMemo(
-    () => Array.from(new Set(matches.map((m) => m.mapQuery))),
-    [matches],
+    () => intakeRec?.depts ?? Array.from(new Set(matches.map((m) => m.mapQuery))),
+    [intakeRec, matches],
   );
 
   function pickDept(d: string) {
@@ -185,11 +186,41 @@ export function BookingScreen() {
                 )}
               </div>
 
+              {redFlag && (
+                <div
+                  role="alert"
+                  className="mt-4 rounded-2xl border-l-4 border-[var(--vital)] bg-[var(--vital)]/8 px-4 py-3"
+                >
+                  <p className="text-sm font-extrabold text-[var(--vital-ink)]">
+                    {redFlag.level === "119"
+                      ? "지금 119에 연락하세요"
+                      : redFlag.level === "응급실"
+                        ? "오늘 응급실 진료가 필요해요"
+                        : "오늘 바로 진료를 받으세요"}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--vital-ink)]">{redFlag.message}</p>
+                  {redFlag.level === "119" && (
+                    <a
+                      href="tel:119"
+                      className="mt-3 inline-flex min-h-[44px] items-center rounded-2xl bg-[var(--vital)] px-5 text-sm font-bold text-white"
+                    >
+                      119에 전화하기
+                    </a>
+                  )}
+                  <p className="mt-2 text-[10px] text-[var(--vital-ink)]/80">
+                    진단이 아니에요. 고른 답의 조합이 바로 확인이 필요한 경우라 먼저 알려드려요.
+                  </p>
+                </div>
+              )}
+
               {recommendedDepts.length > 0 && (
                 <div className="mt-4">
                   <p className="mb-2 text-xs font-semibold text-[var(--ink-2)]">
                     증상에 맞는 추천 진료과 — 눌러서 예약
                   </p>
+                  {intakeRec && (
+                    <p className="mb-2 text-xs leading-relaxed text-[var(--ink)]">{intakeRec.reason}</p>
+                  )}
                   <div className="flex flex-wrap gap-2">
                     {recommendedDepts.map((d) => (
                       <button

@@ -22,10 +22,12 @@ export type BodyPart =
   | "피부"
   | "온몸";
 
-export type Step = "parts" | "quality" | "onset" | "severity" | "triggers" | "associated";
+export type Step = "parts" | "primary" | "quality" | "onset" | "severity" | "triggers" | "associated";
 
 export interface IntakeAnswers {
   parts?: BodyPart[];
+  /** 2곳 이상 골랐을 때 가장 불편한 곳(주 증상). */
+  primary?: BodyPart;
   quality: Partial<Record<BodyPart, string>>;
   onset?: string;
   severity?: number;
@@ -123,14 +125,32 @@ export function withJosa(word: string, pair: "이/가" | "은/는" | "을/를"):
   return word + (hasBatchim ? withB : withoutB);
 }
 
+/** "머리예요" / "다리·발이에요" — 받침에 맞는 서술격 조사. */
+export function withCopula(word: string): string {
+  const last = word.charCodeAt(word.length - 1) - 0xac00;
+  const hasBatchim = last >= 0 && last <= 11171 && last % 28 !== 0;
+  return word + (hasBatchim ? "이에요" : "예요");
+}
+
 /** 자유 문장에서 부위를 미리 고른다(환자가 대화에서 확인·수정한다). */
 export function guessParts(text: string): BodyPart[] {
   const t = text.replace(/\s+/g, " ");
   return PARTS.filter(({ keywords }) => keywords.some((k) => t.includes(k))).map((p) => p.part);
 }
 
+/** 가장 불편한 곳을 맨 앞에 둔 부위 순서 — 느낌 질문·요약 문장이 이 순서를 쓴다. */
+export function orderedParts(a: Pick<IntakeAnswers, "parts" | "primary">): BodyPart[] {
+  const parts = a.parts ?? [];
+  if (!a.primary || !parts.includes(a.primary)) return parts;
+  return [a.primary, ...parts.filter((p) => p !== a.primary)];
+}
+
+function needsPrimary(a: IntakeAnswers): boolean {
+  return (a.parts?.length ?? 0) >= 2 && !a.primary;
+}
+
 function nextPartWithoutQuality(a: IntakeAnswers): BodyPart | undefined {
-  return a.parts?.find((p) => !a.quality[p]);
+  return orderedParts(a).find((p) => !a.quality[p]);
 }
 
 /** 다음에 물을 질문. 다 답했으면 null. */
@@ -141,6 +161,14 @@ export function currentQuestion(a: IntakeAnswers): IntakeQuestion | null {
       prompt: "어디가 불편하세요? 해당하는 곳을 모두 눌러 주세요.",
       multi: true,
       options: PARTS.map(({ part }) => ({ value: part, label: part })),
+    };
+  }
+  if (needsPrimary(a)) {
+    return {
+      step: "primary",
+      prompt: "이 중에 가장 불편한 곳은 어디예요?",
+      multi: false,
+      options: (a.parts ?? []).map((p) => ({ value: p, label: p })),
     };
   }
   const part = nextPartWithoutQuality(a);
@@ -190,6 +218,8 @@ export function answer(a: IntakeAnswers, value: string | number | string[]): Int
   switch (q.step) {
     case "parts":
       return { ...a, parts: (value as string[]) as BodyPart[] };
+    case "primary":
+      return { ...a, primary: String(value) as BodyPart };
     case "quality":
       return { ...a, quality: { ...a.quality, [q.part as BodyPart]: String(value) } };
     case "onset":
@@ -209,13 +239,14 @@ export function undo(a: IntakeAnswers): IntakeAnswers {
   if (a.triggers) return { ...a, triggers: undefined };
   if (a.severity !== undefined) return { ...a, severity: undefined };
   if (a.onset !== undefined) return { ...a, onset: undefined };
-  const answered = (a.parts ?? []).filter((p) => a.quality[p]);
+  const answered = orderedParts(a).filter((p) => a.quality[p]);
   if (answered.length > 0) {
     const last = answered[answered.length - 1];
     const quality = { ...a.quality };
     delete quality[last];
     return { ...a, quality };
   }
+  if (a.primary) return { ...a, primary: undefined };
   if (a.parts) return { ...a, parts: undefined };
   return a;
 }
@@ -223,6 +254,8 @@ export function undo(a: IntakeAnswers): IntakeAnswers {
 /** 방문 기록에 저장하는 문진 기록 — 의사 화면이 항목별로 보여줄 수 있게. */
 export interface IntakeRecord {
   parts: BodyPart[];
+  /** 가장 불편한 곳. 한 곳만 골랐으면 그곳. */
+  primary?: BodyPart;
   quality: Partial<Record<BodyPart, string>>;
   onset?: string;
   severity?: number;
@@ -239,6 +272,7 @@ export function buildRecord(a: IntakeAnswers, note: string, now: number = Date.n
   const trimmed = note.trim();
   return {
     parts: a.parts ?? [],
+    ...(a.primary ?? a.parts?.[0] ? { primary: a.primary ?? a.parts?.[0] } : {}),
     quality: { ...a.quality },
     onset: a.onset,
     severity: a.severity,
@@ -253,7 +287,7 @@ export function buildRecord(a: IntakeAnswers, note: string, now: number = Date.n
 /** 의사에게 전달할 문장. 병명은 쓰지 않고 환자가 고른 것만 옮긴다. */
 export function summarize(a: IntakeAnswers): string {
   const sentences: string[] = [];
-  const parts = a.parts ?? [];
+  const parts = orderedParts(a);
   if (parts.length > 0) {
     const phrases = parts.map((p, i) => {
       const q = QUALITIES.find((x) => x.value === a.quality[p]) ?? QUALITIES[QUALITIES.length - 1];
@@ -261,6 +295,7 @@ export function summarize(a: IntakeAnswers): string {
     });
     const from = ONSETS.find((o) => o.value === a.onset)?.from;
     sentences.push(`${from ? `${from} ` : ""}${phrases.join(", ")}.`);
+    if (parts.length >= 2 && a.primary) sentences.push(`가장 불편한 곳은 ${withCopula(a.primary)}.`);
   }
   const sev = SEVERITIES.find((s) => s.value === a.severity);
   if (sev) sentences.push(`아픈 정도는 10점 중 ${sev.value}점(${sev.hint})이에요.`);

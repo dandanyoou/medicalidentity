@@ -20,6 +20,10 @@ describe("IntakeChat — 대화로 증상 정리", () => {
     expect(pressed("다리·발")).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: "다음" }));
 
+    // 2곳 이상이면 가장 불편한 곳을 한 번 더 묻는다.
+    expect(screen.getByText(/가장 불편한 곳은 어디예요/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "머리" }));
+
     // 부위마다 느낌 — 비유 설명이 버튼에 같이 있다.
     expect(screen.getByText(/머리는 어떤 느낌이에요/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /욱신욱신.*맥박이 뛰듯/ }));
@@ -34,7 +38,7 @@ describe("IntakeChat — 대화로 증상 정리", () => {
     fireEvent.click(screen.getByRole("button", { name: "다음" }));
 
     const summary =
-      "1~3일 전부터 머리가 욱신욱신 아프고, 목·어깨가 뻐근하고 결려요. 아픈 정도는 10점 중 5점(일상이 불편한 정도)이에요. 움직일 때 더 심해져요. 다른 증상은 없어요.";
+      "1~3일 전부터 머리가 욱신욱신 아프고, 목·어깨가 뻐근하고 결려요. 가장 불편한 곳은 머리예요. 아픈 정도는 10점 중 5점(일상이 불편한 정도)이에요. 움직일 때 더 심해져요. 다른 증상은 없어요.";
     expect(onDone).toHaveBeenCalledTimes(1);
     expect(onDone.mock.calls[0][1]).toBe(summary);
     expect(screen.getByText(summary)).toBeTruthy();

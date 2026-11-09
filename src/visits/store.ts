@@ -115,6 +115,7 @@ function isIntakeRecord(v: unknown): v is IntakeRecord {
   const o = v as Record<string, unknown>;
   return (
     isStringArray(o.parts) &&
+    (o.primary === undefined || typeof o.primary === "string") &&
     !!o.quality &&
     typeof o.quality === "object" &&
     isStringArray(o.triggers) &&
