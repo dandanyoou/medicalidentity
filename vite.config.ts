@@ -24,7 +24,8 @@ export default defineConfig({
           { src: "/icon-192.png", sizes: "192x192", type: "image/png" },
           { src: "/icon-512.png", sizes: "512x512", type: "image/png" },
           {
-            src: "/icon-512.png",
+            // 모서리 없이 꽉 채운 판 — 안드로이드가 원·둥근 사각형으로 잘라도 그림이 안 잘린다.
+            src: "/icon-maskable-512.png",
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",

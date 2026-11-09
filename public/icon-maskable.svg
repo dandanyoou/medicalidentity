@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="가족 의료지갑">
+  <!-- 홈 화면·maskable용: 모서리 없이 꽉 채우고, 그림은 안전 영역(가운데 80% 원) 안으로 줄였다. -->
+  <rect width="512" height="512" fill="#0b3b3c" />
+  <g transform="translate(256 256) scale(0.84) translate(-256 -256)">
+    <path d="M176 120h160a72 72 0 0 1 72 72v80a72 72 0 0 1-72 72H236l-82 58 14-58h8a72 72 0 0 1-72-72v-80a72 72 0 0 1 72-72z" fill="#ffffff" />
+    <polyline points="146,234 204,234 230,184 270,290 296,234 366,234" fill="none" stroke="#ff5a4d" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+</svg>
