@@ -38,6 +38,9 @@ export interface Visit {
   memberId: string;
   /** 회원이 아닌 환자(시연 환자 등)의 표시 이름. 회원이면 가족 저장소 이름을 쓴다. */
   patientName?: string;
+  /** 회원이 아닌 환자(시연 환자 등)의 알레르기·복용약 — 처방 안전 확인용. 회원이면 가족 저장소를 쓴다. */
+  patientAllergens?: string[];
+  patientMeds?: string[];
   hospital: string;
   dept: string;
   date: string; // YYYY-MM-DD
@@ -104,6 +107,9 @@ const SEED: Visit[] = [
 
 const STATUSES: readonly VisitStatus[] = ["예약", "수납대기", "완료"];
 
+const isStringArray = (x: unknown): x is string[] =>
+  Array.isArray(x) && x.every((s) => typeof s === "string");
+
 function isVisit(v: unknown): v is Visit {
   if (!v || typeof v !== "object") return false;
   const o = v as Record<string, unknown>;
@@ -111,6 +117,8 @@ function isVisit(v: unknown): v is Visit {
     typeof o.id === "string" &&
     typeof o.memberId === "string" &&
     (o.patientName === undefined || typeof o.patientName === "string") &&
+    (o.patientAllergens === undefined || isStringArray(o.patientAllergens)) &&
+    (o.patientMeds === undefined || isStringArray(o.patientMeds)) &&
     typeof o.hospital === "string" &&
     typeof o.dept === "string" &&
     typeof o.date === "string" &&
@@ -122,9 +130,6 @@ function isVisit(v: unknown): v is Visit {
     STATUSES.includes(o.status as VisitStatus)
   );
 }
-
-const isStringArray = (x: unknown): x is string[] =>
-  Array.isArray(x) && x.every((s) => typeof s === "string");
 
 function isIntakeRecord(v: unknown): v is IntakeRecord {
   if (!v || typeof v !== "object") return false;

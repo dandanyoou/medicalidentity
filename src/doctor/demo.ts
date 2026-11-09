@@ -21,6 +21,9 @@ interface DemoCase {
   /** 문진 질문 순서대로 고른 답. */
   answers: (string | string[] | number)[];
   note?: string;
+  /** 처방 안전 확인 시연용. */
+  allergens?: string[];
+  meds?: string[];
 }
 
 const CASES: DemoCase[] = [
@@ -31,6 +34,9 @@ const CASES: DemoCase[] = [
     hospital: "서울대학교병원",
     answers: [["머리", "목·어깨"], "머리", "욱신", "뻐근", "1-3일", 5, ["움직일 때"], ["없음"]],
     note: "진통제를 먹어도 그대로예요",
+    // 시연: 아목시실린·이부프로펜을 처방하려 하면 경고가 뜬다.
+    allergens: ["페니실린"],
+    meds: ["아스피린 100mg"],
   },
   {
     no: 2,
@@ -76,6 +82,8 @@ export function seedDemoPatients(now: Date = new Date()): void {
       id: `${DEMO_ID_PREFIX}${c.no}`,
       memberId: DEMO_MEMBER_ID,
       patientName: c.name,
+      ...(c.allergens ? { patientAllergens: c.allergens } : {}),
+      ...(c.meds ? { patientMeds: c.meds } : {}),
       hospital: c.hospital,
       dept,
       date,

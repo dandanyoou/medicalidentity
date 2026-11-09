@@ -248,6 +248,49 @@ describe("DoctorScreen — 오늘 진료 대기열", () => {
     expect(saved.recommended).toEqual(["가정의학과", "신경과"]);
   });
 
+  it("처방 입력 중 환자 알레르기 계열 약이면 바로 경고하고, 경고를 확인해야 진료 완료가 된다", () => {
+    resetVisits();
+    addVisit({
+      memberId: "demo-patient",
+      patientName: "박영희",
+      patientAllergens: ["페니실린"],
+      patientMeds: ["아스피린 100mg"],
+      hospital: "서울대학교병원",
+      dept: "가정의학과",
+      date: localDateKey(),
+      time: "09:30",
+      reason: "머리가 아파요",
+      amount: 0,
+      paid: false,
+      status: "예약",
+    });
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "박영희 사전 문진 보기" }));
+    const form = screen.getByRole("form", { name: "진료 완료 입력" });
+    // 환자 안전 정보가 폼 위에 보인다.
+    expect(within(form).getByText(/알레르기: 페니실린/)).toBeTruthy();
+    expect(within(form).getByText(/복용 중: 아스피린 100mg/)).toBeTruthy();
+
+    fireEvent.change(within(form).getByLabelText("약 이름"), { target: { value: "아목시실린 500mg" } });
+    expect(within(form).getByRole("alert").textContent).toMatch(/페니실린계 알레르기/);
+    fireEvent.change(within(form).getByLabelText("용법"), { target: { value: "1정 3회/일" } });
+    fireEvent.change(within(form).getByLabelText("일수"), { target: { value: "5" } });
+    fireEvent.click(within(form).getByRole("button", { name: "처방 추가" }));
+    expect(within(form).getByText(/아목시실린 500mg/)).toBeTruthy();
+    expect(within(form).getAllByText(/⚠/).length).toBeGreaterThan(0);
+
+    fireEvent.change(within(form).getByLabelText("소견"), { target: { value: "소견" } });
+    fireEvent.change(within(form).getByLabelText("진료비(원)"), { target: { value: "12000" } });
+    const submit = within(form).getByRole("button", { name: /진료 완료/ }) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    fireEvent.click(within(form).getByLabelText(/경고를 확인했고 그대로 처방해요/));
+    expect(submit.disabled).toBe(false);
+  });
+
   it("문진 카드에서 소견·처방·진료비를 입력해 진료를 마치면 대기열에서 빠지고 수납대기가 된다", () => {
     resetVisits();
     const v = addVisit({
