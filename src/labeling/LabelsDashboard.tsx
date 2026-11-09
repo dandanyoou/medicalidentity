@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { listVisits } from "../visits/store";
+import { computeReviewStats } from "../doctor/reviewStats";
 import {
   listRecords,
   computeMetrics,
@@ -37,6 +39,7 @@ export function LabelsDashboard() {
 
   const [records, setRecords] = useState<LabeledRecord[]>(() => listRecords());
   const metrics = useMemo(() => computeMetrics(records), [records]);
+  const review = useMemo(() => computeReviewStats(listVisits()), []);
   const verifyRate =
     metrics.total > 0 ? Math.round((metrics.verified / metrics.total) * 100) : 0;
   const topTags = useMemo(
@@ -69,6 +72,45 @@ export function LabelsDashboard() {
             파일을 외부에 공유하기 전에는 개인정보(이름·날짜 등)를 반드시
             비식별하세요.
           </p>
+
+          <section
+            aria-label="추천 진료과 의사 확인"
+            className="mb-4 rounded-3xl bg-[var(--surface)] p-5 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-[var(--ink)]">추천 진료과 의사 확인</h2>
+              <span className="font-data text-[11px] font-bold text-[var(--ink-2)]">
+                의사 확인 {review.reviewed}건
+              </span>
+            </div>
+            {review.reviewed === 0 ? (
+              <p className="mt-2 text-xs leading-relaxed text-[var(--ink-2)]">
+                아직 없어요. 의사 화면의 문진 카드에서 "추천 과가 맞았나요?"에 답하면 여기에 쌓여요. 이게 추천
+                규칙의 정답 데이터예요.
+              </p>
+            ) : (
+              <>
+                <p className="mt-2 text-sm text-[var(--ink)]">
+                  맞음 {review.correct} · 다른 과 {review.other} · 보류 {review.hold}
+                  {review.accuracy !== null && (
+                    <strong className="ml-2 text-[var(--refund-ink)]">정확도 {review.accuracy}%</strong>
+                  )}
+                </p>
+                {review.mismatches.length > 0 && (
+                  <ul className="mt-2 flex flex-col gap-1 text-xs text-[var(--ink-2)]">
+                    {review.mismatches.map((m) => (
+                      <li key={`${m.recommended}-${m.actual}`}>
+                        {m.recommended} → {m.actual} · {m.count}건
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="mt-2 text-[10px] text-[var(--ink-2)]">
+                  보류는 정확도 계산에서 빼요. 표본이 적을 때의 숫자는 참고만 하세요.
+                </p>
+              </>
+            )}
+          </section>
 
           {metrics.total === 0 ? (
             <div className="rounded-3xl bg-[var(--surface)] p-8 text-center text-sm text-[var(--ink-2)] shadow-[0_1px_12px_rgba(11,59,60,0.07)]">

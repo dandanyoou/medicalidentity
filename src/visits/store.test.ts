@@ -10,6 +10,7 @@ import {
   removeVisitsByIdPrefix,
   completeVisit,
   isUnpaid,
+  reviewVisit,
 } from "./store";
 
 beforeEach(() => resetVisits());
@@ -163,6 +164,28 @@ describe("visits store", () => {
     expect(() => completeVisit(v.id, { opinion: "x", prescriptions: [], amount: Number.NaN })).toThrow();
     expect(() => completeVisit(v.id, { opinion: "x", prescriptions: [], amount: -1 })).toThrow();
     expect(getVisit(v.id)?.status).toBe("예약");
+  });
+
+  it("의사가 추천 진료과 적합 여부를 남기면 방문에 저장된다(라벨 정답)", () => {
+    const v = addVisit({ memberId: "self", hospital: "A", dept: "가정의학과", date: "2026-11-09", reason: "r", amount: 0, paid: false, status: "예약" });
+    reviewVisit(v.id, { verdict: "다른 과", actualDept: "신경과", recommended: ["가정의학과", "신경과"] }, 1700000000000);
+    expect(getVisit(v.id)?.doctorReview).toEqual({
+      verdict: "다른 과",
+      actualDept: "신경과",
+      recommended: ["가정의학과", "신경과"],
+      at: 1700000000000,
+    });
+  });
+
+  it("의사 확인 기록이 깨졌으면 방문은 남기고 그 기록만 뺀다", () => {
+    localStorage.setItem(
+      "medid.visits.v1",
+      JSON.stringify([
+        { id: "r1", memberId: "self", hospital: "A", dept: "내과", date: "2026-11-09", reason: "r", amount: 0, paid: false, status: "예약", doctorReview: { verdict: "글쎄", recommended: [], at: 1 } },
+      ]),
+    );
+    expect(getVisit("r1")?.hospital).toBe("A");
+    expect(getVisit("r1")?.doctorReview).toBeUndefined();
   });
 
   it("저장된 값이 JSON이 아니면 시드로 돌아간다", () => {

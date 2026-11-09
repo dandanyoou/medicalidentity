@@ -212,6 +212,42 @@ describe("DoctorScreen — 오늘 진료 대기열", () => {
     expect(within(queue).getByText(/오늘 예약된 환자가 없어요/)).toBeTruthy();
   });
 
+  it("문진 카드에서 '추천 과가 맞았나요?'에 답하면 방문에 의사 확인이 저장된다", () => {
+    resetVisits();
+    const answers = [["머리", "목·어깨"], "머리", "욱신", "뻐근", "1-3일", 5, ["움직일 때"], ["없음"]].reduce<IntakeAnswers>(
+      (a, v) => answer(a, v as string | string[] | number),
+      EMPTY_ANSWERS,
+    );
+    const v = addVisit({
+      memberId: "self",
+      hospital: "서울대학교병원",
+      dept: "가정의학과",
+      date: localDateKey(),
+      time: "10:00",
+      reason: summarize(answers),
+      intake: buildRecord(answers, "", 1),
+      amount: 0,
+      paid: false,
+      status: "예약",
+    });
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "김단유 사전 문진 보기" }));
+    const review = screen.getByRole("group", { name: "추천 과가 맞았나요?" });
+    fireEvent.click(within(review).getByRole("button", { name: "다른 과" }));
+    fireEvent.change(within(review).getByLabelText("실제 진료과"), { target: { value: "신경과" } });
+    fireEvent.click(within(review).getByRole("button", { name: "저장" }));
+
+    expect(screen.getByText(/의사 확인: 다른 과 → 신경과/)).toBeTruthy();
+    const saved = getVisit(v.id)!.doctorReview!;
+    expect(saved.verdict).toBe("다른 과");
+    expect(saved.actualDept).toBe("신경과");
+    expect(saved.recommended).toEqual(["가정의학과", "신경과"]);
+  });
+
   it("문진 카드에서 소견·처방·진료비를 입력해 진료를 마치면 대기열에서 빠지고 수납대기가 된다", () => {
     resetVisits();
     const v = addVisit({

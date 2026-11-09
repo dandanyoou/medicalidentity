@@ -21,6 +21,18 @@ export interface Prescription {
   days: number;
 }
 
+/** 의사가 남기는 "추천 진료과가 맞았나" — 라벨링의 정답 데이터. */
+export interface DoctorReview {
+  verdict: "맞음" | "다른 과" | "보류";
+  /** verdict가 "다른 과"일 때 실제로 봐야 했던 과. */
+  actualDept?: string;
+  /** 그때 앱이 보여준 추천 진료과(1순위부터). */
+  recommended: string[];
+  at: number;
+}
+
+const VERDICTS: readonly DoctorReview["verdict"][] = ["맞음", "다른 과", "보류"];
+
 export interface Visit {
   id: string;
   memberId: string;
@@ -32,6 +44,7 @@ export interface Visit {
   time?: string; // HH:MM — 예약 시각(의사 대기열 정렬용)
   reason: string; // 방문 이유(증상)
   intake?: IntakeRecord; // 대화형 문진 답(항목별) — 의사 사전 문진 카드용
+  doctorReview?: DoctorReview; // 의사가 남긴 추천 진료과 적합 여부
   opinion?: string; // 소견서
   prescriptions?: Prescription[];
   amount: number; // 진료비(원)
@@ -130,11 +143,29 @@ function isIntakeRecord(v: unknown): v is IntakeRecord {
   );
 }
 
-/** 문진 기록이 깨졌으면 방문은 살리고 문진 기록만 뺀다(방문·수납 기록이 더 중요하다). */
+function isDoctorReview(v: unknown): v is DoctorReview {
+  if (!v || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+  return (
+    VERDICTS.includes(o.verdict as DoctorReview["verdict"]) &&
+    (o.actualDept === undefined || typeof o.actualDept === "string") &&
+    isStringArray(o.recommended) &&
+    typeof o.at === "number"
+  );
+}
+
+/** 문진·의사 확인 기록이 깨졌으면 방문은 살리고 그 기록만 뺀다(방문·수납 기록이 더 중요하다). */
 function sanitize(v: Visit): Visit {
-  if (v.intake === undefined || isIntakeRecord(v.intake)) return v;
-  const { intake: _broken, ...rest } = v;
-  return rest;
+  let out = v;
+  if (out.intake !== undefined && !isIntakeRecord(out.intake)) {
+    const { intake: _broken, ...rest } = out;
+    out = rest;
+  }
+  if (out.doctorReview !== undefined && !isDoctorReview(out.doctorReview)) {
+    const { doctorReview: _broken, ...rest } = out;
+    out = rest;
+  }
+  return out;
 }
 
 function read(): Visit[] {
@@ -227,6 +258,19 @@ export function completeVisit(
     paid: false,
     status: "수납대기",
   };
+  write(read().map((v) => (v.id === id ? updated : v)));
+  return updated;
+}
+
+/** 의사 확인(추천 진료과 적합 여부)을 남긴다. 다시 누르면 덮어쓴다. */
+export function reviewVisit(
+  id: string,
+  review: Omit<DoctorReview, "at">,
+  at: number = Date.now(),
+): Visit {
+  const target = read().find((v) => v.id === id);
+  if (!target) throw new Error("방문을 찾을 수 없어요");
+  const updated: Visit = { ...target, doctorReview: { ...review, at } };
   write(read().map((v) => (v.id === id ? updated : v)));
   return updated;
 }

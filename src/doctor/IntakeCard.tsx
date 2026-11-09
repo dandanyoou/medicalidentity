@@ -2,6 +2,7 @@ import type { Visit } from "../visits/store";
 import { intakeView } from "./intakeView";
 import { checkRedFlags, recommendDepts } from "../intake/triage";
 import { CompleteVisitForm } from "./CompleteVisitForm";
+import { ReviewPrompt } from "./ReviewPrompt";
 
 /**
  * 의사 사전 문진 카드.
@@ -88,6 +89,7 @@ export function IntakeCard({
           환자가 받은 안내: {rec.depts.join(" · ")} (규칙 기반 진료과 안내, 진단 아님)
         </p>
       )}
+      <ReviewPrompt visit={visit} recommended={rec?.depts ?? []} />
       {completeForm}
     </section>
   );
