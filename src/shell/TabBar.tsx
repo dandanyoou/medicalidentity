@@ -14,10 +14,12 @@ const TABS = [
 ] as const;
 
 const HIDDEN_ON = ["/doctor", "/onboarding"];
+// 응급 열람 페이지(/e)는 구급대원이 보는 전체 화면 — 정확히 /e 만(응급 잠금화면 /emergency-card는 환자 화면).
+const HIDDEN_EXACT = ["/e"];
 
 export function TabBar() {
   const { pathname } = useLocation();
-  if (HIDDEN_ON.some((p) => pathname.startsWith(p))) return null;
+  if (HIDDEN_ON.some((p) => pathname.startsWith(p)) || HIDDEN_EXACT.includes(pathname)) return null;
 
   return (
     <nav
