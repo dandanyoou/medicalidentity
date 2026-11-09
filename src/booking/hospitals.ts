@@ -58,6 +58,42 @@ export function formatDistance(km: number): string {
   return `${Math.round(km)}km`;
 }
 
+export type SortMode = "recommended" | "distance" | "name";
+
+/** 종별 순위 — 낮을수록 큰 병원. 데이터 빌드 스크립트와 같은 기준. */
+const TYPE_RANK: Record<string, number> = {
+  상급종합: 0,
+  종합병원: 1,
+  병원: 2,
+  요양병원: 3,
+  정신병원: 3,
+  치과병원: 3,
+  한방병원: 3,
+  의원: 4,
+};
+const typeRank = (t: string) => TYPE_RANK[t] ?? 5;
+/** 추천순에서 거리 가중 — 이만큼 멀어질 때마다 한 급 낮은 곳과 같아진다. */
+const KM_PER_RANK = 3;
+
+/**
+ * 정렬. 추천순은 종별이 높은 곳을 앞에 두되, 위치를 알면 가까운 낮은 급도 올라온다
+ * (의원 300m가 종합병원 9km보다 앞설 수 있다). 가까운 순인데 위치를 모르면 추천순.
+ * 이용자 평가순은 평가 데이터가 쌓인 뒤에만 만든다(과장 금지).
+ */
+export function sortHospitals(list: Hospital[], mode: SortMode, ctx: { here?: LatLng | null }): Hospital[] {
+  const here = ctx.here ?? null;
+  if (mode === "name") return [...list].sort((a, b) => displayName(a).localeCompare(displayName(b), "ko"));
+  if (mode === "distance" && here) return sortByDistance(list, here);
+  const score = (h: Hospital) => {
+    const base = typeRank(h.type);
+    if (!here || h.lat === undefined || h.lng === undefined) return base;
+    return base + distanceKm(here, { lat: h.lat, lng: h.lng }) / KM_PER_RANK;
+  };
+  return [...list].sort(
+    (a, b) => score(a) - score(b) || b.doctors - a.doctors || displayName(a).localeCompare(displayName(b), "ko"),
+  );
+}
+
 /** 가까운 순 — 좌표가 없는 곳은 맨 뒤(원본 순서 유지). 원본 배열은 바꾸지 않는다. */
 export function sortByDistance<T extends { lat?: number; lng?: number }>(list: T[], here: LatLng): T[] {
   const withD = list.map((h, i) => ({

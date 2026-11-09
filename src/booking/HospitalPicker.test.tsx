@@ -106,6 +106,33 @@ describe("HospitalPicker — 서울 병원 고르기", () => {
     expect(screen.getAllByRole("button", { name: /서울대학교병원/ }).length).toBeGreaterThan(0);
   });
 
+  it("정렬을 '이름순'으로 바꾸면 가나다 순이 되고, 기본은 추천순이다", async () => {
+    const list: Hospital[] = [
+      { id: "1", name: "하나의원", type: "의원", gu: "종로구", addr: "서울", doctors: 1, depts: ["내과"] },
+      { id: "2", name: "가나종합병원", type: "종합병원", gu: "종로구", addr: "서울", doctors: 50, depts: ["내과"] },
+      { id: "3", name: "다라의원", type: "의원", gu: "종로구", addr: "서울", doctors: 2, depts: ["내과"] },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(list))));
+    render(<HospitalPicker dept={null} onPick={() => {}} />);
+    fireEvent.change(screen.getByLabelText("구 선택"), { target: { value: "종로구" } });
+    await screen.findByRole("list", { name: "종로구 병원 목록" });
+
+    const sort = screen.getByRole("group", { name: "정렬" });
+    expect(within(sort).getByRole("button", { name: "추천순" }).getAttribute("aria-pressed")).toBe("true");
+    // 추천순: 종합병원 → 의사 수 많은 의원 → 나머지
+    let names = screen.getAllByRole("listitem").map((li) => li.textContent ?? "");
+    expect(names[0]).toContain("가나종합병원");
+    expect(names[1]).toContain("다라의원");
+
+    fireEvent.click(within(sort).getByRole("button", { name: "이름순" }));
+    names = screen.getAllByRole("listitem").map((li) => li.textContent ?? "");
+    expect(names[0]).toContain("가나종합병원");
+    expect(names[1]).toContain("다라의원");
+    expect(names[2]).toContain("하나의원");
+    // 이용자 평가순은 데이터가 없어 만들지 않았다 — 과장하지 않는다.
+    expect(within(sort).queryByRole("button", { name: /평가|별점/ })).toBeNull();
+  });
+
   it("데이터 출처와 기준일을 밝힌다", () => {
     render(<HospitalPicker dept={null} onPick={() => {}} />);
     expect(screen.getByText(/건강보험심사평가원/)).toBeTruthy();

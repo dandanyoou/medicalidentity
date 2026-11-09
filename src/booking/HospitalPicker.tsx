@@ -8,8 +8,10 @@ import {
   loadGuHospitals,
   matchesDept,
   sortByDistance,
+  sortHospitals,
   type Hospital,
   type LatLng,
+  type SortMode,
 } from "./hospitals";
 
 const GU_KEY = "medid.booking.gu.v1";
@@ -47,12 +49,15 @@ export function HospitalPicker({
   const [here, setHere] = useState<LatLng | null>(null);
   const [geo, setGeo] = useState<"idle" | "asking" | "error">("idle");
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [mode, setMode] = useState<SortMode>("recommended");
+
+  function pickMode(next: SortMode) {
+    setMode(next);
+    setLimit(PAGE);
+    if (next === "distance" && !here) askLocation();
+  }
 
   function askLocation() {
-    if (here) {
-      setHere(null); // 다시 누르면 가까운 순 해제
-      return;
-    }
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setGeo("error");
       setGeoError("이 기기에서는 위치를 쓸 수 없어요.");
@@ -121,26 +126,34 @@ export function HospitalPicker({
 
   const filtered = useMemo(() => {
     const f = list ? filterHospitals(list, { dept, query }) : [];
-    return here ? sortByDistance(f, here) : f;
-  }, [list, dept, query, here]);
+    return sortHospitals(f, mode, { here });
+  }, [list, dept, query, here, mode]);
   const majors = useMemo(() => (here ? sortByDistance(SEOUL_INDEX.major, here) : SEOUL_INDEX.major), [here]);
   const shown = filtered.slice(0, limit);
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-[var(--ink-2)]">정렬</p>
-        <button
-          type="button"
-          aria-pressed={!!here}
-          onClick={askLocation}
-          disabled={geo === "asking"}
-          className={`min-h-[36px] rounded-xl px-3 text-xs font-bold transition ${
-            here ? "bg-[var(--ink)] text-white" : "border border-[var(--mist)] bg-[var(--surface)] text-[var(--ink)]"
-          } disabled:opacity-60`}
-        >
-          {geo === "asking" ? "위치 확인 중…" : here ? "가까운 순 ✓" : "가까운 순"}
-        </button>
+      <div role="group" aria-label="정렬" className="mb-3 flex items-center gap-2">
+        {(
+          [
+            ["recommended", "추천순"],
+            ["distance", geo === "asking" ? "위치 확인 중…" : "가까운 순"],
+            ["name", "이름순"],
+          ] as [SortMode, string][]
+        ).map(([m, label]) => (
+          <button
+            key={m}
+            type="button"
+            aria-pressed={mode === m}
+            onClick={() => pickMode(m)}
+            disabled={m === "distance" && geo === "asking"}
+            className={`min-h-[36px] rounded-xl px-3 text-xs font-bold transition ${
+              mode === m ? "bg-[var(--ink)] text-white" : "border border-[var(--mist)] bg-[var(--surface)] text-[var(--ink)]"
+            } disabled:opacity-60`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
       {geo === "error" && geoError && (
         <p role="status" className="mb-3 rounded-xl bg-[var(--surface)] px-3 py-2 text-[11px] text-[var(--ink-2)]">
@@ -149,7 +162,7 @@ export function HospitalPicker({
       )}
       {here && (
         <p className="mb-3 text-[10px] text-[var(--ink-2)]">
-          내 위치는 거리 계산에만 쓰고 저장하지 않아요. 다시 누르면 해제돼요.
+          내 위치는 거리 계산에만 쓰고 저장하지 않아요. 추천순에서도 가까운 곳이 조금 앞으로 와요.
         </p>
       )}
 

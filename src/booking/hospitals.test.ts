@@ -8,6 +8,7 @@ import {
   filterHospitals,
   formatDistance,
   sortByDistance,
+  sortHospitals,
   loadGuHospitals,
   matchesDept,
   type Hospital,
@@ -88,6 +89,54 @@ describe("거리 — 가까운 순", () => {
     expect(sortByDistance(list, here).map((x) => x.id)).toEqual(["near", "far", "none"]);
     // 원본은 그대로.
     expect(list.map((x) => x.id)).toEqual(["far", "none", "near"]);
+  });
+});
+
+describe("sortHospitals — 추천순 · 가까운 순 · 이름순", () => {
+  const here = { lat: 37.5665, lng: 126.978 };
+  const list = [
+    h({ id: "clinic-near", name: "바로의원", type: "의원", doctors: 1, lat: 37.567, lng: 126.979 }), // ~100m
+    h({ id: "general-far", name: "가나종합병원", type: "종합병원", doctors: 80, lat: 37.65, lng: 127.1 }), // ~14km
+    h({ id: "tertiary", name: "다라대학교병원", type: "상급종합", doctors: 900, lat: 37.58, lng: 126.999 }), // ~2.3km
+    h({ id: "clinic-b", name: "나나의원", type: "의원", doctors: 3, lat: 37.6, lng: 127.0 }), // ~4.2km
+  ];
+
+  it("추천순(위치 모름): 종별 높은 곳 → 같은 급은 의사 수 → 이름", () => {
+    expect(sortHospitals(list, "recommended", {}).map((x) => x.id)).toEqual([
+      "tertiary",
+      "general-far",
+      "clinic-b",
+      "clinic-near",
+    ]);
+  });
+
+  it("추천순(위치 앎): 가까우면 낮은 급도 앞으로 — 3km마다 한 급씩", () => {
+    // 종합병원 14km(1+4.7=5.7) < 상급종합 2.3km(0+0.8) ... 바로의원 100m(4+0.03=4.03)
+    expect(sortHospitals(list, "recommended", { here }).map((x) => x.id)).toEqual([
+      "tertiary",
+      "clinic-near",
+      "clinic-b",
+      "general-far",
+    ]);
+  });
+
+  it("가까운 순은 거리, 이름순은 가나다", () => {
+    expect(sortHospitals(list, "distance", { here }).map((x) => x.id)).toEqual([
+      "clinic-near",
+      "tertiary",
+      "clinic-b",
+      "general-far",
+    ]);
+    expect(sortHospitals(list, "name", {}).map((x) => x.name)).toEqual([
+      "가나종합병원",
+      "나나의원",
+      "다라대학교병원",
+      "바로의원",
+    ]);
+  });
+
+  it("가까운 순인데 위치를 모르면 추천순으로 둔다", () => {
+    expect(sortHospitals(list, "distance", {})).toEqual(sortHospitals(list, "recommended", {}));
   });
 });
 
