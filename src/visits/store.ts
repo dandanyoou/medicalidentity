@@ -25,6 +25,7 @@ export interface Visit {
   hospital: string;
   dept: string;
   date: string; // YYYY-MM-DD
+  time?: string; // HH:MM — 예약 시각(의사 대기열 정렬용)
   reason: string; // 방문 이유(증상)
   opinion?: string; // 소견서
   prescriptions?: Prescription[];
@@ -94,6 +95,7 @@ function isVisit(v: unknown): v is Visit {
     typeof o.hospital === "string" &&
     typeof o.dept === "string" &&
     typeof o.date === "string" &&
+    (o.time === undefined || typeof o.time === "string") &&
     typeof o.reason === "string" &&
     typeof o.amount === "number" &&
     Number.isFinite(o.amount) &&

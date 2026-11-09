@@ -13,6 +13,7 @@ import { buildVPPayload } from "../wallet/bundle";
 import { DDICheck } from "./DDICheck";
 import { ControlledSubstancePanel } from "./ControlledSubstancePanel";
 import { Skeleton } from "../shell/Skeleton";
+import { QueuePanel } from "./QueuePanel";
 
 // 검증 중에 "무엇을 확인하는지" 보여주는 체크 목록 — 스피너보다 신뢰가 간다.
 const VERIFY_CHECKS = ["발급자 서명", "신뢰 앵커(mDL)", "폐기·만료 여부"];
@@ -184,6 +185,8 @@ export function DoctorScreen() {
         </header>
 
         <main className="flex-1 overflow-y-auto px-4 pb-8 pt-5">
+          {!bundle && !verifying && <QueuePanel />}
+
           {!bundle && !verifying && (
             <section className="rounded-3xl bg-[var(--surface)] p-5 shadow-sm">
               <h2 className="text-sm font-semibold text-[var(--ink)]">환자 VP 입력</h2>

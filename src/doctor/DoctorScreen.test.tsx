@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
+import { addVisit, resetVisits } from "../visits/store";
+import { localDateKey } from "./queue";
 import { MemoryRouter } from "react-router-dom";
 import { DoctorScreen } from "./DoctorScreen";
 import { getPatientVCs } from "../data/patient-vcs";
@@ -92,6 +94,51 @@ describe("DoctorScreen — 로직 견고화 (필드 누락 입력)", () => {
     fireEvent.change(textarea, { target: { value: JSON.stringify({ blood: "x" }) } });
     fireEvent.click(screen.getByText("페이스트 검증"));
     expect(await screen.findByText(/필수 항목\(blood, allergy, nonce\)이 빠져 있습니다/)).toBeTruthy();
+  });
+});
+
+describe("DoctorScreen — 오늘 진료 대기열", () => {
+  afterEach(() => {
+    cleanup();
+    resetVisits();
+  });
+
+  it("환자가 오늘로 예약한 방문이 대기열에 시각·이름·사유와 함께 보인다", () => {
+    resetVisits();
+    addVisit({
+      memberId: "self",
+      hospital: "서울대학교병원",
+      dept: "가정의학과",
+      date: localDateKey(),
+      time: "15:30",
+      reason: "머리가 아프고 어깨가 뻐근해요",
+      amount: 0,
+      paid: false,
+      status: "예약",
+    });
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    const queue = screen.getByRole("region", { name: "오늘 진료 대기열" });
+    expect(within(queue).getByText("대기 1명")).toBeTruthy();
+    expect(within(queue).getByText("15:30")).toBeTruthy();
+    expect(within(queue).getByText("김단유")).toBeTruthy();
+    expect(within(queue).getByText("머리가 아프고 어깨가 뻐근해요")).toBeTruthy();
+    // 실제 병원 예약 연동이 아니라 같은 기기 저장소를 쓰는 시연임을 밝힌다.
+    expect(within(queue).getByText(/같은 기기/)).toBeTruthy();
+  });
+
+  it("오늘 예약이 없으면 빈 상태 안내를 보여준다", () => {
+    resetVisits();
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    const queue = screen.getByRole("region", { name: "오늘 진료 대기열" });
+    expect(within(queue).getByText(/오늘 예약된 환자가 없어요/)).toBeTruthy();
   });
 });
 

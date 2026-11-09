@@ -59,5 +59,7 @@ describe("BookingScreen (예약 · 증상→병원 파이프라인)", () => {
     expect(booked?.hospital).toBe("서울대학교병원");
     expect(booked?.dept).toBe("가정의학과");
     expect(booked?.reason).toBe("머리가 아파요");
+    // 의사 화면 대기열이 시각 순으로 정렬할 수 있게 예약 시각도 저장한다.
+    expect(booked?.time).toBe("15:30");
   });
 });

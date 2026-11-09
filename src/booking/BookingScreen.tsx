@@ -64,6 +64,7 @@ export function BookingScreen() {
       hospital,
       dept,
       date: slotToDate(slot),
+      time: slotToTime(slot).replace(/(\d{2})(\d{2})/, "$1:$2"),
       reason: query.trim() || "직접 선택",
       amount: 0,
       paid: false,
