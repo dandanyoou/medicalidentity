@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { markOnboarded } from "./onboarding";
+import { BrandMark } from "./BrandMark";
 
 /**
  * 첫 실행 온보딩 — 3장으로 "왜 이 앱인가"를 세운다(토스·삼쩜삼식).
@@ -66,10 +67,7 @@ export function OnboardingScreen() {
           <div
             className={`mb-8 flex h-20 w-20 items-center justify-center rounded-[24px] ${accentClass} shadow-[0_12px_40px_rgba(11,59,60,0.22)]`}
           >
-            <svg width="38" height="38" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M12 3.5v17M3.5 12h17" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
-              <circle cx="12" cy="12" r="2.4" fill={s.accent === "vital" ? "#fff" : "#ff5a4d"} />
-            </svg>
+            <BrandMark size={44} />
           </div>
 
           <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--ink-2)]">

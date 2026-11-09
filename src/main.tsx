@@ -8,6 +8,7 @@ import { TabBar } from "./shell/TabBar";
 import { hasSeenOnboarding } from "./shell/onboarding";
 import { captureInstallPrompt } from "./shell/installPrompt";
 import { ChunkErrorBoundary } from "./shell/ChunkErrorBoundary";
+import { BrandMark } from "./shell/BrandMark";
 
 // beforeinstallprompt는 아주 이른 시점에 오므로 렌더 전에 붙잡아 둔다(더보기 → 설치 버튼).
 captureInstallPrompt();
@@ -67,15 +68,7 @@ function RouteLoadingFallback() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-[var(--paper)]">
       <div className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-[var(--ink)] shadow-[0_10px_34px_rgba(11,59,60,0.28)]">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M12 3.5v17M3.5 12h17"
-            stroke="#ffffff"
-            strokeWidth="2.6"
-            strokeLinecap="round"
-          />
-          <circle cx="12" cy="12" r="2.4" fill="#ff5a4d" />
-        </svg>
+        <BrandMark size={36} />
       </div>
       <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--mist)] border-t-[var(--ink)]" />
     </div>
