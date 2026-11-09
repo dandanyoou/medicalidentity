@@ -4,6 +4,7 @@ import { searchSymptoms } from "../symptom-info/data";
 import { addVisit } from "../visits/store";
 import { Stepper } from "../shell/Stepper";
 import { downloadICS, slotToDate, slotToTime } from "./ics";
+import { IntakeChat } from "../intake/IntakeChat";
 
 // 예약 진행 단계(상단) · 완료 후 방문 타임라인(완료 카드).
 const FLOW_STEPS = [{ label: "증상" }, { label: "병원" }, { label: "시간" }];
@@ -45,8 +46,14 @@ export function BookingScreen() {
   const [dept, setDept] = useState<string | null>(null);
   const [hospital, setHospital] = useState<string | null>(null);
   const [slot, setSlot] = useState<string | null>(null);
+  // 대화형 문진으로 정리된 문장 — 있으면 이게 예약 사유로 의사에게 간다.
+  const [intakeSummary, setIntakeSummary] = useState<string | null>(null);
 
-  const matches = useMemo(() => searchSymptoms(query), [query]);
+  const matches = useMemo(
+    () => searchSymptoms([query, intakeSummary ?? ""].join(" ").trim()),
+    [query, intakeSummary],
+  );
+  const reason = intakeSummary ?? query.trim();
   const recommendedDepts = useMemo(
     () => Array.from(new Set(matches.map((m) => m.mapQuery))),
     [matches],
@@ -65,7 +72,7 @@ export function BookingScreen() {
       dept,
       date: slotToDate(slot),
       time: slotToTime(slot).replace(/(\d{2})(\d{2})/, "$1:$2"),
-      reason: query.trim() || "직접 선택",
+      reason: reason || "직접 선택",
       amount: 0,
       paid: false,
       status: "예약",
@@ -76,6 +83,7 @@ export function BookingScreen() {
   function reset() {
     setStep("symptom");
     setQuery("");
+    setIntakeSummary(null);
     setDept(null);
     setHospital(null);
     setSlot(null);
@@ -136,6 +144,26 @@ export function BookingScreen() {
                 rows={2}
                 className="w-full resize-none rounded-2xl border border-[var(--mist)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--ink)] outline-none focus:border-[var(--ink)]"
               />
+
+              <div className="mt-4">
+                {intakeSummary ? (
+                  <div className="rounded-2xl border-l-4 border-[var(--ink)] bg-[var(--surface)] px-4 py-3">
+                    <p className="mb-1 text-[11px] font-semibold text-[var(--ink-2)]">
+                      정리된 증상 — 예약하면 의사에게 이렇게 전달돼요
+                    </p>
+                    <p className="text-sm leading-relaxed text-[var(--ink)]">{intakeSummary}</p>
+                    <button
+                      type="button"
+                      onClick={() => setIntakeSummary(null)}
+                      className="mt-2 text-xs font-semibold text-[var(--ink-2)] underline"
+                    >
+                      다시 정리하기
+                    </button>
+                  </div>
+                ) : (
+                  <IntakeChat seedText={query} onDone={(_a, s) => setIntakeSummary(s)} />
+                )}
+              </div>
 
               {recommendedDepts.length > 0 && (
                 <div className="mt-4">
@@ -256,8 +284,8 @@ export function BookingScreen() {
                 <p className="mt-2 font-data text-[28px] font-bold leading-none tracking-tight text-[var(--ink)]">
                   {slot}
                 </p>
-                {query.trim() && (
-                  <p className="mt-2 text-xs text-[var(--ink-2)]">사유: {query.trim()}</p>
+                {reason && (
+                  <p className="mt-2 text-xs text-[var(--ink-2)]">사유: {reason}</p>
                 )}
               </div>
               <div className="mt-4">
@@ -278,7 +306,7 @@ export function BookingScreen() {
                     dept,
                     date: slotToDate(slot),
                     slot,
-                    reason: query.trim() || undefined,
+                    reason: reason || undefined,
                   })
                 }
                 className="mt-4 w-full rounded-2xl bg-[var(--ink)] py-3 text-sm font-bold text-white active:brightness-110"

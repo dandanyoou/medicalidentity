@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { BookingScreen } from "./BookingScreen";
 import { resetVisits, listVisits } from "../visits/store";
@@ -61,5 +61,38 @@ describe("BookingScreen (예약 · 증상→병원 파이프라인)", () => {
     expect(booked?.reason).toBe("머리가 아파요");
     // 의사 화면 대기열이 시각 순으로 정렬할 수 있게 예약 시각도 저장한다.
     expect(booked?.time).toBe("15:30");
+  });
+
+  it("대화로 증상을 정리하면 정리된 문장이 예약 사유로 저장된다", () => {
+    render(
+      <MemoryRouter>
+        <BookingScreen />
+      </MemoryRouter>,
+    );
+    fireEvent.change(screen.getByPlaceholderText(/어디가 아프세요|머리가 아프고/), {
+      target: { value: "머리가 아파요" },
+    });
+    const chat = screen.getByRole("region", { name: "대화로 증상 정리" });
+    fireEvent.click(within(chat).getByRole("button", { name: "다음" }));
+    fireEvent.click(within(chat).getByRole("button", { name: /욱신욱신/ }));
+    fireEvent.click(within(chat).getByRole("button", { name: "오늘" }));
+    fireEvent.click(within(chat).getByRole("button", { name: /보통/ }));
+    fireEvent.click(within(chat).getByRole("button", { name: "특별히 없음" }));
+    fireEvent.click(within(chat).getByRole("button", { name: "다음" }));
+    fireEvent.click(within(chat).getByRole("button", { name: "없음" }));
+    fireEvent.click(within(chat).getByRole("button", { name: "다음" }));
+
+    const summary =
+      "오늘부터 머리가 욱신욱신 아파요. 아픈 정도는 10점 중 5점(일상이 불편한 정도)이에요. 다른 증상은 없어요.";
+    // 정리된 문장을 환자가 먼저 본다.
+    expect(screen.getByText(summary)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /가정의학과 예약/ }));
+    fireEvent.click(screen.getByRole("button", { name: /서울대학교병원/ }));
+    fireEvent.click(screen.getByRole("button", { name: "오늘 15:30" }));
+    fireEvent.click(screen.getByRole("button", { name: /예약하기/ }));
+
+    const booked = listVisits("self").find((v) => v.status === "예약");
+    expect(booked?.reason).toBe(summary);
   });
 });
