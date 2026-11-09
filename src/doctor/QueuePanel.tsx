@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { listVisits } from "../visits/store";
+import { listVisits, type Visit } from "../visits/store";
 import { getMember } from "../family/store";
 import { todayQueue } from "./queue";
 import { IntakeCard } from "./IntakeCard";
@@ -16,6 +16,14 @@ export function QueuePanel() {
   const queue = useMemo(() => todayQueue(listVisits()), [tick]);
   const demoOn = useMemo(() => hasDemoPatients(), [tick]);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  function handleComplete(updated: Visit) {
+    const name = updated.patientName ?? getMember(updated.memberId)?.name ?? "환자";
+    setNotice(`${name}님 진료를 마쳤어요 — ${updated.amount.toLocaleString("ko-KR")}원 수납대기로 환자 수납 화면에 떴어요.`);
+    setOpenId(null);
+    setTick((t) => t + 1);
+  }
 
   function toggleDemo() {
     if (demoOn) clearDemoPatients();
@@ -37,6 +45,15 @@ export function QueuePanel() {
           대기 {queue.length}명
         </span>
       </div>
+
+      {notice && (
+        <p
+          role="status"
+          className="mt-3 rounded-2xl border-l-4 border-[var(--refund)] bg-[var(--refund)]/10 px-4 py-3 text-xs leading-relaxed text-[var(--refund-ink)]"
+        >
+          {notice}
+        </p>
+      )}
 
       {queue.length === 0 ? (
         <p className="mt-3 rounded-2xl bg-[var(--paper)] px-4 py-3 text-xs leading-relaxed text-[var(--ink-2)]">
@@ -77,7 +94,7 @@ export function QueuePanel() {
                     {open ? "닫기" : "문진"}
                   </button>
                 </div>
-                {open && <IntakeCard visit={v} />}
+                {open && <IntakeCard visit={v} onComplete={handleComplete} />}
               </li>
             );
           })}

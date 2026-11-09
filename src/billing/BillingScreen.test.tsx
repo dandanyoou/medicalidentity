@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { BillingScreen } from "./BillingScreen";
-import { addVisit, resetVisits } from "../visits/store";
+import { addVisit, completeVisit, resetVisits } from "../visits/store";
 
 beforeEach(() => resetVisits());
 afterEach(() => {
@@ -43,6 +43,34 @@ describe("BillingScreen (수납 · 진료기록 · 시연)", () => {
     expect(screen.getByText("예약")).toBeTruthy(); // 접힌 카드의 상태 배지
     fireEvent.click(screen.getByText("머리가 아파요"));
     expect(screen.queryByRole("button", { name: /수납하기/ })).toBeNull();
+  });
+
+  it("의사가 진료를 마친 방문은 소견·처방·진료비와 함께 수납대기로 떠서 바로 수납할 수 있다", () => {
+    const v = addVisit({
+      memberId: "self",
+      hospital: "서울대학교병원",
+      dept: "가정의학과",
+      date: "2099-01-02",
+      reason: "머리가 아파요",
+      amount: 0,
+      paid: false,
+      status: "예약",
+    });
+    completeVisit(v.id, {
+      opinion: "긴장성 두통 소견. 휴식 권고.",
+      prescriptions: [{ drug: "아세트아미노펜 500mg", dose: "1정 3회/일", days: 3 }],
+      amount: 18500,
+    });
+    render(
+      <MemoryRouter>
+        <BillingScreen />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("미납 3건")).toBeTruthy();
+    fireEvent.click(screen.getByText("머리가 아파요"));
+    expect(screen.getByText(/긴장성 두통 소견/)).toBeTruthy();
+    expect(screen.getByText("아세트아미노펜 500mg")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /수납하기 · 18,500원/ })).toBeTruthy();
   });
 
   it("방문을 펼쳐 소견서·처방전을 보고, 수납하면 미납 수가 준다", () => {

@@ -1,6 +1,7 @@
 import type { Visit } from "../visits/store";
 import { intakeView } from "./intakeView";
 import { checkRedFlags, recommendDepts } from "../intake/triage";
+import { CompleteVisitForm } from "./CompleteVisitForm";
 
 /**
  * 의사 사전 문진 카드.
@@ -9,12 +10,23 @@ import { checkRedFlags, recommendDepts } from "../intake/triage";
  * 보여주고 우리 해석을 섞지 않는다. 우리 추천 진료과는 "환자가 받은 안내"로 작게만.
  * 진단·판단은 의사 몫이다.
  */
-export function IntakeCard({ visit }: { visit: Visit }) {
+export function IntakeCard({
+  visit,
+  onComplete,
+}: {
+  visit: Visit;
+  /** 진료 완료 저장 후 호출 — 대기열이 다시 읽게. */
+  onComplete?: (updated: Visit) => void;
+}) {
+  const completeForm =
+    visit.status === "예약" && onComplete ? <CompleteVisitForm visit={visit} onDone={onComplete} /> : null;
+
   if (!visit.intake) {
     return (
       <section aria-label="사전 문진" className="mt-2 rounded-2xl bg-[var(--surface)] px-4 py-3">
         <p className="text-xs text-[var(--ink-2)]">대화형 문진 없이 예약했어요. 예약 사유만 있어요.</p>
         <p className="mt-1 text-sm text-[var(--ink)]">{visit.reason}</p>
+        {completeForm}
       </section>
     );
   }
@@ -76,6 +88,7 @@ export function IntakeCard({ visit }: { visit: Visit }) {
           환자가 받은 안내: {rec.depts.join(" · ")} (규칙 기반 진료과 안내, 진단 아님)
         </p>
       )}
+      {completeForm}
     </section>
   );
 }

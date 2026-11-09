@@ -206,6 +206,31 @@ export function payVisit(id: string): void {
   );
 }
 
+/**
+ * 진료 완료 — 의사가 소견·처방·진료비를 넣으면 예약이 수납대기가 된다.
+ * 수납(payVisit)은 환자 쪽에서 따로 한다. 진료비는 0 이상의 정수만 받는다.
+ */
+export function completeVisit(
+  id: string,
+  input: { opinion: string; prescriptions: Prescription[]; amount: number },
+): Visit {
+  if (!Number.isInteger(input.amount) || input.amount < 0) {
+    throw new Error("진료비는 0 이상의 정수여야 해요");
+  }
+  const target = read().find((v) => v.id === id);
+  if (!target) throw new Error("방문을 찾을 수 없어요");
+  const updated: Visit = {
+    ...target,
+    opinion: input.opinion.trim(),
+    prescriptions: input.prescriptions,
+    amount: input.amount,
+    paid: false,
+    status: "수납대기",
+  };
+  write(read().map((v) => (v.id === id ? updated : v)));
+  return updated;
+}
+
 /** id 접두어로 방문을 지운다(시연 환자 정리). */
 export function removeVisitsByIdPrefix(prefix: string): void {
   write(read().filter((v) => !v.id.startsWith(prefix)));

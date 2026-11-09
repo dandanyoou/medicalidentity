@@ -8,6 +8,8 @@ import {
   unpaidVisits,
   resetVisits,
   removeVisitsByIdPrefix,
+  completeVisit,
+  isUnpaid,
 } from "./store";
 
 beforeEach(() => resetVisits());
@@ -138,6 +140,29 @@ describe("visits store", () => {
     );
     expect(getVisit("ok")?.patientName).toBe("박영희");
     expect(getVisit("bad")).toBeUndefined();
+  });
+
+  it("진료를 마치면 소견·처방·진료비가 들어가고 예약 → 수납대기가 된다(수납은 아직)", () => {
+    const v = addVisit({ memberId: "self", hospital: "A", dept: "내과", date: "2026-11-09", reason: "r", amount: 0, paid: false, status: "예약" });
+    completeVisit(v.id, {
+      opinion: "긴장성 두통 소견. 휴식 권고.",
+      prescriptions: [{ drug: "아세트아미노펜 500mg", dose: "1정 3회/일", days: 3 }],
+      amount: 18500,
+    });
+    const after = getVisit(v.id)!;
+    expect(after.status).toBe("수납대기");
+    expect(after.paid).toBe(false);
+    expect(after.amount).toBe(18500);
+    expect(after.opinion).toContain("긴장성");
+    expect(after.prescriptions).toHaveLength(1);
+    expect(isUnpaid(after)).toBe(true);
+  });
+
+  it("진료비가 숫자가 아니거나 음수면 거부한다", () => {
+    const v = addVisit({ memberId: "self", hospital: "A", dept: "내과", date: "2026-11-09", reason: "r", amount: 0, paid: false, status: "예약" });
+    expect(() => completeVisit(v.id, { opinion: "x", prescriptions: [], amount: Number.NaN })).toThrow();
+    expect(() => completeVisit(v.id, { opinion: "x", prescriptions: [], amount: -1 })).toThrow();
+    expect(getVisit(v.id)?.status).toBe("예약");
   });
 
   it("저장된 값이 JSON이 아니면 시드로 돌아간다", () => {

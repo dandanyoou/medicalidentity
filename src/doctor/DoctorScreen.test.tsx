@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
-import { addVisit, resetVisits } from "../visits/store";
+import { addVisit, getVisit, resetVisits } from "../visits/store";
 import { localDateKey } from "./queue";
 import { EMPTY_ANSWERS, answer, buildRecord, summarize, type IntakeAnswers } from "../intake/engine";
 import { MemoryRouter } from "react-router-dom";
@@ -210,6 +210,48 @@ describe("DoctorScreen — 오늘 진료 대기열", () => {
     fireEvent.click(within(queue).getByRole("button", { name: "시연 환자 지우기" }));
     expect(within(queue).getByText("대기 0명")).toBeTruthy();
     expect(within(queue).getByText(/오늘 예약된 환자가 없어요/)).toBeTruthy();
+  });
+
+  it("문진 카드에서 소견·처방·진료비를 입력해 진료를 마치면 대기열에서 빠지고 수납대기가 된다", () => {
+    resetVisits();
+    const v = addVisit({
+      memberId: "self",
+      hospital: "서울대학교병원",
+      dept: "가정의학과",
+      date: localDateKey(),
+      time: "09:30",
+      reason: "머리가 아파요",
+      amount: 0,
+      paid: false,
+      status: "예약",
+    });
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "김단유 사전 문진 보기" }));
+    const form = screen.getByRole("form", { name: "진료 완료 입력" });
+    // 비어 있으면 완료할 수 없다.
+    expect((within(form).getByRole("button", { name: /진료 완료/ }) as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.change(within(form).getByLabelText("소견"), { target: { value: "긴장성 두통 소견. 휴식 권고." } });
+    fireEvent.change(within(form).getByLabelText("약 이름"), { target: { value: "아세트아미노펜 500mg" } });
+    fireEvent.change(within(form).getByLabelText("용법"), { target: { value: "1정 3회/일" } });
+    fireEvent.change(within(form).getByLabelText("일수"), { target: { value: "3" } });
+    fireEvent.click(within(form).getByRole("button", { name: "처방 추가" }));
+    expect(within(form).getByText("아세트아미노펜 500mg")).toBeTruthy();
+    fireEvent.change(within(form).getByLabelText("진료비(원)"), { target: { value: "18500" } });
+    fireEvent.click(within(form).getByRole("button", { name: /진료 완료/ }));
+
+    // 대기열에서 빠지고 완료 안내가 뜬다.
+    const queue = screen.getByRole("region", { name: "오늘 진료 대기열" });
+    expect(within(queue).getByText("대기 0명")).toBeTruthy();
+    expect(screen.getByText(/김단유.*진료를 마쳤어요/)).toBeTruthy();
+    const after = getVisit(v.id)!;
+    expect(after.status).toBe("수납대기");
+    expect(after.amount).toBe(18500);
+    expect(after.prescriptions?.[0].drug).toBe("아세트아미노펜 500mg");
   });
 
   it("오늘 예약이 없으면 빈 상태 안내를 보여준다", () => {
