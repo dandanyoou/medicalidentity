@@ -67,6 +67,45 @@ describe("HospitalPicker — 서울 병원 고르기", () => {
     expect(screen.getByRole("button", { name: "다시 시도" })).toBeTruthy();
   });
 
+  it("'가까운 순'을 누를 때만 위치 권한을 요청하고, 거리를 붙여 가까운 순으로 정렬하며, 위치는 저장하지 않는다", async () => {
+    const getCurrentPosition = vi.fn((ok: (p: { coords: { latitude: number; longitude: number } }) => void) =>
+      ok({ coords: { latitude: 37.5797, longitude: 126.999 } }), // 서울대학교병원 바로 옆
+    );
+    vi.stubGlobal("navigator", { ...navigator, geolocation: { getCurrentPosition } });
+    const near: Hospital[] = [
+      { id: "a", name: "먼의원", type: "의원", gu: "종로구", addr: "서울", doctors: 1, depts: ["내과"], lat: 37.65, lng: 127.08 },
+      { id: "b", name: "가까운의원", type: "의원", gu: "종로구", addr: "서울", doctors: 1, depts: ["내과"], lat: 37.58, lng: 126.999 },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(near))));
+    render(<HospitalPicker dept={null} onPick={() => {}} />);
+    // 열기만 해서는 위치를 묻지 않는다.
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("구 선택"), { target: { value: "종로구" } });
+    await screen.findByRole("list", { name: "종로구 병원 목록" });
+    fireEvent.click(screen.getByRole("button", { name: "가까운 순" }));
+    expect(getCurrentPosition).toHaveBeenCalledTimes(1);
+
+    const items = await screen.findAllByRole("listitem");
+    expect(within(items[0]).getByText("가까운의원")).toBeTruthy();
+    expect(within(items[0]).getByText(/\d+m|\d+(\.\d)?km/)).toBeTruthy();
+    // 상급종합병원 목록에도 거리가 붙고 가까운 순이 된다.
+    expect(screen.getAllByRole("button", { name: /서울대학교병원/ })[0].textContent).toMatch(/\d+m|\d+(\.\d)?km/);
+    // 저장은 하지 않는다.
+    expect(Object.keys(localStorage).some((k) => /lat|lng|geo|위치/i.test(k))).toBe(false);
+  });
+
+  it("위치 권한을 거부하면 이유를 알리고 목록은 그대로 둔다", async () => {
+    const getCurrentPosition = vi.fn((_ok: unknown, fail: (e: { code: number; message: string }) => void) =>
+      fail({ code: 1, message: "denied" }),
+    );
+    vi.stubGlobal("navigator", { ...navigator, geolocation: { getCurrentPosition } });
+    render(<HospitalPicker dept={null} onPick={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "가까운 순" }));
+    expect(await screen.findByText(/위치 권한이 없어요/)).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /서울대학교병원/ }).length).toBeGreaterThan(0);
+  });
+
   it("데이터 출처와 기준일을 밝힌다", () => {
     render(<HospitalPicker dept={null} onPick={() => {}} />);
     expect(screen.getByText(/건강보험심사평가원/)).toBeTruthy();

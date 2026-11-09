@@ -175,7 +175,7 @@ for (const [gu, list] of [...byGu.entries()].sort((a, b) => a[0].localeCompare(b
 const major = [...byCode.values()]
   .filter((h) => h.type === "상급종합")
   .sort((a, b) => b.doctors - a.doctors)
-  .map((h) => ({ id: h.id, name: h.shortName ?? h.name, gu: h.gu }));
+  .map((h) => ({ id: h.id, name: h.shortName ?? h.name, gu: h.gu, lat: h.lat, lng: h.lng }));
 
 writeFileSync(
   indexPath,

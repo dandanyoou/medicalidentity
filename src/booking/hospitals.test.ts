@@ -4,7 +4,10 @@ import {
   SEOUL_INDEX,
   clearHospitalCache,
   displayName,
+  distanceKm,
   filterHospitals,
+  formatDistance,
+  sortByDistance,
   loadGuHospitals,
   matchesDept,
   type Hospital,
@@ -60,6 +63,31 @@ describe("filterHospitals — 진료과·검색어", () => {
     expect(filterHospitals(list, { dept: null, query: "푸른 내과" }).map((x) => x.id)).toEqual(["b"]);
     expect(filterHospitals(list, { dept: null, query: "혜화" }).map((x) => x.id)).toEqual(["c"]);
     expect(filterHospitals(list, { dept: "안과", query: "튼튼" })).toEqual([]);
+  });
+});
+
+describe("거리 — 가까운 순", () => {
+  // 서울대학교병원(37.5797, 126.9990) ↔ 서울시청(37.5665, 126.9780): 약 2.3km
+  const here = { lat: 37.5665, lng: 126.978 };
+
+  it("하버사인으로 km를 구하고, 1km 미만은 m로 보여준다", () => {
+    const d = distanceKm(here, { lat: 37.5797151, lng: 126.9990168 });
+    expect(d).toBeGreaterThan(2.1);
+    expect(d).toBeLessThan(2.5);
+    expect(formatDistance(2.34)).toBe("2.3km");
+    expect(formatDistance(0.42)).toBe("420m");
+    expect(formatDistance(12.6)).toBe("13km");
+  });
+
+  it("좌표가 없는 병원은 맨 뒤로 보내고, 나머지는 가까운 순", () => {
+    const list = [
+      h({ id: "far", lat: 37.65, lng: 127.08 }),
+      h({ id: "none" }),
+      h({ id: "near", lat: 37.567, lng: 126.979 }),
+    ];
+    expect(sortByDistance(list, here).map((x) => x.id)).toEqual(["near", "far", "none"]);
+    // 원본은 그대로.
+    expect(list.map((x) => x.id)).toEqual(["far", "none", "near"]);
   });
 });
 

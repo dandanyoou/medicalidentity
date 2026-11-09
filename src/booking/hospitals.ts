@@ -33,7 +33,40 @@ export interface SeoulIndex {
   asOf: string;
   total: number;
   gus: { gu: string; count: number }[];
-  major: { id: string; name: string; gu: string }[];
+  major: { id: string; name: string; gu: string; lat?: number; lng?: number }[];
+}
+
+export interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+/** 두 지점 사이 거리(km) — 하버사인. 서울 안에서는 수십 m 오차면 충분하다. */
+export function distanceKm(a: LatLng, b: LatLng): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const s =
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+export function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round((km * 1000) / 10) * 10}m`;
+  if (km < 10) return `${km.toFixed(1)}km`;
+  return `${Math.round(km)}km`;
+}
+
+/** 가까운 순 — 좌표가 없는 곳은 맨 뒤(원본 순서 유지). 원본 배열은 바꾸지 않는다. */
+export function sortByDistance<T extends { lat?: number; lng?: number }>(list: T[], here: LatLng): T[] {
+  const withD = list.map((h, i) => ({
+    h,
+    i,
+    d: h.lat !== undefined && h.lng !== undefined ? distanceKm(here, { lat: h.lat, lng: h.lng }) : Infinity,
+  }));
+  withD.sort((a, b) => a.d - b.d || a.i - b.i);
+  return withD.map((x) => x.h);
 }
 
 export const SEOUL_INDEX: SeoulIndex = index as SeoulIndex;

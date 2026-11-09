@@ -2,10 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import {
   SEOUL_INDEX,
   displayName,
+  distanceKm,
   filterHospitals,
+  formatDistance,
   loadGuHospitals,
   matchesDept,
+  sortByDistance,
   type Hospital,
+  type LatLng,
 } from "./hospitals";
 
 const GU_KEY = "medid.booking.gu.v1";
@@ -39,6 +43,42 @@ export function HospitalPicker({
   const [error, setError] = useState<string | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [attempt, setAttempt] = useState(0);
+  // 내 위치 — 사용자가 "가까운 순"을 누를 때만 묻고, 메모리에만 둔다(저장 안 함).
+  const [here, setHere] = useState<LatLng | null>(null);
+  const [geo, setGeo] = useState<"idle" | "asking" | "error">("idle");
+  const [geoError, setGeoError] = useState<string | null>(null);
+
+  function askLocation() {
+    if (here) {
+      setHere(null); // 다시 누르면 가까운 순 해제
+      return;
+    }
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGeo("error");
+      setGeoError("이 기기에서는 위치를 쓸 수 없어요.");
+      return;
+    }
+    setGeo("asking");
+    setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setHere({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGeo("idle");
+      },
+      (err) => {
+        setGeo("error");
+        setGeoError(
+          err.code === 1
+            ? "위치 권한이 없어요. 브라우저 설정에서 허용하면 가까운 순으로 볼 수 있어요."
+            : "지금 위치를 알 수 없어요. 잠시 후 다시 눌러 보세요.",
+        );
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
+    );
+  }
+
+  const dist = (h: { lat?: number; lng?: number }) =>
+    here && h.lat !== undefined && h.lng !== undefined ? formatDistance(distanceKm(here, { lat: h.lat, lng: h.lng })) : null;
 
   useEffect(() => {
     if (!gu) {
@@ -79,18 +119,44 @@ export function HospitalPicker({
     }
   }
 
-  const filtered = useMemo(
-    () => (list ? filterHospitals(list, { dept, query }) : []),
-    [list, dept, query],
-  );
+  const filtered = useMemo(() => {
+    const f = list ? filterHospitals(list, { dept, query }) : [];
+    return here ? sortByDistance(f, here) : f;
+  }, [list, dept, query, here]);
+  const majors = useMemo(() => (here ? sortByDistance(SEOUL_INDEX.major, here) : SEOUL_INDEX.major), [here]);
   const shown = filtered.slice(0, limit);
 
   return (
     <div>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold text-[var(--ink-2)]">정렬</p>
+        <button
+          type="button"
+          aria-pressed={!!here}
+          onClick={askLocation}
+          disabled={geo === "asking"}
+          className={`min-h-[36px] rounded-xl px-3 text-xs font-bold transition ${
+            here ? "bg-[var(--ink)] text-white" : "border border-[var(--mist)] bg-[var(--surface)] text-[var(--ink)]"
+          } disabled:opacity-60`}
+        >
+          {geo === "asking" ? "위치 확인 중…" : here ? "가까운 순 ✓" : "가까운 순"}
+        </button>
+      </div>
+      {geo === "error" && geoError && (
+        <p role="status" className="mb-3 rounded-xl bg-[var(--surface)] px-3 py-2 text-[11px] text-[var(--ink-2)]">
+          {geoError}
+        </p>
+      )}
+      {here && (
+        <p className="mb-3 text-[10px] text-[var(--ink-2)]">
+          내 위치는 거리 계산에만 쓰고 저장하지 않아요. 다시 누르면 해제돼요.
+        </p>
+      )}
+
       {/* 큰 병원은 파일을 받기 전에도 바로 */}
       <p className="mb-2 text-xs font-semibold text-[var(--ink-2)]">서울 상급종합병원</p>
       <div className="mb-5 flex flex-wrap gap-2">
-        {SEOUL_INDEX.major.map((m) => (
+        {majors.map((m) => (
           <button
             key={m.id}
             type="button"
@@ -98,7 +164,7 @@ export function HospitalPicker({
             className="rounded-2xl border border-[var(--mist)] bg-[var(--surface)] px-3.5 py-2.5 text-left text-sm font-semibold text-[var(--ink)] active:bg-[var(--paper)]"
           >
             {m.name}
-            <span className="ml-1.5 font-data text-[10px] text-[var(--ink-2)]">{m.gu}</span>
+            <span className="ml-1.5 font-data text-[10px] text-[var(--ink-2)]">{dist(m) ?? m.gu}</span>
           </button>
         ))}
       </div>
@@ -190,6 +256,7 @@ export function HospitalPicker({
                         <span className="block font-data text-[11px] text-[var(--ink-2)]">
                           {h.type}
                           {h.dong ? ` · ${h.dong}` : ""}
+                          {dist(h) ? ` · ${dist(h)}` : ""}
                         </span>
                       </span>
                       <span className="flex-none text-[var(--ink-2)]">›</span>
