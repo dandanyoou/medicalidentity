@@ -5,6 +5,7 @@ import { addVisit } from "../visits/store";
 import { Stepper } from "../shell/Stepper";
 import { downloadICS, slotToDate, slotToTime } from "./ics";
 import { IntakeChat } from "../intake/IntakeChat";
+import { HospitalPicker } from "./HospitalPicker";
 import { buildRecord, summarize, type IntakeAnswers } from "../intake/engine";
 import { checkRedFlags, recommendDepts } from "../intake/triage";
 
@@ -24,12 +25,6 @@ const VISIT_STEPS = [{ label: "예약" }, { label: "방문" }, { label: "수납"
  * 정직: 실제 병원 예약 시스템과 연동되어 있지 않다(시연). 다만 예약 '의도'는
  * 진료기록에 실제로 저장된다 — 병원 연동이 생기면 이 자리에 실제 예약이 들어온다.
  */
-const DEMO_HOSPITALS = [
-  "서울대학교병원",
-  "세브란스병원",
-  "서울아산병원",
-  "분당서울대병원",
-];
 const ALL_DEPTS = ["내과", "가정의학과", "정형외과", "신경과", "안과", "이비인후과", "소화기내과", "피부과"];
 const DEMO_SLOTS = ["오늘 15:30", "내일 10:00", "내일 14:00", "모레 09:30"];
 const MEMBER = "self";
@@ -269,22 +264,13 @@ export function BookingScreen() {
                 {dept}
               </p>
               <p className="mb-4 text-sm font-bold text-[var(--ink)]">병원 선택</p>
-              <div className="flex flex-col gap-2">
-                {DEMO_HOSPITALS.map((h) => (
-                  <button
-                    key={h}
-                    type="button"
-                    onClick={() => {
-                      setHospital(h);
-                      setStep("time");
-                    }}
-                    className="flex items-center justify-between rounded-2xl border border-[var(--mist)] bg-[var(--surface)] px-4 py-3.5 text-left text-sm font-semibold text-[var(--ink)] active:bg-[var(--paper)]"
-                  >
-                    {h}
-                    <span className="text-[var(--ink-2)]">›</span>
-                  </button>
-                ))}
-              </div>
+              <HospitalPicker
+                dept={dept}
+                onPick={(name) => {
+                  setHospital(name);
+                  setStep("time");
+                }}
+              />
             </div>
           )}
 
