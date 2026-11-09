@@ -9,6 +9,8 @@
  * 데이터다. 실제 연동 시 이 자리에 병원이 보낸 실제 문서가 들어온다.
  */
 
+import type { IntakeRecord } from "../intake/engine";
+
 const KEY = "medid.visits.v1";
 
 export type VisitStatus = "예약" | "수납대기" | "완료";
@@ -27,6 +29,7 @@ export interface Visit {
   date: string; // YYYY-MM-DD
   time?: string; // HH:MM — 예약 시각(의사 대기열 정렬용)
   reason: string; // 방문 이유(증상)
+  intake?: IntakeRecord; // 대화형 문진 답(항목별) — 의사 사전 문진 카드용
   opinion?: string; // 소견서
   prescriptions?: Prescription[];
   amount: number; // 진료비(원)
@@ -104,6 +107,32 @@ function isVisit(v: unknown): v is Visit {
   );
 }
 
+const isStringArray = (x: unknown): x is string[] =>
+  Array.isArray(x) && x.every((s) => typeof s === "string");
+
+function isIntakeRecord(v: unknown): v is IntakeRecord {
+  if (!v || typeof v !== "object") return false;
+  const o = v as Record<string, unknown>;
+  return (
+    isStringArray(o.parts) &&
+    !!o.quality &&
+    typeof o.quality === "object" &&
+    isStringArray(o.triggers) &&
+    isStringArray(o.associated) &&
+    typeof o.summary === "string" &&
+    (o.severity === undefined || typeof o.severity === "number") &&
+    (o.note === undefined || typeof o.note === "string") &&
+    typeof o.confirmedAt === "number"
+  );
+}
+
+/** 문진 기록이 깨졌으면 방문은 살리고 문진 기록만 뺀다(방문·수납 기록이 더 중요하다). */
+function sanitize(v: Visit): Visit {
+  if (v.intake === undefined || isIntakeRecord(v.intake)) return v;
+  const { intake: _broken, ...rest } = v;
+  return rest;
+}
+
 function read(): Visit[] {
   try {
     const raw = localStorage.getItem(KEY);
@@ -111,7 +140,7 @@ function read(): Visit[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [...SEED];
     // 형태가 깨진 항목 하나 때문에 화면 전체가 죽거나 "NaN원"이 뜨지 않게 걸러낸다.
-    return parsed.filter(isVisit);
+    return parsed.filter(isVisit).map(sanitize);
   } catch {
     return [...SEED];
   }

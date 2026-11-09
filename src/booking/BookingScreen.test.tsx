@@ -86,6 +86,10 @@ describe("BookingScreen (예약 · 증상→병원 파이프라인)", () => {
       "오늘부터 머리가 욱신욱신 아파요. 아픈 정도는 10점 중 5점(일상이 불편한 정도)이에요. 다른 증상은 없어요.";
     // 정리된 문장을 환자가 먼저 본다.
     expect(screen.getByText(summary)).toBeTruthy();
+    // 선택한 답으로 다 못 한 말은 직접 덧붙일 수 있다.
+    fireEvent.change(screen.getByLabelText("의사에게 더 전하고 싶은 말 (선택)"), {
+      target: { value: "약을 먹어도 안 나아요" },
+    });
 
     fireEvent.click(screen.getByRole("button", { name: /가정의학과 예약/ }));
     fireEvent.click(screen.getByRole("button", { name: /서울대학교병원/ }));
@@ -94,5 +98,10 @@ describe("BookingScreen (예약 · 증상→병원 파이프라인)", () => {
 
     const booked = listVisits("self").find((v) => v.status === "예약");
     expect(booked?.reason).toBe(summary);
+    // 의사 화면이 항목별로 보여줄 수 있게 문진 답을 구조화해서 함께 저장한다.
+    expect(booked?.intake?.parts).toEqual(["머리"]);
+    expect(booked?.intake?.quality).toEqual({ 머리: "욱신" });
+    expect(booked?.intake?.severity).toBe(5);
+    expect(booked?.intake?.note).toBe("약을 먹어도 안 나아요");
   });
 });

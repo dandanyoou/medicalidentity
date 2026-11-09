@@ -220,6 +220,36 @@ export function undo(a: IntakeAnswers): IntakeAnswers {
   return a;
 }
 
+/** 방문 기록에 저장하는 문진 기록 — 의사 화면이 항목별로 보여줄 수 있게. */
+export interface IntakeRecord {
+  parts: BodyPart[];
+  quality: Partial<Record<BodyPart, string>>;
+  onset?: string;
+  severity?: number;
+  triggers: string[];
+  /** "없음"도 그대로 남긴다(없다고 답한 증상도 의사에게는 정보다). */
+  associated: string[];
+  summary: string;
+  /** 고른 답으로 다 못 한 말 — 환자가 직접 쓴 것. */
+  note?: string;
+  confirmedAt: number;
+}
+
+export function buildRecord(a: IntakeAnswers, note: string, now: number = Date.now()): IntakeRecord {
+  const trimmed = note.trim();
+  return {
+    parts: a.parts ?? [],
+    quality: { ...a.quality },
+    onset: a.onset,
+    severity: a.severity,
+    triggers: a.triggers ?? [],
+    associated: a.associated ?? [],
+    summary: summarize(a),
+    ...(trimmed ? { note: trimmed } : {}),
+    confirmedAt: now,
+  };
+}
+
 /** 의사에게 전달할 문장. 병명은 쓰지 않고 환자가 고른 것만 옮긴다. */
 export function summarize(a: IntakeAnswers): string {
   const sentences: string[] = [];

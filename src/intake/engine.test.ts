@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   EMPTY_ANSWERS,
   answer,
+  buildRecord,
   currentQuestion,
   guessParts,
   summarize,
@@ -87,6 +88,30 @@ describe("문진 질문 순서", () => {
     expect(back.quality).toEqual({ 머리: "욱신" });
     expect(currentQuestion(back)!.prompt).toContain("목·어깨는");
     expect(undo(undo(back)).parts).toBeUndefined();
+  });
+});
+
+describe("buildRecord — 방문 기록에 항목별로 저장할 문진 기록", () => {
+  it("고른 답을 항목별로 담고, 요약 문장과 덧붙인 말도 함께 둔다", () => {
+    const a = run([["머리"], "욱신", "1-3일", 5, ["움직일 때"], ["없음"]]);
+    const r = buildRecord(a, "  약을 먹어도 안 나아요 ", 1700000000000);
+    expect(r).toEqual({
+      parts: ["머리"],
+      quality: { 머리: "욱신" },
+      onset: "1-3일",
+      severity: 5,
+      triggers: ["움직일 때"],
+      // "없음"도 남긴다 — 의사에게는 '없다고 답한 증상'도 정보다.
+      associated: ["없음"],
+      summary: summarize(a),
+      note: "약을 먹어도 안 나아요",
+      confirmedAt: 1700000000000,
+    });
+  });
+
+  it("덧붙인 말이 비어 있으면 note를 두지 않는다", () => {
+    const a = run([["배"], "쑤시는", "오늘", 2, ["특별히 없음"], ["없음"]]);
+    expect(buildRecord(a, "   ", 1).note).toBeUndefined();
   });
 });
 

@@ -71,6 +71,54 @@ describe("visits store", () => {
     expect(unpaidVisits().reduce((s, v) => s + v.amount, 0)).toBe(10000);
   });
 
+  it("문진 기록(intake)이 붙은 방문은 그대로 저장·조회된다", () => {
+    const added = addVisit({
+      memberId: "self",
+      hospital: "서울대학교병원",
+      dept: "가정의학과",
+      date: "2026-11-09",
+      reason: "오늘부터 머리가 욱신욱신 아파요.",
+      amount: 0,
+      paid: false,
+      status: "예약",
+      intake: {
+        parts: ["머리"],
+        quality: { 머리: "욱신" },
+        onset: "오늘",
+        severity: 5,
+        triggers: ["특별히 없음"],
+        associated: ["없음"],
+        summary: "오늘부터 머리가 욱신욱신 아파요.",
+        confirmedAt: 1,
+      },
+    });
+    expect(getVisit(added.id)?.intake?.parts).toEqual(["머리"]);
+    expect(getVisit(added.id)?.intake?.severity).toBe(5);
+  });
+
+  it("문진 기록 형태가 깨졌으면 방문은 남기고 문진 기록만 뺀다", () => {
+    localStorage.setItem(
+      "medid.visits.v1",
+      JSON.stringify([
+        {
+          id: "x",
+          memberId: "self",
+          hospital: "A병원",
+          dept: "내과",
+          date: "2026-11-09",
+          reason: "배가 아파요",
+          amount: 0,
+          paid: false,
+          status: "예약",
+          intake: { parts: "배", summary: 3 },
+        },
+      ]),
+    );
+    const v = getVisit("x");
+    expect(v?.hospital).toBe("A병원");
+    expect(v?.intake).toBeUndefined();
+  });
+
   it("저장된 값이 JSON이 아니면 시드로 돌아간다", () => {
     localStorage.setItem("medid.visits.v1", "{not json");
     expect(listVisits("self").length).toBeGreaterThan(0);

@@ -5,6 +5,7 @@ import { addVisit } from "../visits/store";
 import { Stepper } from "../shell/Stepper";
 import { downloadICS, slotToDate, slotToTime } from "./ics";
 import { IntakeChat } from "../intake/IntakeChat";
+import { buildRecord, summarize, type IntakeAnswers } from "../intake/engine";
 
 // 예약 진행 단계(상단) · 완료 후 방문 타임라인(완료 카드).
 const FLOW_STEPS = [{ label: "증상" }, { label: "병원" }, { label: "시간" }];
@@ -46,8 +47,10 @@ export function BookingScreen() {
   const [dept, setDept] = useState<string | null>(null);
   const [hospital, setHospital] = useState<string | null>(null);
   const [slot, setSlot] = useState<string | null>(null);
-  // 대화형 문진으로 정리된 문장 — 있으면 이게 예약 사유로 의사에게 간다.
-  const [intakeSummary, setIntakeSummary] = useState<string | null>(null);
+  // 대화형 문진 답 — 있으면 정리된 문장이 예약 사유로, 항목별 답은 방문 기록에 함께 간다.
+  const [intakeAnswers, setIntakeAnswers] = useState<IntakeAnswers | null>(null);
+  const [intakeNote, setIntakeNote] = useState("");
+  const intakeSummary = intakeAnswers ? summarize(intakeAnswers) : null;
 
   const matches = useMemo(
     () => searchSymptoms([query, intakeSummary ?? ""].join(" ").trim()),
@@ -73,6 +76,7 @@ export function BookingScreen() {
       date: slotToDate(slot),
       time: slotToTime(slot).replace(/(\d{2})(\d{2})/, "$1:$2"),
       reason: reason || "직접 선택",
+      ...(intakeAnswers ? { intake: buildRecord(intakeAnswers, intakeNote) } : {}),
       amount: 0,
       paid: false,
       status: "예약",
@@ -83,7 +87,8 @@ export function BookingScreen() {
   function reset() {
     setStep("symptom");
     setQuery("");
-    setIntakeSummary(null);
+    setIntakeAnswers(null);
+    setIntakeNote("");
     setDept(null);
     setHospital(null);
     setSlot(null);
@@ -152,16 +157,31 @@ export function BookingScreen() {
                       정리된 증상 — 예약하면 의사에게 이렇게 전달돼요
                     </p>
                     <p className="text-sm leading-relaxed text-[var(--ink)]">{intakeSummary}</p>
+                    <label
+                      htmlFor="intake-note"
+                      className="mt-3 block text-[11px] font-semibold text-[var(--ink-2)]"
+                    >
+                      의사에게 더 전하고 싶은 말 (선택)
+                    </label>
+                    <textarea
+                      id="intake-note"
+                      value={intakeNote}
+                      onChange={(e) => setIntakeNote(e.target.value)}
+                      rows={2}
+                      maxLength={300}
+                      placeholder="예: 약을 먹어도 안 나아요, 예전에도 비슷했어요"
+                      className="mt-1 w-full resize-none rounded-xl border border-[var(--mist)] bg-[var(--paper)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--ink)]"
+                    />
                     <button
                       type="button"
-                      onClick={() => setIntakeSummary(null)}
+                      onClick={() => setIntakeAnswers(null)}
                       className="mt-2 text-xs font-semibold text-[var(--ink-2)] underline"
                     >
                       다시 정리하기
                     </button>
                   </div>
                 ) : (
-                  <IntakeChat seedText={query} onDone={(_a, s) => setIntakeSummary(s)} />
+                  <IntakeChat seedText={query} onDone={(a) => setIntakeAnswers(a)} />
                 )}
               </div>
 
