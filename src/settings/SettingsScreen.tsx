@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getSettings, setSetting, type Settings } from "./store";
 import { isPremium } from "../subscribe/plan";
+import { BottomSheet } from "../shell/BottomSheet";
+import { CONSENT_VERSION, readConsent, resetConsent } from "../shell/consent";
+import { resetOnboarding } from "../shell/onboarding";
+import { wipeLocalData } from "../shell/wipe";
 
 /**
  * 알림 설정 — 토스/보맵식 토글 리스트.
@@ -22,6 +26,19 @@ export function SettingsScreen() {
       return;
     }
     setS(setSetting(key, !s[key]));
+  }
+
+  // 동의 철회 — 처리방침이 약속한 "설정에서 철회". 철회하면 온보딩으로 돌아간다.
+  const navigate = useNavigate();
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const consent = readConsent();
+
+  function withdraw(wipe: boolean) {
+    if (wipe) wipeLocalData();
+    resetConsent();
+    resetOnboarding();
+    setWithdrawOpen(false);
+    navigate("/onboarding", { replace: true });
   }
 
   return (
@@ -81,7 +98,67 @@ export function SettingsScreen() {
               </p>
             </Link>
           )}
+
+          <section
+            aria-label="동의·개인정보"
+            className="mt-5 rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+          >
+            <p className="font-data text-[10px] uppercase tracking-[0.2em] text-[var(--ink-2)]">동의 · 개인정보</p>
+            <p className="mt-1 text-sm text-[var(--ink)]">
+              {consent
+                ? `${new Date(consent.at).toLocaleDateString("ko-KR")}에 동의 (약관 ${consent.version})`
+                : "동의 기록이 없어요"}
+            </p>
+            <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">현재 약관 버전 {CONSENT_VERSION}</p>
+            <div className="mt-2 flex gap-3 text-xs font-bold text-[var(--ink)]">
+              <Link to="/terms" className="underline">
+                이용약관
+              </Link>
+              <Link to="/privacy" className="underline">
+                개인정보처리방침
+              </Link>
+            </div>
+            <button
+              type="button"
+              onClick={() => setWithdrawOpen(true)}
+              className="mt-3 w-full rounded-2xl border border-[var(--mist)] py-3 text-sm font-bold text-[var(--vital-ink)] active:bg-[var(--paper)]"
+            >
+              동의 철회
+            </button>
+          </section>
+          <div className="h-8" />
         </main>
+
+        <BottomSheet open={withdrawOpen} title="동의를 철회할까요?" onClose={() => setWithdrawOpen(false)}>
+          <p className="text-sm leading-relaxed text-[var(--ink)]">
+            약관 동의와 건강 정보 기록 동의를 철회하면 서비스를 쓸 수 없고 첫 화면으로 돌아가요. 기기에 저장된
+            가족·진료·문진 기록을 함께 지울지 고를 수 있어요.
+          </p>
+          <p className="mt-2 text-[11px] leading-relaxed text-[var(--ink-2)]">
+            이 앱은 서버에 아무것도 보관하지 않아서, 기기 데이터를 지우면 복구할 수 없어요.
+          </p>
+          <button
+            type="button"
+            onClick={() => withdraw(true)}
+            className="mt-4 w-full rounded-2xl bg-[var(--vital)] py-3.5 text-sm font-bold text-white active:brightness-95"
+          >
+            모두 지우고 철회
+          </button>
+          <button
+            type="button"
+            onClick={() => withdraw(false)}
+            className="mt-2 w-full rounded-2xl border border-[var(--mist)] py-3 text-sm font-bold text-[var(--ink)] active:bg-[var(--paper)]"
+          >
+            데이터는 두고 철회
+          </button>
+          <button
+            type="button"
+            onClick={() => setWithdrawOpen(false)}
+            className="mt-2 w-full rounded-2xl py-3 text-sm font-bold text-[var(--ink-2)] active:bg-[var(--paper)]"
+          >
+            취소
+          </button>
+        </BottomSheet>
       </div>
     </div>
   );
