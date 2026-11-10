@@ -152,7 +152,7 @@ export function HospitalPicker({
             aria-pressed={mode === m}
             onClick={() => pickMode(m)}
             disabled={m === "distance" && geo === "asking"}
-            className={`min-h-[36px] rounded-xl px-3 text-xs font-bold transition ${
+            className={`min-h-[44px] rounded-xl px-3.5 text-xs font-bold transition ${
               mode === m ? "bg-[var(--ink)] text-white" : "border border-[var(--mist)] bg-[var(--surface)] text-[var(--ink)]"
             } disabled:opacity-60`}
           >

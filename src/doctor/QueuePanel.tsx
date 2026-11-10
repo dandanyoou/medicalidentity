@@ -150,7 +150,7 @@ export function QueuePanel({ onChange }: { onChange?: () => void } = {}) {
         <button
           type="button"
           onClick={toggleDemo}
-          className="flex min-h-[36px] flex-none items-center rounded-xl border border-[var(--mist)] px-3 text-[11px] font-bold text-[var(--ink-2)] active:bg-[var(--mist)]"
+          className="flex min-h-[44px] flex-none items-center rounded-xl border border-[var(--mist)] px-3.5 text-[11px] font-bold text-[var(--ink-2)] active:bg-[var(--mist)]"
         >
           {demoOn ? "시연 환자 지우기" : "시연 환자 불러오기"}
         </button>

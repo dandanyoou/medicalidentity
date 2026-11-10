@@ -181,13 +181,13 @@ function QuestionCard({
             type="button"
             disabled={selected.length === 0}
             onClick={submitMulti}
-            className="rounded-2xl bg-[var(--ink)] px-5 py-2.5 text-sm font-bold text-white disabled:bg-[var(--mist)] disabled:text-[var(--ink-2)]"
+            className="min-h-[44px] rounded-full bg-[var(--ink)] px-6 text-sm font-extrabold text-white transition active:scale-[0.98] disabled:bg-[var(--mist)] disabled:text-[var(--ink-2)]"
           >
             다음
           </button>
         )}
         {onBack && (
-          <button type="button" onClick={onBack} className="text-xs font-semibold text-[var(--ink-2)] underline">
+          <button type="button" onClick={onBack} className="min-h-[44px] px-2 text-xs font-semibold text-[var(--ink-2)] underline">
             이전 질문으로
           </button>
         )}
