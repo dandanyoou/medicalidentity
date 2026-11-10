@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import { addVisit, getVisit, resetVisits } from "../visits/store";
 import { localDateKey } from "./queue";
@@ -9,6 +9,44 @@ import { DoctorScreen } from "./DoctorScreen";
 import { getPatientVCs } from "../data/patient-vcs";
 import { presentVP, randomNonce } from "../lib/sdjwt";
 import { DEMO_AUDIENCE, DEMO_HOLDER } from "../data/issuer-keys";
+import { badgeCode, issueBadge, loginWithBadge, logout, registerHospital } from "../hospital/badge";
+
+// R2: 의사 화면은 직원 배지 로그인 뒤에만 열린다(시연). 기존 테스트는 모두 로그인된 상태를
+// 전제로 두고, 로그인 안 된 경우는 아래 별도 describe에서 본다.
+beforeEach(async () => {
+  registerHospital({ name: "시연의원", admin: "박원무" });
+  const b = issueBadge({ name: "김의사", role: "doctor" });
+  await loginWithBadge(badgeCode(b));
+});
+
+describe("DoctorScreen — 직원 배지 로그인 게이트(R2)", () => {
+  afterEach(() => cleanup());
+
+  it("배지 로그인이 없으면 대기열·VP 입력 대신 로그인 안내와 병원 포털 링크를 보여준다", () => {
+    logout();
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole("region", { name: "오늘 진료 대기열" })).toBeNull();
+    expect(screen.queryByPlaceholderText(/wallet에서 복사한 JSON/)).toBeNull();
+    expect(screen.getByRole("heading", { name: /배지 로그인이 필요해요/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /병원 포털/ })).toBeTruthy();
+  });
+
+  it("로그인돼 있으면 헤더에 병원 이름과 직원 이름·역할이 보이고 로그아웃할 수 있다", () => {
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(/시연의원/)).toBeTruthy();
+    expect(screen.getByText(/김의사/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /로그아웃/ }));
+    expect(screen.getByRole("heading", { name: /배지 로그인이 필요해요/ })).toBeTruthy();
+  });
+});
 
 async function buildFullBundle() {
   const vcs = await getPatientVCs();

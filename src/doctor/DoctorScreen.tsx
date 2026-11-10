@@ -14,6 +14,7 @@ import { DDICheck } from "./DDICheck";
 import { ControlledSubstancePanel } from "./ControlledSubstancePanel";
 import { Skeleton } from "../shell/Skeleton";
 import { QueuePanel } from "./QueuePanel";
+import { ROLE_LABEL, currentSession, logout as badgeLogout, type Session } from "../hospital/badge";
 
 // 검증 중에 "무엇을 확인하는지" 보여주는 체크 목록 — 스피너보다 신뢰가 간다.
 const VERIFY_CHECKS = ["발급자 서명", "신뢰 앵커(mDL)", "폐기·만료 여부"];
@@ -50,6 +51,8 @@ export function DoctorScreen() {
   const [scanActive, setScanActive] = useState(false);
   // D6 REGRESSION: 기본값은 항상 "emergency" — 관리약물 모드는 명시적으로 켜야 함.
   const [mode, setMode] = useState<DoctorMode>("emergency");
+  // R2: 직원 배지 로그인(시연) 뒤에만 대기열·VP 검증이 열린다.
+  const [session, setSession] = useState<Session | null>(() => currentSession());
 
   useEffect(() => {
     return () => {
@@ -173,8 +176,19 @@ export function DoctorScreen() {
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-base font-semibold text-[var(--ink)]">의사 화면</h1>
-            <p className="truncate text-[11px] text-[var(--ink-2)]">응급실 / Demo General Hospital</p>
+            <p className="truncate text-[11px] text-[var(--ink-2)]">
+              {session ? `${session.hospitalName} · ${session.name} (${ROLE_LABEL[session.role]})` : "배지 로그인 전"}
+            </p>
           </div>
+          {session && (
+            <button
+              type="button"
+              onClick={() => { badgeLogout(); setSession(null); }}
+              className="flex-none rounded-full bg-[var(--paper)] px-3 py-1.5 text-xs font-medium text-[var(--ink-2)] active:bg-[var(--mist)]"
+            >
+              로그아웃
+            </button>
+          )}
           <Link
             to="/wallet"
             target="_blank"
@@ -185,9 +199,24 @@ export function DoctorScreen() {
         </header>
 
         <main className="flex-1 overflow-y-auto px-4 pb-8 pt-5">
-          {!bundle && !verifying && <QueuePanel />}
+          {!session && (
+            <section className="rounded-3xl bg-[var(--surface)] p-6 shadow-sm">
+              <p className="font-data text-[11px] uppercase tracking-[0.2em] text-[var(--ink-2)]">시연 · 직원 배지</p>
+              <h2 className="mt-2 text-lg font-bold text-[var(--ink)]">배지 로그인이 필요해요</h2>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--ink-2)]">
+                의사 화면은 병원이 발급한 직원 배지(서명된 자격증명)로 로그인한 뒤에만 열려요. 병원 포털에서 병원을
+                등록하고 배지를 발급한 다음 "이 배지로 로그인"을 누르세요. 배지에는 환자 정보가 없고, 폐기하면 바로
+                막혀요.
+              </p>
+              <Link to="/hospital" className="mt-4 inline-block rounded-full bg-[var(--ink)] px-5 py-2.5 text-sm font-extrabold text-white">
+                병원 포털로 가기
+              </Link>
+            </section>
+          )}
 
-          {!bundle && !verifying && (
+          {session && !bundle && !verifying && <QueuePanel />}
+
+          {session && !bundle && !verifying && (
             <section className="rounded-3xl bg-[var(--surface)] p-5 shadow-sm">
               <h2 className="text-sm font-semibold text-[var(--ink)]">환자 VP 입력</h2>
               <p className="mt-1 mb-4 text-xs text-[var(--ink-2)]">

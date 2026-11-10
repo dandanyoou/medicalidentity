@@ -117,6 +117,16 @@ export function MoreScreen() {
               </div>
               <span className="text-[var(--ink-2)]">›</span>
             </Link>
+            <Link
+              to="/hospital"
+              className="mt-2 flex items-center justify-between rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)] transition active:bg-[var(--paper)]"
+            >
+              <div>
+                <p className="text-sm font-bold text-[var(--ink)]">병원 포털 · 직원 배지</p>
+                <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">병원 등록 → 배지 발급 → 배지 로그인(시연)</p>
+              </div>
+              <span className="text-[var(--ink-2)]">›</span>
+            </Link>
           </section>
 
           {/* 홈 화면 설치 — 플랫폼별로 지금 할 수 있는 한 가지만 */}

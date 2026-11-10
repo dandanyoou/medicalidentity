@@ -69,6 +69,9 @@ const EmergencyViewScreen = lazy(() =>
 const ForHospitalsScreen = lazy(() =>
   import("./hospital/ForHospitalsScreen").then((m) => ({ default: m.ForHospitalsScreen })),
 );
+const HospitalPortalScreen = lazy(() =>
+  import("./hospital/HospitalPortalScreen").then((m) => ({ default: m.HospitalPortalScreen })),
+);
 
 /** 첫 실행이거나 약관·건강정보 동의가 없으면(약관 버전이 바뀐 경우 포함) 온보딩, 아니면 홈. */
 function RootRedirect() {
@@ -112,6 +115,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/emergency-card" element={<LockScreenScreen />} />
           <Route path="/e" element={<EmergencyViewScreen />} />
           <Route path="/for-hospitals" element={<ForHospitalsScreen />} />
+          <Route path="/hospital" element={<HospitalPortalScreen />} />
           <Route path="/privacy" element={<LegalScreen kind="privacy" />} />
           <Route path="/terms" element={<LegalScreen kind="terms" />} />
           {/* 없는 경로는 홈으로 — 빈 화면 대신. */}
