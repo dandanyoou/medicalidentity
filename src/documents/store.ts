@@ -12,6 +12,7 @@
 import type { Prescription, Visit } from "../visits/store";
 import { getMember } from "../family/store";
 import { getHospital, signWithHospital, verifyWithHospital, type Role, type Session } from "../hospital/badge";
+import { getFees } from "./fees";
 
 export const DOCS_KEY = "medid.documents";
 export const RELAY_DAYS = 7;
@@ -53,8 +54,12 @@ export interface IssuedDocument {
   relayExpiresAt: number;
   templateId: string;
   body: DocBody;
+  /** 제증명 수수료(원). 병원이 정한 값이 발급 때 붙는다. 예전 서류는 0. */
+  fee: number;
   status: DocStatus;
   receivedAt?: number;
+  /** 환자가 수수료를 결제한 시각(시연). 0원이면 필요 없다. */
+  feePaidAt?: number;
   sig: string;
 }
 
@@ -77,6 +82,7 @@ function signingMessage(d: Omit<IssuedDocument, "sig" | "status" | "receivedAt">
       relayExpiresAt: d.relayExpiresAt,
       templateId: d.templateId,
       body: d.body,
+      fee: d.fee,
     }),
   );
 }
@@ -93,10 +99,21 @@ export function listDocuments(): IssuedDocument[] {
   try {
     const raw = localStorage.getItem(DOCS_KEY);
     const v = raw ? JSON.parse(raw) : [];
-    return Array.isArray(v) ? v.filter(isDoc) : [];
+    // 수수료 항목이 생기기 전 서류는 0원으로 읽는다.
+    return Array.isArray(v) ? v.filter(isDoc).map((d) => ({ ...d, fee: typeof d.fee === "number" ? d.fee : 0 })) : [];
   } catch {
     return [];
   }
+}
+
+/** 수수료가 있고 아직 결제하지 않았으면 참 — 서류함에서 열기 전에 결제한다. */
+export function needsFee(d: IssuedDocument): boolean {
+  return d.fee > 0 && d.feePaidAt === undefined;
+}
+
+/** 환자가 수수료를 결제했다(시연: 실결제 없음). */
+export function payFee(id: string, now: number = Date.now()) {
+  save(listDocuments().map((d) => (d.id === id && d.feePaidAt === undefined ? { ...d, feePaidAt: now } : d)));
 }
 
 function save(list: IssuedDocument[]) {
@@ -119,6 +136,7 @@ function isDoc(v: unknown): v is IssuedDocument {
     !!o.body &&
     typeof o.body === "object" &&
     typeof o.sig === "string" &&
+    (o.fee === undefined || typeof o.fee === "number") &&
     (o.status === "sent" || o.status === "received" || o.status === "expired")
   );
 }
@@ -174,6 +192,7 @@ export function issueDocument(input: {
     relayExpiresAt: now + RELAY_DAYS * DAY,
     templateId: input.templateId ?? "default",
     body,
+    fee: getFees()[kind],
   };
   const doc: IssuedDocument = { ...unsigned, status: "sent", sig: signWithHospital(signingMessage(unsigned)) };
   save([...listDocuments(), doc]);
@@ -181,7 +200,7 @@ export function issueDocument(input: {
 }
 
 export async function verifyDocument(d: IssuedDocument): Promise<boolean> {
-  const { sig, status: _s, receivedAt: _r, ...body } = d;
+  const { sig, status: _s, receivedAt: _r, feePaidAt: _p, ...body } = d;
   return verifyWithHospital(sig, signingMessage(body), d.hospitalId);
 }
 

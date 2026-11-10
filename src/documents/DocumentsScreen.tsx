@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { RELAY_DAYS, expireRelays, listDocuments, markReceived, verifyDocument, type IssuedDocument } from "./store";
+import { RELAY_DAYS, expireRelays, listDocuments, markReceived, needsFee, payFee, verifyDocument, type IssuedDocument } from "./store";
 import { ROLE_LABEL } from "../hospital/badge";
 
 /**
@@ -28,8 +28,15 @@ export function DocumentsScreen() {
   }, []);
 
   function openDoc(d: IssuedDocument) {
+    if (needsFee(d)) return;
     markReceived(d.id);
     setOpenId(d.id);
+    setTick((t) => t + 1);
+  }
+
+  /** P5 시연 결제 — 돈이 움직이지 않는다. 실제 PG(토스)는 수납 결제와 같은 경로로 붙인다. */
+  function pay(d: IssuedDocument) {
+    payFee(d.id);
     setTick((t) => t + 1);
   }
 
@@ -89,7 +96,7 @@ export function DocumentsScreen() {
               ) : (
                 <ul aria-label="받은 서류" className="space-y-2">
                   {docs.map((d) => (
-                    <DocRow key={d.id} doc={d} onOpen={() => openDoc(d)} />
+                    <DocRow key={d.id} doc={d} onOpen={() => openDoc(d)} onPay={() => pay(d)} />
                   ))}
                 </ul>
               )}
@@ -101,8 +108,9 @@ export function DocumentsScreen() {
   );
 }
 
-function DocRow({ doc, onOpen }: { doc: IssuedDocument; onOpen: () => void }) {
+function DocRow({ doc, onOpen, onPay }: { doc: IssuedDocument; onOpen: () => void; onPay: () => void }) {
   const expired = doc.status === "expired";
+  const unpaid = !expired && needsFee(doc);
   const daysLeft = Math.max(0, Math.ceil((doc.relayExpiresAt - Date.now()) / DAY));
   return (
     <li className={`rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)] ${expired ? "opacity-70" : ""}`}>
@@ -121,8 +129,14 @@ function DocRow({ doc, onOpen }: { doc: IssuedDocument; onOpen: () => void }) {
                 ? `받음 · ${new Date(doc.receivedAt ?? doc.issuedAt).toLocaleDateString("ko-KR")}`
                 : `${RELAY_DAYS}일 안에 열어주세요 (D-${daysLeft})`}
           </p>
+          {doc.fee > 0 && (
+            <p className="mt-1 text-[11px] text-[var(--ink-2)]">
+              수수료 {doc.fee.toLocaleString("ko-KR")}원
+              {doc.feePaidAt !== undefined && <span className="ml-1 font-bold text-[var(--refund-ink)]">· 시연 결제 완료</span>}
+            </p>
+          )}
         </div>
-        {!expired && (
+        {!expired && !unpaid && (
           <button
             type="button"
             aria-label={`${doc.kind} 열기`}
@@ -133,6 +147,22 @@ function DocRow({ doc, onOpen }: { doc: IssuedDocument; onOpen: () => void }) {
           </button>
         )}
       </div>
+      {unpaid && (
+        <div className="mt-3 rounded-2xl bg-[var(--paper)] px-4 py-3">
+          <p className="text-xs leading-relaxed text-[var(--ink-2)]">
+            병원이 정한 제증명 수수료를 결제하면 열 수 있어요. <strong className="text-[var(--ink)]">실제 결제가 아닙니다</strong> — PG 연동 전
+            시연이라 돈이 움직이지 않아요.
+          </p>
+          <button
+            type="button"
+            aria-label={`${doc.kind} 수수료 결제`}
+            onClick={onPay}
+            className="mt-2 h-11 w-full rounded-full bg-[var(--refund)] text-sm font-extrabold text-[var(--ink-deep)]"
+          >
+            수수료 {doc.fee.toLocaleString("ko-KR")}원 결제 (시연)
+          </button>
+        </div>
+      )}
     </li>
   );
 }

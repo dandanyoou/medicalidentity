@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { HospitalPortalScreen } from "./HospitalPortalScreen";
 import { badgeCode, currentSession, issueBadge, listBadges, loginWithBadge, registerHospital } from "./badge";
 import { resetVisits } from "../visits/store";
+import { getFees } from "../documents/fees";
 import { seedDemoPatients } from "../doctor/demo";
 
 beforeEach(() => {
@@ -27,6 +28,20 @@ describe("HospitalPortalScreen — 서류 양식(R5·P2)", () => {
       expect(within(sec).getAllByText(k).length).toBeGreaterThan(0);
     }
     expect(within(sec).getByLabelText(/병원 양식 PDF/)).toBeTruthy();
+  });
+});
+
+describe("HospitalPortalScreen — 제증명 수수료(R5·P5)", () => {
+  it("수수료 섹션에 종류별 금액과 상한 안내가 있고, 바꾸면 저장된다", () => {
+    registerHospital({ name: "행복의원", admin: "박원무" });
+    mount();
+    const sec = screen.getByRole("region", { name: "제증명 수수료" });
+    expect(within(sec).getAllByText(/상한/).length).toBeGreaterThan(0);
+    const input = within(sec).getByLabelText("진단서 수수료") as HTMLInputElement;
+    expect(Number(input.value)).toBe(getFees()["진단서"]);
+    fireEvent.change(input, { target: { value: "15000" } });
+    fireEvent.blur(input);
+    expect(getFees()["진단서"]).toBe(15_000);
   });
 });
 

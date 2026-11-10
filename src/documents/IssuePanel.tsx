@@ -98,5 +98,6 @@ export function IssuePanel({ session, version = 0 }: { session: Session; version
 function docLine(d: IssuedDocument): string {
   const t = new Date(d.issuedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
   const state = d.status === "received" ? "환자가 받음" : d.status === "expired" ? "미수령 폐기" : "환자 지갑으로 보냄(시연)";
-  return `${d.kind} · ${t} · ${d.issuedBy.name} · ${state}`;
+  const fee = d.fee > 0 ? ` · 수수료 ${d.fee.toLocaleString("ko-KR")}원 ${d.feePaidAt !== undefined ? "결제됨(시연, 정산은 PG 연동 후)" : "미결제"}` : "";
+  return `${d.kind} · ${t} · ${d.issuedBy.name} · ${state}${fee}`;
 }

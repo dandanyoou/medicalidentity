@@ -11,8 +11,11 @@ import {
   issueDocument,
   listDocuments,
   markReceived,
+  needsFee,
+  payFee,
   verifyDocument,
 } from "./store";
+import { setFee } from "./fees";
 
 const DAY = 86_400_000;
 const NOW = 1_800_000_000_000;
@@ -98,6 +101,29 @@ describe("서류 발급 저장소 — 병원이 환자 지갑에 넣는 서류(�
     const after = listDocuments();
     expect(after.find((d) => d.id === a.id)?.status).toBe("received");
     expect(after.find((d) => d.id === b.id)?.status).toBe("expired");
+  });
+
+  it("발급할 때 병원이 정한 수수료가 서류에 붙고, 결제하면 결제 시각이 남는다(P5)", () => {
+    setFee("진단서", 12_000);
+    const v = completedVisit();
+    const d = issueDocument({ visit: v, kind: "진단서", session: session("doctor"), now: NOW });
+    expect(d.fee).toBe(12_000);
+    expect(d.feePaidAt).toBeUndefined();
+    const receipt = issueDocument({ visit: v, kind: "진료비 영수증", session: session("staff"), now: NOW });
+    expect(receipt.fee).toBe(0);
+
+    payFee(d.id, NOW + 1000);
+    expect(listDocuments().find((x) => x.id === d.id)?.feePaidAt).toBe(NOW + 1000);
+    expect(needsFee(listDocuments().find((x) => x.id === d.id)!)).toBe(false);
+  });
+
+  it("수수료 항목이 없는 예전 서류는 0원으로 읽는다", () => {
+    const v = completedVisit();
+    const d = issueDocument({ visit: v, kind: "소견서", session: session("doctor"), now: NOW });
+    const { fee: _f, ...legacy } = d;
+    localStorage.setItem("medid.documents", JSON.stringify([legacy]));
+    expect(listDocuments()[0].fee).toBe(0);
+    expect(needsFee(listDocuments()[0])).toBe(false);
   });
 
   it("저장 키는 medid.* 이고, 주민번호 같은 항목은 서류에 없다", () => {

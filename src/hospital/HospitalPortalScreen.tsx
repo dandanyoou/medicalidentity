@@ -4,6 +4,7 @@ import { BrandMark } from "../shell/BrandMark";
 import { DashboardPanel } from "./DashboardPanel";
 import { DOC_KINDS, type DocKind } from "../documents/store";
 import { addTemplatePlaceholder, listTemplates, removeTemplate } from "../documents/templates";
+import { FEE_CAPS, getFees, setFee } from "../documents/fees";
 import {
   REASON_TEXT,
   ROLE_LABEL,
@@ -103,6 +104,8 @@ export function HospitalPortalScreen() {
             </section>
 
             <TemplatesSection />
+
+            <FeesSection />
 
             <PasteLogin onLogin={login} error={loginError} />
           </>
@@ -307,6 +310,59 @@ function TemplatesSection() {
           <span className="text-xs font-bold text-[var(--ink-2)]">병원 양식 PDF 올리기(자리)</span>
           <input id="tpl-file" type="file" accept="application/pdf" onChange={onFile} className="mt-1 block w-full text-xs" />
         </label>
+      </div>
+      {error && (
+        <p role="alert" className="mt-2 rounded-xl bg-[var(--vital)]/10 px-3 py-2 text-xs font-bold text-[var(--vital-ink)]">{error}</p>
+      )}
+    </section>
+  );
+}
+
+/** P5 — 제증명 수수료: 종류별 금액, 상한 안내(고시 확인 필요). 값은 발급 때 서류에 붙는다. */
+function FeesSection() {
+  const [fees, setFees] = useState(() => getFees());
+  const [draft, setDraft] = useState<Record<string, string>>(() =>
+    Object.fromEntries(Object.entries(getFees()).map(([k, v]) => [k, String(v)])),
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  function commit(kind: DocKind) {
+    setError(null);
+    try {
+      setFee(kind, Number(draft[kind]));
+      setFees(getFees());
+    } catch (e) {
+      setError((e as Error).message);
+      setDraft((d) => ({ ...d, [kind]: String(fees[kind]) }));
+    }
+  }
+
+  return (
+    <section aria-labelledby="fees-h" className="mt-8">
+      <h2 id="fees-h" className="text-base font-bold">제증명 수수료</h2>
+      <p className="mt-1 text-xs leading-relaxed text-[var(--ink-2)]">
+        환자가 서류를 열기 전에 내는 돈이에요(환자 → 병원). 보건복지부 제증명수수료 상한 고시 안에서 병원이 정합니다 — 아래
+        상한 숫자는 고시 확인이 필요해요. 결제는 PG 연동 전이라 시연이고, 병원 정산은 표시만 합니다.
+      </p>
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        {DOC_KINDS.map((k) => (
+          <label key={k.kind} htmlFor={`fee-${k.kind}`} className="rounded-2xl border border-[var(--mist)] bg-[var(--surface)] px-4 py-3">
+            <span className="text-xs font-bold text-[var(--ink-2)]">{k.kind} 수수료</span>
+            <span className="ml-2 text-[10px] text-[var(--ink-2)]">상한 {FEE_CAPS[k.kind].toLocaleString("ko-KR")}원</span>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                id={`fee-${k.kind}`}
+                aria-label={`${k.kind} 수수료`}
+                inputMode="numeric"
+                value={draft[k.kind] ?? ""}
+                onChange={(e) => setDraft((d) => ({ ...d, [k.kind]: e.target.value }))}
+                onBlur={() => commit(k.kind)}
+                className="h-10 w-full rounded-xl border border-[var(--mist)] bg-[var(--paper)] px-3 font-data text-sm"
+              />
+              <span className="text-sm">원</span>
+            </div>
+          </label>
+        ))}
       </div>
       {error && (
         <p role="alert" className="mt-2 rounded-xl bg-[var(--vital)]/10 px-3 py-2 text-xs font-bold text-[var(--vital-ink)]">{error}</p>
