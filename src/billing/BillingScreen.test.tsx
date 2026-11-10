@@ -1,14 +1,60 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { BillingScreen } from "./BillingScreen";
 import { addVisit, completeVisit, resetVisits } from "../visits/store";
+import { localDateKey } from "../doctor/queue";
 
 beforeEach(() => resetVisits());
 afterEach(() => {
   cleanup();
   resetVisits();
+});
+
+describe("BillingScreen — 다시 올 때·복약 알림(R7, 기기 알림 시연)", () => {
+  it("재진 권고와 복약 중인 처방이 카드로 보이고, 기기 알림 켜기 버튼이 있다", () => {
+    const v = addVisit({
+      memberId: "self",
+      hospital: "행복의원",
+      dept: "가정의학과",
+      date: localDateKey(),
+      time: "09:00",
+      reason: "두통",
+      amount: 0,
+      paid: false,
+      status: "예약",
+    });
+    completeVisit(v.id, {
+      opinion: "긴장성 두통 의심 소견.",
+      prescriptions: [{ drug: "아세트아미노펜 500mg", dose: "1정 3회/일", days: 3 }],
+      amount: 12000,
+      followUpDays: 14,
+    });
+    render(
+      <MemoryRouter>
+        <BillingScreen />
+      </MemoryRouter>,
+    );
+    const card = screen.getByRole("region", { name: "다시 올 때 · 복약" });
+    expect(within(card).getByText(/재진 권고/)).toBeTruthy();
+    expect(within(card).getByText(/D-14/)).toBeTruthy();
+    expect(within(card).getByText(/아세트아미노펜 500mg/)).toBeTruthy();
+    expect(within(card).getByText(/1정 3회\/일/)).toBeTruthy();
+    expect(within(card).getByRole("link", { name: /재진 예약/ })).toBeTruthy();
+    expect(within(card).getByRole("button", { name: /기기 알림/ })).toBeTruthy();
+    expect(within(card).getAllByText(/시연/).length).toBeGreaterThan(0);
+  });
+
+  it("재진·복약이 없으면 안내 한 줄만 보인다", () => {
+    render(
+      <MemoryRouter>
+        <BillingScreen />
+      </MemoryRouter>,
+    );
+    const card = screen.getByRole("region", { name: "다시 올 때 · 복약" });
+    expect(within(card).getByText(/지금은 다가온 재진·복약이 없어요/)).toBeTruthy();
+  });
 });
 
 describe("BillingScreen (수납 · 진료기록 · 시연)", () => {

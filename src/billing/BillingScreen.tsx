@@ -4,6 +4,7 @@ import { listVisits, unpaidVisits, payVisit, isUnpaid, type Visit } from "../vis
 import { CountUp } from "../shell/CountUp";
 import { Stepper } from "../shell/Stepper";
 import { BottomSheet } from "../shell/BottomSheet";
+import { RemindersCard } from "./RemindersCard";
 
 // 방문 진행 상태 — 예약 → 방문 → 수납.
 const VISIT_STEPS = [{ label: "예약" }, { label: "방문" }, { label: "수납" }];
@@ -85,6 +86,8 @@ export function BillingScreen() {
             <strong className="text-[var(--ink)]">실제 결제가 아닙니다.</strong> 소견서·처방전·금액은
             데모이고, 병원 수납·결제(PG) 연동 전까지 돈이 실제로 움직이지 않는 시연입니다.
           </p>
+
+          <RemindersCard memberId={MEMBER} />
 
           {/* 이탈 알림(개념·시연) */}
           <div className="mb-5 flex items-start gap-3 rounded-2xl bg-[var(--surface)] px-4 py-3 shadow-[0_1px_12px_rgba(11,59,60,0.07)]">

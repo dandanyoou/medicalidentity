@@ -507,6 +507,29 @@ describe("DoctorScreen — 서류 발급(R5)", () => {
   });
 });
 
+describe("DoctorScreen — 재진 권고(R7)", () => {
+  afterEach(() => {
+    cleanup();
+    resetVisits();
+  });
+
+  it("진료 완료 입력에 '재진 권고'를 고르면 방문에 저장된다", () => {
+    resetVisits();
+    const v = addVisit({ memberId: "self", hospital: "시연의원", dept: "가정의학과", date: localDateKey(), time: "11:00", reason: "두통", amount: 0, paid: false, status: "예약" });
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "김단유 사전 문진 보기" }));
+    fireEvent.change(screen.getByPlaceholderText(/소견을 적어 주세요/), { target: { value: "긴장성 두통 의심 소견." } });
+    fireEvent.change(screen.getByPlaceholderText("예: 18500"), { target: { value: "12000" } });
+    fireEvent.change(screen.getByLabelText("재진 권고"), { target: { value: "14" } });
+    fireEvent.click(screen.getByRole("button", { name: /진료 완료/ }));
+    expect(getVisit(v.id)!.followUp).toEqual({ afterDays: 14 });
+  });
+});
+
 describe("DoctorScreen — 과거 진료 이력(R6)", () => {
   afterEach(() => {
     cleanup();

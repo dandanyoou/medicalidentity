@@ -50,6 +50,8 @@ export interface Visit {
   doctorReview?: DoctorReview; // 의사가 남긴 추천 진료과 적합 여부
   opinion?: string; // 소견서
   prescriptions?: Prescription[];
+  /** 의사가 권고한 재진 시점(진료일 기준 며칠 뒤). 환자 쪽 "다시 올 때" 알림이 된다. */
+  followUp?: { afterDays: number };
   amount: number; // 진료비(원)
   paid: boolean;
   status: VisitStatus;
@@ -127,8 +129,15 @@ function isVisit(v: unknown): v is Visit {
     typeof o.amount === "number" &&
     Number.isFinite(o.amount) &&
     typeof o.paid === "boolean" &&
+    (o.followUp === undefined || isFollowUp(o.followUp)) &&
     STATUSES.includes(o.status as VisitStatus)
   );
+}
+
+function isFollowUp(v: unknown): v is { afterDays: number } {
+  if (!v || typeof v !== "object") return false;
+  const d = (v as Record<string, unknown>).afterDays;
+  return typeof d === "number" && Number.isInteger(d) && d >= 1;
 }
 
 function isIntakeRecord(v: unknown): v is IntakeRecord {
@@ -249,20 +258,25 @@ export function payVisit(id: string): void {
  */
 export function completeVisit(
   id: string,
-  input: { opinion: string; prescriptions: Prescription[]; amount: number },
+  input: { opinion: string; prescriptions: Prescription[]; amount: number; followUpDays?: number },
 ): Visit {
   if (!Number.isInteger(input.amount) || input.amount < 0) {
     throw new Error("진료비는 0 이상의 정수여야 해요");
   }
+  if (input.followUpDays !== undefined && (!Number.isInteger(input.followUpDays) || input.followUpDays < 1)) {
+    throw new Error("재진 권고는 1일 이상이어야 해요");
+  }
   const target = read().find((v) => v.id === id);
   if (!target) throw new Error("방문을 찾을 수 없어요");
+  const { followUp: _prev, ...rest } = target;
   const updated: Visit = {
-    ...target,
+    ...rest,
     opinion: input.opinion.trim(),
     prescriptions: input.prescriptions,
     amount: input.amount,
     paid: false,
     status: "수납대기",
+    ...(input.followUpDays !== undefined ? { followUp: { afterDays: input.followUpDays } } : {}),
   };
   write(read().map((v) => (v.id === id ? updated : v)));
   return updated;

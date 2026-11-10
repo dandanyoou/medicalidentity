@@ -40,6 +40,8 @@ export function CompleteVisitForm({
   const [dose, setDose] = useState("");
   const [days, setDays] = useState("");
   const [amount, setAmount] = useState("");
+  // R7: 재진 권고(며칠 뒤). 환자 쪽 "다시 올 때" 알림이 된다. 비우면 저장하지 않는다.
+  const [followUpDays, setFollowUpDays] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,6 +84,7 @@ export function CompleteVisitForm({
           opinion,
           prescriptions: rx.map(({ drug, dose, days }) => ({ drug, dose, days })),
           amount: amountNum,
+          ...(followUpDays ? { followUpDays: Number(followUpDays) } : {}),
         }),
       );
     } catch (err) {
@@ -204,6 +207,25 @@ export function CompleteVisitForm({
         placeholder="예: 18500"
         className={field}
       />
+
+      <label htmlFor={`fu-${visit.id}`} className={`${label} mt-3`}>
+        재진 권고 (선택)
+      </label>
+      <select
+        id={`fu-${visit.id}`}
+        aria-label="재진 권고"
+        value={followUpDays}
+        onChange={(e) => setFollowUpDays(e.target.value)}
+        className={field}
+      >
+        <option value="">없음</option>
+        <option value="3">3일 뒤</option>
+        <option value="7">1주 뒤</option>
+        <option value="14">2주 뒤</option>
+        <option value="30">한 달 뒤</option>
+        <option value="90">3개월 뒤</option>
+      </select>
+      <p className="mt-1 text-[10px] text-[var(--ink-2)]">환자 수납 화면의 "다시 올 때"에 권고일과 예약 버튼이 떠요.</p>
 
       {hasWarnings && (
         <label className="mt-3 flex items-start gap-2 rounded-xl bg-[var(--vital)]/8 px-3 py-2 text-xs text-[var(--vital-ink)]">

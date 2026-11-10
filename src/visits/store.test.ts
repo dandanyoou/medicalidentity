@@ -166,6 +166,14 @@ describe("visits store", () => {
     expect(getVisit(v.id)?.status).toBe("예약");
   });
 
+  it("재진 권고(R7)는 1일 이상 정수만 받고, 없으면 저장하지 않는다", () => {
+    const v = addVisit({ memberId: "self", hospital: "A", dept: "내과", date: "2026-11-09", reason: "r", amount: 0, paid: false, status: "예약" });
+    expect(() => completeVisit(v.id, { opinion: "x", prescriptions: [], amount: 0, followUpDays: 0 })).toThrow();
+    expect(completeVisit(v.id, { opinion: "x", prescriptions: [], amount: 0 }).followUp).toBeUndefined();
+    expect(completeVisit(v.id, { opinion: "x", prescriptions: [], amount: 0, followUpDays: 14 }).followUp).toEqual({ afterDays: 14 });
+    expect(getVisit(v.id)?.followUp).toEqual({ afterDays: 14 });
+  });
+
   it("의사가 추천 진료과 적합 여부를 남기면 방문에 저장된다(라벨 정답)", () => {
     const v = addVisit({ memberId: "self", hospital: "A", dept: "가정의학과", date: "2026-11-09", reason: "r", amount: 0, paid: false, status: "예약" });
     reviewVisit(v.id, { verdict: "다른 과", actualDept: "신경과", recommended: ["가정의학과", "신경과"] }, 1700000000000);
