@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { searchSymptoms } from "../symptom-info/data";
 import { addVisit } from "../visits/store";
@@ -46,6 +46,8 @@ export function BookingScreen() {
   // 대화형 문진 답 — 있으면 정리된 문장이 예약 사유로, 항목별 답은 방문 기록에 함께 간다.
   const [intakeAnswers, setIntakeAnswers] = useState<IntakeAnswers | null>(null);
   const [intakeNote, setIntakeNote] = useState("");
+  // 문진 시작 시각 — 병원 대시보드의 "평균 문진 소요"에 쓴다. 기기 밖으로 나가지 않는다.
+  const intakeStartRef = useRef<number | null>(null);
   const intakeSummary = intakeAnswers ? summarize(intakeAnswers) : null;
 
   const matches = useMemo(() => searchSymptoms(query), [query]);
@@ -72,7 +74,9 @@ export function BookingScreen() {
       date: slotToDate(slot),
       time: slotToTime(slot).replace(/(\d{2})(\d{2})/, "$1:$2"),
       reason: reason || "직접 선택",
-      ...(intakeAnswers ? { intake: buildRecord(intakeAnswers, intakeNote) } : {}),
+      ...(intakeAnswers
+        ? { intake: buildRecord(intakeAnswers, intakeNote, Date.now(), intakeStartRef.current ?? undefined) }
+        : {}),
       amount: 0,
       paid: false,
       status: "예약",
@@ -177,7 +181,11 @@ export function BookingScreen() {
                     </button>
                   </div>
                 ) : (
-                  <IntakeChat seedText={query} onDone={(a) => setIntakeAnswers(a)} />
+                  <IntakeChat
+                    seedText={query}
+                    onStart={() => { intakeStartRef.current = Date.now(); }}
+                    onDone={(a) => setIntakeAnswers(a)}
+                  />
                 )}
               </div>
 

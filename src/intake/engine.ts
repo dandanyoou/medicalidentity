@@ -266,11 +266,14 @@ export interface IntakeRecord {
   /** 고른 답으로 다 못 한 말 — 환자가 직접 쓴 것. */
   note?: string;
   confirmedAt: number;
+  /** 문진을 시작한 시각 — 병원 대시보드의 "평균 문진 소요"용. 예전 기록엔 없다. */
+  startedAt?: number;
 }
 
-export function buildRecord(a: IntakeAnswers, note: string, now: number = Date.now()): IntakeRecord {
+export function buildRecord(a: IntakeAnswers, note: string, now: number = Date.now(), startedAt?: number): IntakeRecord {
   const trimmed = note.trim();
   return {
+    ...(startedAt !== undefined && startedAt <= now ? { startedAt } : {}),
     parts: a.parts ?? [],
     ...(a.primary ?? a.parts?.[0] ? { primary: a.primary ?? a.parts?.[0] } : {}),
     quality: { ...a.quality },

@@ -1,12 +1,50 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { HospitalPortalScreen } from "./HospitalPortalScreen";
-import { currentSession, listBadges, registerHospital } from "./badge";
+import { badgeCode, currentSession, issueBadge, listBadges, loginWithBadge, registerHospital } from "./badge";
+import { resetVisits } from "../visits/store";
+import { seedDemoPatients } from "../doctor/demo";
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  resetVisits();
+});
 afterEach(() => cleanup());
+
+async function loginAsDoctor() {
+  registerHospital({ name: "행복의원", admin: "박원무" });
+  await loginWithBadge(badgeCode(issueBadge({ name: "김의사", role: "doctor" })));
+}
+
+describe("HospitalPortalScreen — 병원 대시보드(R4)", () => {
+  it("배지 로그인 전에는 대시보드가 없다", () => {
+    registerHospital({ name: "행복의원", admin: "박원무" });
+    mount();
+    expect(screen.queryByRole("region", { name: "병원 대시보드" })).toBeNull();
+  });
+
+  it("로그인 뒤 표본이 없으면 항목마다 '아직 데이터 없음'을 보여준다", async () => {
+    await loginAsDoctor();
+    mount();
+    const dash = screen.getByRole("region", { name: "병원 대시보드" });
+    for (const label of ["문진 완료", "평균 문진 소요", "추천 일치율", "예약 대비 방문", "서류 발급"]) {
+      expect(within(dash).getByText(label)).toBeTruthy();
+    }
+    expect(within(dash).getAllByText("아직 데이터 없음").length).toBeGreaterThanOrEqual(4);
+    expect(within(dash).getAllByText(/시연/).length).toBeGreaterThan(0);
+  });
+
+  it("시연 환자를 불러오면 문진 완료 수와 평균 소요가 숫자로 뜬다", async () => {
+    await loginAsDoctor();
+    seedDemoPatients();
+    mount();
+    const dash = screen.getByRole("region", { name: "병원 대시보드" });
+    expect(within(dash).getByText("4건")).toBeTruthy();
+    expect(within(dash).getByText("1분 35초")).toBeTruthy();
+  });
+});
 
 function mount() {
   return render(

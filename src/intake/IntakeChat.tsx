@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   EMPTY_ANSWERS,
   answer,
@@ -20,6 +20,8 @@ interface Props {
   /** 환자가 먼저 적어둔 문장 — 부위를 미리 골라두는 데만 쓴다. */
   seedText: string;
   onDone: (answers: IntakeAnswers, summary: string) => void;
+  /** 문진 화면이 처음 열릴 때 — 소요 시간 측정용(병원 대시보드). */
+  onStart?: () => void;
   onReset?: () => void;
 }
 
@@ -27,10 +29,16 @@ interface Props {
  * 대화로 증상 정리 — 한 번에 한 질문, 누르는 답.
  * 진단하지 않는다. 고른 답을 의사에게 전달할 문장으로 옮길 뿐이다.
  */
-export function IntakeChat({ seedText, onDone, onReset }: Props) {
+export function IntakeChat({ seedText, onDone, onReset, onStart }: Props) {
   const [answers, setAnswers] = useState<IntakeAnswers>(EMPTY_ANSWERS);
   const [turns, setTurns] = useState<Turn[]>([]);
   const question = currentQuestion(answers);
+
+  // 문진이 열린 시각 — 마운트 때 한 번.
+  useEffect(() => {
+    onStart?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function submit(q: IntakeQuestion, value: string | number | string[], reply: string) {
     const next = answer(answers, value);

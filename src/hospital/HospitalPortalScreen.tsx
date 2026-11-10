@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BrandMark } from "../shell/BrandMark";
+import { DashboardPanel } from "./DashboardPanel";
 import {
   REASON_TEXT,
   ROLE_LABEL,
@@ -75,6 +76,8 @@ export function HospitalPortalScreen() {
             </section>
 
             <SessionCard session={session} onLogout={() => { logout(); refresh(); }} />
+
+            {session && <DashboardPanel />}
 
             <IssueForm onIssued={refresh} />
 

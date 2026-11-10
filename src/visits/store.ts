@@ -144,6 +144,7 @@ function isIntakeRecord(v: unknown): v is IntakeRecord {
     typeof o.summary === "string" &&
     (o.severity === undefined || typeof o.severity === "number") &&
     (o.note === undefined || typeof o.note === "string") &&
+    (o.startedAt === undefined || typeof o.startedAt === "number") &&
     typeof o.confirmedAt === "number"
   );
 }

@@ -89,7 +89,8 @@ export function seedDemoPatients(now: Date = new Date()): void {
       date,
       time: c.time,
       reason: summary,
-      intake: buildRecord(a, c.note ?? "", now.getTime()),
+      // 시연 환자도 문진 소요 시간이 있어야 대시보드가 비어 보이지 않는다(약 1분 반, 시연값).
+      intake: buildRecord(a, c.note ?? "", now.getTime(), now.getTime() - 95_000),
       amount: 0,
       paid: false,
       status: "예약",
