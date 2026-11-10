@@ -13,7 +13,8 @@ const TABS = [
   { to: "/more", label: "더보기", match: ["/more", "/settings", "/subscribe", "/symptom", "/diary", "/labels"], icon: MoreIcon },
 ] as const;
 
-const HIDDEN_ON = ["/doctor", "/onboarding"];
+// /for-hospitals는 병원 담당자가 보는 소개 페이지 — 환자 탭바가 어울리지 않는다.
+const HIDDEN_ON = ["/doctor", "/onboarding", "/for-hospitals"];
 // 응급 열람 페이지(/e)는 구급대원이 보는 전체 화면 — 정확히 /e 만(응급 잠금화면 /emergency-card는 환자 화면).
 const HIDDEN_EXACT = ["/e"];
 
