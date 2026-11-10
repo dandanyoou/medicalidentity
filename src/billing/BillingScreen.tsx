@@ -72,6 +72,12 @@ export function BillingScreen() {
           <span className="ml-1 rounded-full bg-[var(--ink)] px-2 py-0.5 font-data text-[10px] font-bold text-white">
             시연
           </span>
+          <Link
+            to="/documents"
+            className="ml-auto rounded-full border border-[var(--mist)] bg-[var(--surface)] px-3 py-1.5 text-xs font-bold text-[var(--ink)]"
+          >
+            서류함
+          </Link>
         </header>
 
         <main className="flex-1 overflow-y-auto px-5 pb-10 pt-5">

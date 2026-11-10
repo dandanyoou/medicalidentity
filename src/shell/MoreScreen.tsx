@@ -8,6 +8,7 @@ const GROUPS = [
   {
     title: "건강 도구",
     items: [
+      { to: "/documents", label: "서류함", desc: "병원이 보낸 진단서·처방전 사본·영수증", demo: true },
       { to: "/symptom", label: "증상 정보", desc: "증상으로 진료과 찾기" },
       { to: "/booking", label: "진료 예약", desc: "증상에서 바로 예약", demo: true },
       { to: "/diary", label: "증상 일기", desc: "증상 기록 모아두기" },

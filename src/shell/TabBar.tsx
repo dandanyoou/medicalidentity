@@ -7,7 +7,7 @@ import { Link, useLocation } from "react-router-dom";
  */
 const TABS = [
   { to: "/wallet", label: "홈", match: ["/wallet"], icon: HomeIcon },
-  { to: "/billing", label: "진료", match: ["/billing", "/booking"], icon: VisitIcon },
+  { to: "/billing", label: "진료", match: ["/billing", "/booking", "/documents"], icon: VisitIcon },
   { to: "/checker", label: "환급", match: ["/checker", "/insurance"], icon: RefundIcon },
   { to: "/family", label: "가족", match: ["/family"], icon: FamilyIcon },
   { to: "/more", label: "더보기", match: ["/more", "/settings", "/subscribe", "/symptom", "/diary", "/labels"], icon: MoreIcon },
@@ -25,7 +25,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="주요 메뉴"
-      className="fixed bottom-0 left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-[var(--mist)] bg-[var(--paper)]/95 backdrop-blur md:max-w-xl"
+      className="fixed bottom-0 left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-[var(--mist)] bg-[var(--paper)]/95 backdrop-blur md:max-w-xl print:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <ul className="flex">
