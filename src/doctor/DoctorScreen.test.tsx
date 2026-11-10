@@ -507,6 +507,50 @@ describe("DoctorScreen — 서류 발급(R5)", () => {
   });
 });
 
+describe("DoctorScreen — 과거 진료 이력(R6)", () => {
+  afterEach(() => {
+    cleanup();
+    resetVisits();
+  });
+
+  it("문진 카드에 같은 환자의 지난 방문 소견·처방이 보이고, 다른 환자 것은 안 보인다", () => {
+    resetVisits();
+    const base = {
+      memberId: "demo",
+      hospital: "시연의원",
+      dept: "가정의학과",
+      amount: 0,
+      paid: false,
+    } as const;
+    addVisit({ ...base, patientName: "박영희", date: "2026-10-20", time: "10:00", reason: "두통", opinion: "긴장성 두통 의심 소견.", prescriptions: [{ drug: "아세트아미노펜 500mg", dose: "1정 3회/일", days: 3 }], status: "완료", paid: true });
+    addVisit({ ...base, patientName: "이준호", date: "2026-10-21", time: "10:00", reason: "복통", opinion: "급성 위염 의심 소견.", status: "완료", paid: true });
+    addVisit({ ...base, patientName: "박영희", date: localDateKey(), time: "11:00", reason: "머리가 또 아파요", status: "예약" });
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "박영희 사전 문진 보기" }));
+    const hist = screen.getByRole("region", { name: "지난 방문" });
+    expect(within(hist).getByText(/2026-10-20/)).toBeTruthy();
+    expect(within(hist).getByText(/긴장성 두통 의심 소견/)).toBeTruthy();
+    expect(within(hist).getByText(/아세트아미노펜 500mg/)).toBeTruthy();
+    expect(within(hist).queryByText(/급성 위염/)).toBeNull();
+  });
+
+  it("지난 방문이 없으면 그렇다고 알려준다", () => {
+    resetVisits();
+    addVisit({ memberId: "demo", patientName: "최민서", hospital: "시연의원", dept: "정형외과", date: localDateKey(), time: "09:00", reason: "허리", amount: 0, paid: false, status: "예약" });
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "최민서 사전 문진 보기" }));
+    expect(within(screen.getByRole("region", { name: "지난 방문" })).getByText(/이 기기에 지난 방문 기록이 없어요/)).toBeTruthy();
+  });
+});
+
 describe("DoctorScreen — 탭 분리 · 데스크톱 2단(R3)", () => {
   afterEach(() => {
     cleanup();

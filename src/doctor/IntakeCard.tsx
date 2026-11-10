@@ -1,5 +1,6 @@
-import type { Visit } from "../visits/store";
+import { listVisits, type Visit } from "../visits/store";
 import { intakeView } from "./intakeView";
+import { historyLine, pastVisits } from "./history";
 import { checkRedFlags, recommendDepts } from "../intake/triage";
 import { CompleteVisitForm } from "./CompleteVisitForm";
 import { ReviewPrompt } from "./ReviewPrompt";
@@ -27,6 +28,7 @@ export function IntakeCard({
       <section aria-label="사전 문진" className="mt-2 rounded-2xl bg-[var(--surface)] px-4 py-3">
         <p className="text-xs text-[var(--ink-2)]">대화형 문진 없이 예약했어요. 예약 사유만 있어요.</p>
         <p className="mt-1 text-sm text-[var(--ink)]">{visit.reason}</p>
+        <HistoryPanel visit={visit} />
         {completeForm}
       </section>
     );
@@ -90,7 +92,37 @@ export function IntakeCard({
         </p>
       )}
       <ReviewPrompt visit={visit} recommended={rec?.depts ?? []} />
+      <HistoryPanel visit={visit} />
       {completeForm}
+    </section>
+  );
+}
+
+/** 같은 환자의 지난 방문 — 이 기기에 저장된 진료 기록만(시연). */
+function HistoryPanel({ visit }: { visit: Visit }) {
+  const past = pastVisits(listVisits(), visit).map(historyLine);
+  return (
+    <section aria-label="지난 방문" className="mt-3 border-t border-[var(--mist)] pt-3">
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-xs font-bold text-[var(--ink)]">지난 방문</h3>
+        <span className="text-[10px] text-[var(--ink-2)]">이 기기 기록 · 최근 {past.length}건</span>
+      </div>
+      {past.length === 0 ? (
+        <p className="mt-1 text-[11px] text-[var(--ink-2)]">이 기기에 지난 방문 기록이 없어요. (EMR 연동 전 — 다른 병원 기록은 보이지 않아요)</p>
+      ) : (
+        <ol className="mt-1.5 space-y-1.5">
+          {past.map((h) => (
+            <li key={h.id} className="rounded-xl bg-[var(--paper)] px-3 py-2 text-[11px] leading-relaxed">
+              <p className="font-data text-[10px] text-[var(--ink-2)]">
+                {h.date} · {h.hospital} · {h.dept}
+              </p>
+              {h.opinion && <p className="mt-0.5 text-[var(--ink)]">{h.opinion}</p>}
+              {h.drugs.length > 0 && <p className="mt-0.5 text-[var(--ink-2)]">처방: {h.drugs.join(", ")}</p>}
+              {!h.opinion && h.drugs.length === 0 && <p className="mt-0.5 text-[var(--ink-2)]">소견·처방 기록 없음</p>}
+            </li>
+          ))}
+        </ol>
+      )}
     </section>
   );
 }
