@@ -13,6 +13,7 @@ import {
   type LatLng,
   type SortMode,
 } from "./hospitals";
+import { hospitalRatings } from "../visits/ratings";
 
 const GU_KEY = "medid.booking.gu.v1";
 const PAGE = 30;
@@ -124,10 +125,13 @@ export function HospitalPicker({
     }
   }
 
+  // R8: 우리 사용자의 진료 후 평가. 표본(n≥10)이 있는 병원이 목록에 있을 때만 "이용자 평가순"을 보여준다.
+  const ratings = useMemo(() => hospitalRatings(), []);
+  const ratingAvailable = useMemo(() => (list ?? []).some((h) => ratings.get(h.name)?.eligible), [list, ratings]);
   const filtered = useMemo(() => {
     const f = list ? filterHospitals(list, { dept, query }) : [];
-    return sortHospitals(f, mode, { here });
-  }, [list, dept, query, here, mode]);
+    return sortHospitals(f, mode, { here, ratings });
+  }, [list, dept, query, here, mode, ratings]);
   const majors = useMemo(() => (here ? sortByDistance(SEOUL_INDEX.major, here) : SEOUL_INDEX.major), [here]);
   const shown = filtered.slice(0, limit);
 
@@ -139,6 +143,7 @@ export function HospitalPicker({
             ["recommended", "추천순"],
             ["distance", geo === "asking" ? "위치 확인 중…" : "가까운 순"],
             ["name", "이름순"],
+            ...(ratingAvailable ? ([["rating", "이용자 평가순"]] as [SortMode, string][]) : []),
           ] as [SortMode, string][]
         ).map(([m, label]) => (
           <button
@@ -270,6 +275,9 @@ export function HospitalPicker({
                           {h.type}
                           {h.dong ? ` · ${h.dong}` : ""}
                           {dist(h) ? ` · ${dist(h)}` : ""}
+                          {ratings.get(h.name)?.eligible
+                            ? ` · ★ ${ratings.get(h.name)!.avg.toFixed(1)} · ${ratings.get(h.name)!.count}건`
+                            : ""}
                         </span>
                       </span>
                       <span className="flex-none text-[var(--ink-2)]">›</span>

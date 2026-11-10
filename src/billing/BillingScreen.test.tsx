@@ -3,10 +3,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { BillingScreen } from "./BillingScreen";
-import { addVisit, completeVisit, resetVisits } from "../visits/store";
+import { addVisit, completeVisit, listVisits, resetVisits } from "../visits/store";
 import { localDateKey } from "../doctor/queue";
+import { getRating } from "../visits/ratings";
 
-beforeEach(() => resetVisits());
+beforeEach(() => {
+  resetVisits();
+  localStorage.removeItem("medid.ratings");
+});
 afterEach(() => {
   cleanup();
   resetVisits();
@@ -54,6 +58,29 @@ describe("BillingScreen — 다시 올 때·복약 알림(R7, 기기 알림 시�
     );
     const card = screen.getByRole("region", { name: "다시 올 때 · 복약" });
     expect(within(card).getByText(/지금은 다가온 재진·복약이 없어요/)).toBeTruthy();
+  });
+});
+
+describe("BillingScreen — 진료 후 병원 평가(R8)", () => {
+  it("수납이 끝난 방문에만 '병원은 어땠나요?'가 뜨고, 점수와 한 줄을 저장하면 평가가 표시된다", () => {
+    const done = addVisit({ memberId: "self", hospital: "행복의원", dept: "가정의학과", date: "2026-11-01", time: "09:00", reason: "두통", amount: 12000, paid: true, status: "완료" });
+    addVisit({ memberId: "self", hospital: "행복의원", dept: "가정의학과", date: "2026-11-02", time: "09:00", reason: "두통", amount: 12000, paid: false, status: "수납대기" });
+    render(
+      <MemoryRouter>
+        <BillingScreen />
+      </MemoryRouter>,
+    );
+    // 수납대기 방문에는 평가가 없다 → 평가 폼 수 = 완료 방문 수(저장소 기본 시연 방문 포함).
+    const completed = listVisits().filter((v) => v.status === "완료").length;
+    const groups = screen.getAllByRole("group", { name: "병원 평가" });
+    expect(groups).toHaveLength(completed);
+    const form = groups.find((g) => g.parentElement?.textContent?.includes("2026-11-01"))!;
+    fireEvent.click(within(form).getByRole("button", { name: "4점" }));
+    fireEvent.change(within(form).getByLabelText(/한 줄/), { target: { value: "대기 짧았어요" } });
+    fireEvent.click(within(form).getByRole("button", { name: /평가 저장/ }));
+    expect(getRating(done.id)).toMatchObject({ score: 4, comment: "대기 짧았어요" });
+    expect(screen.getByText(/내 평가 4점/)).toBeTruthy();
+    expect(screen.getAllByRole("group", { name: "병원 평가" })).toHaveLength(completed - 1);
   });
 });
 

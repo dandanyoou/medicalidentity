@@ -58,7 +58,10 @@ export function formatDistance(km: number): string {
   return `${Math.round(km)}km`;
 }
 
-export type SortMode = "recommended" | "distance" | "name";
+export type SortMode = "recommended" | "distance" | "name" | "rating";
+
+/** 이용자 평가 요약(병원명 → 평균·건수·노출 가능). 평가 저장소에서 온다. */
+export type RatingMap = Map<string, { avg: number; count: number; eligible: boolean }>;
 
 /** 종별 순위 — 낮을수록 큰 병원. 데이터 빌드 스크립트와 같은 기준. */
 const TYPE_RANK: Record<string, number> = {
@@ -80,10 +83,23 @@ const KM_PER_RANK = 3;
  * (의원 300m가 종합병원 9km보다 앞설 수 있다). 가까운 순인데 위치를 모르면 추천순.
  * 이용자 평가순은 평가 데이터가 쌓인 뒤에만 만든다(과장 금지).
  */
-export function sortHospitals(list: Hospital[], mode: SortMode, ctx: { here?: LatLng | null }): Hospital[] {
+export function sortHospitals(list: Hospital[], mode: SortMode, ctx: { here?: LatLng | null; ratings?: RatingMap }): Hospital[] {
   const here = ctx.here ?? null;
   if (mode === "name") return [...list].sort((a, b) => displayName(a).localeCompare(displayName(b), "ko"));
   if (mode === "distance" && here) return sortByDistance(list, here);
+  if (mode === "rating") {
+    // 표본이 충분한 병원만 평균 높은 순 → 건수 → 나머지는 추천순 그대로 뒤에.
+    const rec = sortHospitals(list, "recommended", { here });
+    const eligible = (h: Hospital) => ctx.ratings?.get(h.name)?.eligible ? ctx.ratings.get(h.name)! : null;
+    const rated = rec.filter((h) => eligible(h));
+    const unrated = rec.filter((h) => !eligible(h));
+    rated.sort((a, b) => {
+      const ra = eligible(a)!;
+      const rb = eligible(b)!;
+      return rb.avg - ra.avg || rb.count - ra.count;
+    });
+    return [...rated, ...unrated];
+  }
   const score = (h: Hospital) => {
     const base = typeRank(h.type);
     if (!here || h.lat === undefined || h.lng === undefined) return base;

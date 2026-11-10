@@ -5,6 +5,7 @@ import { CountUp } from "../shell/CountUp";
 import { Stepper } from "../shell/Stepper";
 import { BottomSheet } from "../shell/BottomSheet";
 import { RemindersCard } from "./RemindersCard";
+import { COMMENT_MAX, getRating, rateVisit } from "../visits/ratings";
 
 // 방문 진행 상태 — 예약 → 방문 → 수납.
 const VISIT_STEPS = [{ label: "예약" }, { label: "방문" }, { label: "수납" }];
@@ -232,6 +233,8 @@ function VisitCard({
         </div>
       </button>
 
+      {visit.status === "완료" && <RatingBox visit={visit} />}
+
       {open && (
         <div className="animate-reveal-in border-t border-[var(--mist)] px-5 py-4 pl-6">
           <div className="mb-4">
@@ -278,6 +281,75 @@ function VisitCard({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * 진료 후 병원 평가(R8) — 수납을 마친 방문에만. 1~5점 + 한 줄, 기기 저장.
+ * 병원별 표본이 10건 이상 쌓이면 병원 선택의 "이용자 평가순"에 쓰인다.
+ */
+function RatingBox({ visit }: { visit: Visit }) {
+  const [saved, setSaved] = useState(() => getRating(visit.id));
+  const [score, setScore] = useState(0);
+  const [comment, setComment] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  if (saved) {
+    return (
+      <p className="border-t border-[var(--mist)] px-5 py-2.5 pl-6 text-[11px] text-[var(--ink-2)]">
+        <span className="font-bold text-[var(--ink)]">내 평가 {saved.score}점</span>
+        {saved.comment && ` · ${saved.comment}`}
+      </p>
+    );
+  }
+
+  return (
+    <div role="group" aria-label="병원 평가" className="border-t border-[var(--mist)] px-5 py-3 pl-6">
+      <p className="text-xs font-bold text-[var(--ink)]">병원은 어땠나요?</p>
+      <p className="mt-0.5 text-[10px] text-[var(--ink-2)]">평가는 이 기기에 저장돼요. 10건 이상 쌓인 병원만 "이용자 평가순"에 쓰여요.</p>
+      <div className="mt-2 flex gap-1.5">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            aria-label={`${n}점`}
+            aria-pressed={score === n}
+            onClick={() => setScore(n)}
+            className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${
+              score >= n ? "bg-[var(--ink)] text-white" : "border border-[var(--mist)] text-[var(--ink-2)]"
+            }`}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+      <label htmlFor={`rate-${visit.id}`} className="mt-2 block">
+        <span className="text-[10px] font-bold text-[var(--ink-2)]">한 줄 (선택, {COMMENT_MAX}자)</span>
+        <input
+          id={`rate-${visit.id}`}
+          value={comment}
+          maxLength={COMMENT_MAX}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="예: 설명이 자세했어요"
+          className="mt-1 h-10 w-full rounded-xl border border-[var(--mist)] bg-[var(--paper)] px-3 text-sm outline-none focus:border-[var(--ink)]"
+        />
+      </label>
+      {error && <p role="alert" className="mt-1 text-[11px] font-bold text-[var(--vital-ink)]">{error}</p>}
+      <button
+        type="button"
+        disabled={score === 0}
+        onClick={() => {
+          try {
+            setSaved(rateVisit(visit.id, visit.hospital, { score, comment }));
+          } catch (e) {
+            setError((e as Error).message);
+          }
+        }}
+        className="mt-2 h-10 w-full rounded-full border border-[var(--ink)] text-xs font-extrabold text-[var(--ink)] disabled:border-[var(--mist)] disabled:text-[var(--ink-2)]"
+      >
+        평가 저장
+      </button>
     </div>
   );
 }

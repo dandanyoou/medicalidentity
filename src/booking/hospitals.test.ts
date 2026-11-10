@@ -92,6 +92,27 @@ describe("거리 — 가까운 순", () => {
   });
 });
 
+describe("sortHospitals — 이용자 평가순(R8)", () => {
+  const list = [
+    h({ id: "a", name: "가나종합병원", type: "종합병원", doctors: 80 }),
+    h({ id: "b", name: "나나의원", type: "의원", doctors: 3 }),
+    h({ id: "c", name: "다다의원", type: "의원", doctors: 1 }),
+  ];
+  const ratings = new Map([
+    ["나나의원", { avg: 4.8, count: 12, eligible: true }],
+    ["다다의원", { avg: 3.2, count: 15, eligible: true }],
+    ["가나종합병원", { avg: 5, count: 2, eligible: false }], // 표본 부족 → 평가순에서 뒤로
+  ]);
+
+  it("노출 가능한(n≥최소치) 병원을 평균 높은 순으로 앞에, 나머지는 추천순으로 뒤에", () => {
+    expect(sortHospitals(list, "rating", { ratings }).map((x) => x.id)).toEqual(["b", "c", "a"]);
+  });
+
+  it("평가 정보가 없으면 추천순과 같다", () => {
+    expect(sortHospitals(list, "rating", {}).map((x) => x.id)).toEqual(sortHospitals(list, "recommended", {}).map((x) => x.id));
+  });
+});
+
 describe("sortHospitals — 추천순 · 가까운 순 · 이름순", () => {
   const here = { lat: 37.5665, lng: 126.978 };
   const list = [

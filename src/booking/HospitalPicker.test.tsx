@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { HospitalPicker } from "./HospitalPicker";
 import { clearHospitalCache, type Hospital } from "./hospitals";
+import { rateVisit } from "../visits/ratings";
 
 const GU_LIST: Hospital[] = [
   { id: "1", name: "서울대학교병원", type: "상급종합", gu: "종로구", dong: "연건동", addr: "서울특별시 종로구 대학로 101", tel: "1588-5700", doctors: 1512, depts: ["내과", "가정의학과", "안과"] },
@@ -129,8 +130,22 @@ describe("HospitalPicker — 서울 병원 고르기", () => {
     expect(names[0]).toContain("가나종합병원");
     expect(names[1]).toContain("다라의원");
     expect(names[2]).toContain("하나의원");
-    // 이용자 평가순은 데이터가 없어 만들지 않았다 — 과장하지 않는다.
+    // 이용자 평가순은 평가가 10건 이상 쌓인 병원이 없으면 보이지 않는다 — 과장하지 않는다.
     expect(within(sort).queryByRole("button", { name: /평가|별점/ })).toBeNull();
+  });
+
+  it("평가가 10건 이상 쌓인 병원이 있으면 '이용자 평가순'이 생기고, 그 병원이 맨 위로 온다(R8)", async () => {
+    for (let i = 0; i < 10; i++) rateVisit(`r${i}`, "혜화튼튼정형외과의원", { score: 5, comment: "" });
+    render(<HospitalPicker dept={null} onPick={() => {}} />);
+    fireEvent.change(screen.getByLabelText("구 선택"), { target: { value: "종로구" } });
+    await screen.findByRole("list", { name: "종로구 병원 목록" });
+    const sort = screen.getByRole("group", { name: "정렬" });
+    const btn = within(sort).getByRole("button", { name: "이용자 평가순" });
+    fireEvent.click(btn);
+    const names = screen.getAllByRole("listitem").map((li) => li.textContent ?? "");
+    expect(names[0]).toContain("혜화튼튼정형외과의원");
+    expect(names[0]).toMatch(/5\.0/);
+    expect(names[0]).toMatch(/10건/);
   });
 
   it("데이터 출처와 기준일을 밝힌다", () => {
