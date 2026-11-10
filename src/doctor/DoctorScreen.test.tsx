@@ -74,12 +74,18 @@ async function buildFullBundle() {
   });
 }
 
+// R3: VP 검증은 '응급 신원 확인' 탭 안에 있다. 기본 탭은 '진료 대기열'.
+function openEmergencyTab() {
+  fireEvent.click(screen.getByRole("tab", { name: "응급 신원 확인" }));
+}
+
 async function renderAndVerify() {
   render(
     <MemoryRouter>
       <DoctorScreen />
     </MemoryRouter>,
   );
+  openEmergencyTab();
   const textarea = screen.getByPlaceholderText(/wallet에서 복사한 JSON/);
   const bundle = await buildFullBundle();
   fireEvent.change(textarea, { target: { value: bundle } });
@@ -129,6 +135,7 @@ describe("DoctorScreen — 로직 견고화 (필드 누락 입력)", () => {
         <DoctorScreen />
       </MemoryRouter>,
     );
+    openEmergencyTab();
     const textarea = screen.getByPlaceholderText(/wallet에서 복사한 JSON/);
     fireEvent.change(textarea, { target: { value: JSON.stringify({ blood: "x" }) } });
     fireEvent.click(screen.getByText("페이스트 검증"));
@@ -392,8 +399,93 @@ describe("DoctorScreen — 데모 데이터로 보기 (실제 검증 경로, 가
         <DoctorScreen />
       </MemoryRouter>,
     );
+    openEmergencyTab();
     fireEvent.click(screen.getByText("데모 데이터로 먼저 보기"));
     await screen.findByText("환자 정보 (마스킹됨)", {}, { timeout: 3000 });
     expect(screen.getByText("A +")).toBeTruthy();
+  });
+});
+
+function visitFor(name: string, time: string) {
+  return addVisit({
+    memberId: "self",
+    patientName: name,
+    hospital: "서울대학교병원",
+    dept: "가정의학과",
+    date: localDateKey(),
+    time,
+    reason: `${name} 사유`,
+    amount: 0,
+    paid: false,
+    status: "예약",
+  });
+}
+
+describe("DoctorScreen — 탭 분리 · 데스크톱 2단(R3)", () => {
+  afterEach(() => {
+    cleanup();
+    resetVisits();
+    // @ts-expect-error jsdom에는 matchMedia가 없다 — 테스트에서 넣었다 뺀다.
+    delete window.matchMedia;
+  });
+
+  it("'진료 대기열' / '응급 신원 확인' 탭이 있고, 기본은 대기열이라 VP 입력이 안 보인다", () => {
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    const tabs = screen.getByRole("tablist", { name: "의사 화면 탭" });
+    expect(within(tabs).getByRole("tab", { name: "진료 대기열", selected: true })).toBeTruthy();
+    expect(within(tabs).getByRole("tab", { name: "응급 신원 확인", selected: false })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "오늘 진료 대기열" })).toBeTruthy();
+    expect(screen.queryByPlaceholderText(/wallet에서 복사한 JSON/)).toBeNull();
+
+    openEmergencyTab();
+    expect(screen.getByPlaceholderText(/wallet에서 복사한 JSON/)).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "오늘 진료 대기열" })).toBeNull();
+  });
+
+  it("폰 폭(matchMedia 없음)에서는 지금처럼 항목 아래에 문진 카드가 펼쳐진다", () => {
+    resetVisits();
+    visitFor("박영희", "10:00");
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole("region", { name: "선택한 환자" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "박영희 사전 문진 보기" }));
+    const item = screen.getByRole("button", { name: "박영희 사전 문진 보기" }).closest("li")!;
+    expect(within(item).getByText(/문진 없이 예약/)).toBeTruthy();
+  });
+
+  it("데스크톱(md 이상)에서는 왼쪽 목록에서 고른 환자가 오른쪽 '선택한 환자' 칸에 열리고 선택 상태가 표시된다", () => {
+    resetVisits();
+    visitFor("박영희", "10:00");
+    visitFor("이준호", "10:30");
+    window.matchMedia = ((q: string) => ({
+      matches: q.includes("min-width"),
+      media: q,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    const right = screen.getByRole("region", { name: "선택한 환자" });
+    expect(within(right).getByText(/왼쪽에서 환자를 고르세요/)).toBeTruthy();
+
+    const pick = screen.getByRole("button", { name: "이준호 사전 문진 보기" });
+    fireEvent.click(pick);
+    expect(pick.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "박영희 사전 문진 보기" }).getAttribute("aria-pressed")).toBe("false");
+    expect(within(right).getByText("이준호")).toBeTruthy();
+    expect(within(right).getByText(/문진 없이 예약/)).toBeTruthy();
+    // 목록 쪽 항목 안에는 카드가 펼쳐지지 않는다.
+    expect(within(pick.closest("li")!).queryByText(/문진 없이 예약/)).toBeNull();
   });
 });

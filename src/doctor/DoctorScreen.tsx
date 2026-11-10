@@ -53,6 +53,8 @@ export function DoctorScreen() {
   const [mode, setMode] = useState<DoctorMode>("emergency");
   // R2: 직원 배지 로그인(시연) 뒤에만 대기열·VP 검증이 열린다.
   const [session, setSession] = useState<Session | null>(() => currentSession());
+  // R3: 진료 흐름(대기열·문진 카드·진료 완료)과 응급 신원 확인(VP 검증)은 다른 일이라 탭으로 나눈다.
+  const [tab, setTab] = useState<"queue" | "emergency">("queue");
 
   useEffect(() => {
     return () => {
@@ -214,9 +216,33 @@ export function DoctorScreen() {
             </section>
           )}
 
-          {session && !bundle && !verifying && <QueuePanel />}
+          {session && (
+            <div role="tablist" aria-label="의사 화면 탭" className="mb-4 flex gap-1 rounded-2xl bg-[var(--surface)] p-1 shadow-sm">
+              {(
+                [
+                  ["queue", "진료 대기열"],
+                  ["emergency", "응급 신원 확인"],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  role="tab"
+                  type="button"
+                  aria-selected={tab === key}
+                  onClick={() => setTab(key)}
+                  className={`min-h-[40px] flex-1 rounded-xl text-sm font-bold transition ${
+                    tab === key ? "bg-[var(--ink)] text-white" : "text-[var(--ink-2)] hover:bg-[var(--paper)]"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
-          {session && !bundle && !verifying && (
+          {session && tab === "queue" && <QueuePanel />}
+
+          {session && tab === "emergency" && !bundle && !verifying && (
             <section className="rounded-3xl bg-[var(--surface)] p-5 shadow-sm">
               <h2 className="text-sm font-semibold text-[var(--ink)]">환자 VP 입력</h2>
               <p className="mt-1 mb-4 text-xs text-[var(--ink-2)]">
@@ -265,7 +291,7 @@ export function DoctorScreen() {
             </section>
           )}
 
-          {verifying && (
+          {tab === "emergency" && verifying && (
             <section
               aria-busy="true"
               className="rounded-3xl bg-[var(--surface)] p-5 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
@@ -294,7 +320,7 @@ export function DoctorScreen() {
             </section>
           )}
 
-          {error && (
+          {tab === "emergency" && error && (
             <div
               role="alert"
               className="mt-4 flex items-start gap-2 rounded-2xl border-l-4 border-[var(--vital)] bg-[var(--vital)]/8 px-4 py-3 text-sm text-[var(--vital-ink)]"
@@ -317,7 +343,7 @@ export function DoctorScreen() {
             </div>
           )}
 
-          {bundle && (
+          {tab === "emergency" && bundle && (
             <section className="flex flex-col gap-4 animate-reveal-in">
               {bundle.mDLTrusted && (
                 <div className="flex items-center gap-3 rounded-3xl bg-[var(--paper)] p-4">
