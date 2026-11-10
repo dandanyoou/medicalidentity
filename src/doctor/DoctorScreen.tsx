@@ -15,6 +15,7 @@ import { ControlledSubstancePanel } from "./ControlledSubstancePanel";
 import { Skeleton } from "../shell/Skeleton";
 import { QueuePanel } from "./QueuePanel";
 import { ROLE_LABEL, currentSession, logout as badgeLogout, type Session } from "../hospital/badge";
+import { IssuePanel } from "../documents/IssuePanel";
 
 // 검증 중에 "무엇을 확인하는지" 보여주는 체크 목록 — 스피너보다 신뢰가 간다.
 const VERIFY_CHECKS = ["발급자 서명", "신뢰 앵커(mDL)", "폐기·만료 여부"];
@@ -55,6 +56,8 @@ export function DoctorScreen() {
   const [session, setSession] = useState<Session | null>(() => currentSession());
   // R3: 진료 흐름(대기열·문진 카드·진료 완료)과 응급 신원 확인(VP 검증)은 다른 일이라 탭으로 나눈다.
   const [tab, setTab] = useState<"queue" | "emergency">("queue");
+  // 대기열에서 진료를 마치면 서류 발급 패널이 다시 읽도록 하는 버전 번호.
+  const [dataVersion, setDataVersion] = useState(0);
 
   useEffect(() => {
     return () => {
@@ -240,7 +243,12 @@ export function DoctorScreen() {
             </div>
           )}
 
-          {session && tab === "queue" && <QueuePanel />}
+          {session && tab === "queue" && (
+            <>
+              <QueuePanel onChange={() => setDataVersion((v) => v + 1)} />
+              <IssuePanel session={session} version={dataVersion} />
+            </>
+          )}
 
           {session && tab === "emergency" && !bundle && !verifying && (
             <section className="rounded-3xl bg-[var(--surface)] p-5 shadow-sm">

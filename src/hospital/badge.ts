@@ -115,6 +115,25 @@ export function registerHospital(input: { name: string; admin: string }): Hospit
   return h;
 }
 
+// ---- 병원 키로 서명(서류 발급 등이 재사용) ----
+
+export function signWithHospital(message: Uint8Array): string {
+  const h = getHospital();
+  if (!h) throw new Error("병원을 먼저 등록하세요.");
+  return b64u(ed25519.sign(message, fromB64u(h.sk)));
+}
+
+/** 이 기기에 등록된 병원의 공개키로 확인. hospitalId가 다르면 거짓. */
+export function verifyWithHospital(sig: string, message: Uint8Array, hospitalId?: string): boolean {
+  const h = getHospital();
+  if (!h || (hospitalId && h.id !== hospitalId)) return false;
+  try {
+    return ed25519.verify(fromB64u(sig), message, fromB64u(h.pk));
+  } catch {
+    return false;
+  }
+}
+
 // ---- 배지 ----
 
 /** 서명 대상 — 키 순서를 고정해 양쪽에서 같은 바이트가 나오게. */

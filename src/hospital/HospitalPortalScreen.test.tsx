@@ -18,6 +18,18 @@ async function loginAsDoctor() {
   await loginWithBadge(badgeCode(issueBadge({ name: "김의사", role: "doctor" })));
 }
 
+describe("HospitalPortalScreen — 서류 양식(R5·P2)", () => {
+  it("등록 뒤 서류 양식 섹션에 기본 양식 4종과 병원 양식 PDF 올리는 자리가 보인다", () => {
+    registerHospital({ name: "행복의원", admin: "박원무" });
+    mount();
+    const sec = screen.getByRole("region", { name: "서류 양식" });
+    for (const k of ["진단서", "소견서", "처방전 사본", "진료비 영수증"]) {
+      expect(within(sec).getAllByText(k).length).toBeGreaterThan(0);
+    }
+    expect(within(sec).getByLabelText(/병원 양식 PDF/)).toBeTruthy();
+  });
+});
+
 describe("HospitalPortalScreen — 병원 대시보드(R4)", () => {
   it("배지 로그인 전에는 대시보드가 없다", () => {
     registerHospital({ name: "행복의원", admin: "박원무" });

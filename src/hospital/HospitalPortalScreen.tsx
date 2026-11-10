@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { BrandMark } from "../shell/BrandMark";
 import { DashboardPanel } from "./DashboardPanel";
+import { DOC_KINDS, type DocKind } from "../documents/store";
+import { addTemplatePlaceholder, listTemplates, removeTemplate } from "../documents/templates";
 import {
   REASON_TEXT,
   ROLE_LABEL,
@@ -99,6 +101,8 @@ export function HospitalPortalScreen() {
                 </ul>
               )}
             </section>
+
+            <TemplatesSection />
 
             <PasteLogin onLogin={login} error={loginError} />
           </>
@@ -245,6 +249,69 @@ function SessionCard({ session, onLogout }: { session: Session | null; onLogout:
         </button>
       </div>
     </div>
+  );
+}
+
+/** P2 — 서류 양식: 기본 4종 + 병원 양식 PDF 자리(파일 이름·크기만 저장). */
+function TemplatesSection() {
+  const [tick, setTick] = useState(0);
+  const [kind, setKind] = useState<DocKind>("진단서");
+  const [error, setError] = useState<string | null>(null);
+  const templates = useMemo(() => listTemplates(), [tick]);
+
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setError(null);
+    try {
+      addTemplatePlaceholder({ kind, fileName: f.name, size: f.size });
+      setTick((t) => t + 1);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+    e.target.value = "";
+  }
+
+  return (
+    <section aria-labelledby="tpl-h" className="mt-8">
+      <h2 id="tpl-h" className="text-base font-bold">서류 양식</h2>
+      <p className="mt-1 text-xs leading-relaxed text-[var(--ink-2)]">
+        기본 양식 4종(보건복지부 서식 기준, 시연)에 병원 양식 PDF를 더할 수 있어요. 지금은 파일 이름만 자리로 남기고
+        내용은 저장하지 않습니다 — 칸 지정(환자명·소견·서명 자리)은 서버가 생긴 뒤 다음 단계예요.
+      </p>
+      <ul className="mt-3 space-y-1.5">
+        {templates.map((t) => (
+          <li key={t.id} className="flex items-center justify-between rounded-2xl border border-[var(--mist)] bg-[var(--surface)] px-4 py-2.5 text-sm">
+            <span>
+              <span className="font-bold">{t.kind}</span>
+              <span className="ml-2 text-xs text-[var(--ink-2)]">{t.source === "default" ? "기본 양식" : `병원 양식 · ${t.fileName}`}</span>
+            </span>
+            {t.source === "hospital" && (
+              <button type="button" onClick={() => { removeTemplate(t.id); setTick((x) => x + 1); }} className="text-xs font-bold text-[var(--vital-ink)]">
+                삭제
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <div className="mt-3 grid gap-2 rounded-2xl bg-[var(--paper)] p-4 md:grid-cols-[160px_1fr]">
+        <label htmlFor="tpl-kind" className="block">
+          <span className="text-xs font-bold text-[var(--ink-2)]">종류</span>
+          <select id="tpl-kind" value={kind} onChange={(e) => setKind(e.target.value as DocKind)} className="mt-1 h-10 w-full rounded-xl border border-[var(--mist)] bg-[var(--surface)] px-3 text-sm">
+            {DOC_KINDS.map((k) => (
+              <option key={k.kind} value={k.kind}>{k.kind}</option>
+            ))}
+          </select>
+        </label>
+        <label htmlFor="tpl-file" className="block">
+          <span className="text-xs font-bold text-[var(--ink-2)]">병원 양식 PDF 올리기(자리)</span>
+          <input id="tpl-file" type="file" accept="application/pdf" onChange={onFile} className="mt-1 block w-full text-xs" />
+        </label>
+      </div>
+      {error && (
+        <p role="alert" className="mt-2 rounded-xl bg-[var(--vital)]/10 px-3 py-2 text-xs font-bold text-[var(--vital-ink)]">{error}</p>
+      )}
+    </section>
   );
 }
 

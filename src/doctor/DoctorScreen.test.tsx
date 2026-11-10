@@ -421,6 +421,92 @@ function visitFor(name: string, time: string) {
   });
 }
 
+describe("DoctorScreen — 서류 발급(R5)", () => {
+  afterEach(() => {
+    cleanup();
+    resetVisits();
+  });
+
+  function completedToday(name: string) {
+    return addVisit({
+      memberId: "self",
+      patientName: name,
+      hospital: "시연의원",
+      dept: "가정의학과",
+      date: localDateKey(),
+      time: "09:30",
+      reason: "머리가 아파요",
+      opinion: "긴장성 두통 의심 소견.",
+      prescriptions: [{ drug: "아세트아미노펜 500mg", dose: "1정 3회/일", days: 3 }],
+      amount: 18_500,
+      paid: false,
+      status: "수납대기",
+    });
+  }
+
+  it("오늘 진료를 마친 환자가 '서류 발급'에 보이고, 의사가 진단서를 발급하면 목록에 '환자 지갑으로 보냄'이 뜬다", () => {
+    resetVisits();
+    completedToday("박영희");
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    const region = screen.getByRole("region", { name: "서류 발급" });
+    expect(within(region).getByText("박영희")).toBeTruthy();
+    fireEvent.click(within(region).getByRole("button", { name: "박영희 진단서 발급" }));
+    expect(within(region).getByText(/진단서 · .*환자 지갑으로 보냄/)).toBeTruthy();
+    expect(within(region).getAllByText(/시연/).length).toBeGreaterThan(0);
+  });
+
+  it("대기열에서 진료를 마치면 그 환자가 바로 '서류 발급'에 나타난다(다시 열지 않아도)", () => {
+    resetVisits();
+    addVisit({
+      memberId: "self",
+      patientName: "이준호",
+      hospital: "시연의원",
+      dept: "소화기내과",
+      date: localDateKey(),
+      time: "11:00",
+      reason: "배가 아파요",
+      amount: 0,
+      paid: false,
+      status: "예약",
+    });
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    const region = screen.getByRole("region", { name: "서류 발급" });
+    expect(within(region).queryByText("이준호")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "이준호 사전 문진 보기" }));
+    fireEvent.change(screen.getByPlaceholderText(/소견을 적어 주세요/), { target: { value: "급성 위염 의심 소견." } });
+    fireEvent.change(screen.getByPlaceholderText("예: 18500"), { target: { value: "12000" } });
+    fireEvent.click(screen.getByRole("button", { name: /진료 완료/ }));
+
+    expect(within(screen.getByRole("region", { name: "서류 발급" })).getByText("이준호")).toBeTruthy();
+  });
+
+  it("간호·원무 배지로는 진단서·소견서 버튼이 잠기고 영수증은 발급된다", async () => {
+    logout();
+    await loginWithBadge(badgeCode(issueBadge({ name: "이원무", role: "staff" })));
+    resetVisits();
+    completedToday("박영희");
+    render(
+      <MemoryRouter>
+        <DoctorScreen />
+      </MemoryRouter>,
+    );
+    const region = screen.getByRole("region", { name: "서류 발급" });
+    expect((within(region).getByRole("button", { name: "박영희 진단서 발급" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((within(region).getByRole("button", { name: "박영희 소견서 발급" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(within(region).getByRole("button", { name: "박영희 진료비 영수증 발급" }));
+    expect(within(region).getByText(/환자 지갑으로 보냄/)).toBeTruthy();
+  });
+});
+
 describe("DoctorScreen — 탭 분리 · 데스크톱 2단(R3)", () => {
   afterEach(() => {
     cleanup();

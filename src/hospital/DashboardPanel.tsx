@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { listVisits } from "../visits/store";
 import { localDateKey } from "../doctor/queue";
 import { computeHospitalStats, formatSeconds } from "./dashboard";
+import { listDocuments } from "../documents/store";
 
 /**
  * 병원 대시보드 — 병원이 돈을 낼 때 보는 숫자. 배지 로그인 뒤에만.
@@ -10,7 +11,10 @@ import { computeHospitalStats, formatSeconds } from "./dashboard";
 const NONE = "아직 데이터 없음";
 
 export function DashboardPanel() {
-  const stats = useMemo(() => computeHospitalStats(listVisits(), { today: localDateKey() }), []);
+  const stats = useMemo(
+    () => computeHospitalStats(listVisits(), { today: localDateKey(), documentsIssued: listDocuments().length }),
+    [],
+  );
   const items: { label: string; value: string; sub?: string }[] = [
     {
       label: "문진 완료",
@@ -35,7 +39,7 @@ export function DashboardPanel() {
     {
       label: "서류 발급",
       value: stats.documentsIssued !== null ? `${stats.documentsIssued}건` : NONE,
-      sub: "서류 발급 기능은 준비 중",
+      sub: "의사 화면에서 환자 지갑으로 보낸 서류",
     },
   ];
 

@@ -66,6 +66,12 @@ describe("병원 대시보드 집계 — 기기 저장 데이터에서", () => {
     expect(s.bookedDue).toBe(4); // 오늘까지 예약 4건
     expect(s.visited).toBe(2);
     expect(s.visitRate).toBe(50);
-    expect(s.documentsIssued).toBeNull(); // 서류 발급 기능 전
+    expect(s.documentsIssued).toBeNull(); // 발급된 서류가 없으면 null
+  });
+
+  it("발급된 서류 수를 넘기면 그대로 센다", () => {
+    const s = computeHospitalStats([], { today: TODAY, documentsIssued: 3 });
+    expect(s.documentsIssued).toBe(3);
+    expect(computeHospitalStats([], { today: TODAY, documentsIssued: 0 }).documentsIssued).toBeNull();
   });
 });

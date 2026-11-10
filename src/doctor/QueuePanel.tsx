@@ -28,7 +28,7 @@ function useIsDesktop(): boolean {
   return desktop;
 }
 
-export function QueuePanel() {
+export function QueuePanel({ onChange }: { onChange?: () => void } = {}) {
   const [tick, setTick] = useState(0); // 시연 환자 불러오기·지우기 후 재조회
   const queue = useMemo(() => todayQueue(listVisits()), [tick]);
   const demoOn = useMemo(() => hasDemoPatients(), [tick]);
@@ -42,6 +42,7 @@ export function QueuePanel() {
     setNotice(`${name}님 진료를 마쳤어요 — ${updated.amount.toLocaleString("ko-KR")}원 수납대기로 환자 수납 화면에 떴어요.`);
     setOpenId(null);
     setTick((t) => t + 1);
+    onChange?.(); // 서류 발급 패널 등 같은 저장소를 보는 쪽에 알린다
   }
 
   function toggleDemo() {
@@ -49,6 +50,7 @@ export function QueuePanel() {
     else seedDemoPatients();
     setOpenId(null);
     setTick((t) => t + 1);
+    onChange?.();
   }
 
   const list =

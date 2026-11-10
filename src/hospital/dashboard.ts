@@ -22,11 +22,11 @@ export interface HospitalStats {
   visited: number;
   /** visited / bookedDue %. 분모 0이면 null */
   visitRate: number | null;
-  /** 서류 발급 수 — 기능이 생기기 전엔 null */
+  /** 서류 발급 수 — 0이면 null */
   documentsIssued: number | null;
 }
 
-export function computeHospitalStats(visits: Visit[], opts: { today: string }): HospitalStats {
+export function computeHospitalStats(visits: Visit[], opts: { today: string; documentsIssued?: number }): HospitalStats {
   const withIntake = visits.filter((v) => v.intake);
   const durations = withIntake
     .map((v) => v.intake!)
@@ -48,7 +48,7 @@ export function computeHospitalStats(visits: Visit[], opts: { today: string }): 
     bookedDue: due.length,
     visited,
     visitRate: due.length > 0 ? Math.round((visited / due.length) * 100) : null,
-    documentsIssued: null,
+    documentsIssued: (opts.documentsIssued ?? 0) > 0 ? opts.documentsIssued! : null,
   };
 }
 
