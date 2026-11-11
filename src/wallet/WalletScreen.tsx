@@ -1,68 +1,47 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import QRCode from "qrcode";
 import { getPatientVCs, type PatientVCs } from "../data/patient-vcs";
-import { DEMO_HOLDER } from "../data/issuer-keys";
-import type { SignedVC } from "../lib/sdjwt";
 import { buildBundle, buildVPPayload } from "./bundle";
+import { listMembers, getMember, SELF_ID, type FamilyMember } from "../family/store";
+import { isPremium } from "../subscribe/plan";
+import { unpaidVisits, listVisits } from "../visits/store";
+import { getClaimByVisit } from "../insurance/store";
+import { CountUp } from "../shell/CountUp";
+import { BottomSheet } from "../shell/BottomSheet";
+import { Skeleton } from "../shell/Skeleton";
+import { StatTile, type TileTone } from "../shell/StatTile";
 
 /**
- * Wallet screen — patient PWA.
+ * 가족 환자 의료지갑 — 보호자(자녀)가 가족 구성원의 의료를 한 곳에서 관리.
  *
- *   응급 모드 OFF                    응급 모드 ON
- *   ┌──────────┐                     ┌──────────┐
- *   │ VC card  │  toggle ───────►    │ VC card  │
- *   │ (passive)│                     │ + QR     │ ──► clipboard.writeText(VP)
- *   └──────────┘                     └──────────┘
- *
- * Disclosure 정책:
- *   mDL VC      → 0개 (전체 마스킹, issuer 서명만으로 신원 anchor)
- *   혈액형 VC   → bloodType, rhFactor
- *   알레르기 VC → allergens, severity
+ * 시그니처: 응급 의료 신원증을 다크 잉크 크레덴셜 카드로 — 밝은 나머지 UI 위에서
+ * 이 한 장이 튄다. 혈액형이 히어로 데이텀(응급에서 제일 먼저 보는 정보).
+ * 예약·수납은 병원 연동이 없으므로 '시연'으로 명확히 표시한다.
  */
-
-// 비응급/응급 두 화면 모두에서 같은 카드 3장을 보여준다(응급 모드일 땐
-// QR 아래로 순서만 바뀐다) — 데이터를 한 곳에 두고 두 번 렌더링한다.
-const PATIENT_CARDS: VCCardProps[] = [
-  {
-    title: "모바일 운전면허증 (mDL)",
-    issuerLabel: "Korean mDL Reference Issuer (Demo)",
-    subtitle: "reference implementation, not gov-signed",
-    claims: [
-      ["이름", "김단유"],
-      ["주민번호", "940123-1******"],
-      ["생년월일", "1994-01-23"],
-      ["면허 등급", "1종 보통"],
-    ],
-    accent: "blue",
-  },
-  {
-    title: "혈액형 정보",
-    issuerLabel: "Demo Hospital Issuer",
-    claims: [
-      ["혈액형", "A형"],
-      ["Rh", "+"],
-    ],
-    accent: "rose",
-  },
-  {
-    title: "알레르기 정보",
-    issuerLabel: "Demo Hospital Issuer",
-    claims: [
-      ["알레르기", "페니실린"],
-      ["중증도", "중증"],
-      ["최종 갱신", "2026-03-10"],
-    ],
-    accent: "amber",
-  },
-];
 export function WalletScreen() {
   useEffect(() => {
-    document.title = "DID 응급 의료 신원 인증 데모";
+    document.title = "가족 의료지갑 — 신원 · 환급 · 예약";
   }, []);
+
+  const members = listMembers();
+  const [selectedId, setSelectedId] = useState<string>(SELF_ID);
+  const selected: FamilyMember = getMember(selectedId) ?? members[0];
+  const isSelf = selected.id === SELF_ID;
+
+  // 오늘 챙길 것 — 토스식 개인화 액션 피드(금액 포함).
+  const unpaid = unpaidVisits(SELF_ID);
+  const unpaidTotal = unpaid.reduce((s, v) => s + v.amount, 0);
+  const claimable = listVisits(SELF_ID).filter((v) => v.amount > 0 && !getClaimByVisit(v.id));
+  const upcoming = listVisits(SELF_ID).filter((v) => v.status === "예약");
+  // 타일 미터의 분모 — 미납은 "진료 중 몇 건", 환급 가능은 "돈 낸 진료 중 몇 건".
+  const visitCount = listVisits(SELF_ID).filter((v) => v.status !== "예약").length;
+  const paidVisits = listVisits(SELF_ID).filter((v) => v.amount > 0).length;
 
   const [vcs, setVCs] = useState<PatientVCs | null>(null);
   const [emergencyOn, setEmergencyOn] = useState(false);
+  // 공개 전 확인 바텀시트 — 실수로 응급 정보를 공개하는 일을 막는다. 중단은 즉시.
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [qrDataUrl, setQRDataUrl] = useState<string | null>(null);
   const [vpCompact, setVpCompact] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -76,15 +55,12 @@ export function WalletScreen() {
   }, []);
 
   useEffect(() => {
-    if (!emergencyOn || !vcs) {
+    if (!emergencyOn || !isSelf || !vcs) {
       setQRDataUrl(null);
       setVpCompact(null);
       setQrError(null);
       return;
     }
-    // 토글을 빠르게 켬/끔/켬 하면 이전 비동기 VP 생성이 나중에 끝나면서
-    // 최신 상태를 덮어쓸 수 있다 — 이 effect 실행이 더 이상 "최신"이
-    // 아니게 되면 결과를 반영하지 않는다.
     let cancelled = false;
     (async () => {
       try {
@@ -97,7 +73,6 @@ export function WalletScreen() {
       } catch (e) {
         if (cancelled) return;
         const msg = (e as Error)?.message ?? String(e);
-        // QR overflow is recoverable — keep paste path alive.
         try {
           const compact = await buildVPPayload(vcs);
           if (cancelled) return;
@@ -114,7 +89,12 @@ export function WalletScreen() {
     return () => {
       cancelled = true;
     };
-  }, [emergencyOn, vcs]);
+  }, [emergencyOn, isSelf, vcs]);
+
+  function selectMember(id: string) {
+    setSelectedId(id);
+    setEmergencyOn(false);
+  }
 
   const copy = () => {
     if (!vpCompact) return;
@@ -126,8 +106,8 @@ export function WalletScreen() {
 
   if (seedError) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-rose-50 p-6">
-        <div className="rounded-2xl bg-white px-5 py-4 text-sm text-rose-700 shadow-sm">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--paper)] p-6">
+        <div className="rounded-2xl border-l-4 border-[var(--vital)] bg-[var(--surface)] px-5 py-4 text-sm text-[var(--vital-ink)] shadow-sm">
           {seedError}
         </div>
       </div>
@@ -135,198 +115,502 @@ export function WalletScreen() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-100 md:px-6 md:py-10">
-      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-slate-50 shadow-xl md:max-w-3xl md:min-h-0 md:overflow-hidden md:rounded-3xl md:shadow-2xl">
-        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-100 bg-white/95 px-4 py-3 backdrop-blur">
-          <div className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-blue-50 text-base">
-            🪪
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-base font-semibold text-slate-900">환자 지갑</h1>
-            <p className="truncate text-[11px] text-slate-400">
-              holder: {DEMO_HOLDER.did.slice(0, 20)}…
+    <div className="min-h-screen overflow-x-hidden bg-[var(--paper)] md:px-6 md:py-10">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-[var(--paper)] md:max-w-xl md:min-h-0 md:overflow-hidden md:rounded-[32px] md:shadow-[0_8px_60px_rgba(11,59,60,0.14)]">
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[var(--mist)] bg-[var(--paper)]/92 px-5 py-4 backdrop-blur">
+          <div>
+            <p className="font-data text-[10px] uppercase tracking-[0.22em] text-[var(--ink-2)]">
+              가족 의료지갑
             </p>
+            <h1 className="text-lg font-extrabold tracking-tight text-[var(--ink)]">
+              우리 가족 의료
+            </h1>
           </div>
           <Link
             to="/doctor"
             target="_blank"
-            className="flex-none rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 active:bg-slate-200"
+            className="flex-none rounded-full border border-[var(--mist)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[var(--ink-2)] active:bg-[var(--paper)]"
           >
             의사 화면 →
           </Link>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 pb-28 pt-5 md:pb-6">
-          <div className="mb-5 flex gap-2">
-            <Link
-              to="/symptom"
-              className="flex-1 rounded-2xl bg-white px-4 py-3 text-center text-sm font-medium text-slate-700 shadow-sm active:bg-slate-50"
+        <main className="flex-1 overflow-y-auto px-5 pb-10 pt-4">
+          {/* ───────── 가족 구성원 전환 — 알약 세그먼트(어두운 알약 안에서 선택만 흰 알약) ───────── */}
+          <div className="mb-4 flex items-center gap-2">
+            <div
+              role="group"
+              aria-label="가족 선택"
+              className="flex max-w-full min-w-0 gap-1 overflow-x-auto rounded-full bg-[var(--ink)] p-1"
             >
-              증상 정보
-            </Link>
+              {members.map((m) => {
+                const active = m.id === selected.id;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => selectMember(m.id)}
+                    aria-pressed={active}
+                    className={`flex min-h-[44px] flex-none items-center gap-2 rounded-full py-1 pl-1.5 pr-4 text-sm font-bold transition ${
+                      active ? "bg-[var(--surface)] text-[var(--ink)]" : "text-white/75 active:bg-white/10"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                        active ? "bg-[var(--paper)] text-[var(--ink)]" : "bg-white/15 text-white"
+                      }`}
+                    >
+                      {m.name.slice(0, 1)}
+                    </span>
+                    {m.name}
+                    <span className={`text-[11px] font-medium ${active ? "text-[var(--ink-2)]" : "text-white/55"}`}>
+                      {m.relation}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
             <Link
-              to="/diary"
-              className="flex-1 rounded-2xl bg-white px-4 py-3 text-center text-sm font-medium text-slate-700 shadow-sm active:bg-slate-50"
+              to="/family"
+              aria-label="가족 추가"
+              title="가족 추가"
+              className="flex h-11 w-11 flex-none items-center justify-center rounded-full border border-[var(--mist)] bg-[var(--surface)] font-data text-xl font-bold text-[var(--ink)] active:bg-[var(--paper)]"
             >
-              증상 일기
-            </Link>
-            <Link
-              to="/labels"
-              className="flex-1 rounded-2xl bg-white px-4 py-3 text-center text-sm font-medium text-slate-700 shadow-sm active:bg-slate-50"
-            >
-              라벨링 현황
+              +
             </Link>
           </div>
 
-          {!emergencyOn && (
-            <>
-              <div className="mb-5 flex flex-col gap-3 md:grid md:grid-cols-2">
-                {PATIENT_CARDS.map((card) => (
-                  <VCCard key={card.title} {...card} />
-                ))}
+          {/* ───────── 응급 의료 신원증 (시그니처 · 다크 크레덴셜) ───────── */}
+          <section
+            className="relative overflow-hidden rounded-[28px] text-white shadow-[0_14px_44px_rgba(7,42,43,0.34)]"
+            style={{ background: "linear-gradient(158deg, var(--ink) 0%, var(--ink-deep) 100%)" }}
+          >
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-[0.06]"
+              style={{
+                background:
+                  "repeating-linear-gradient(135deg, #fff 0 1px, transparent 1px 7px)",
+              }}
+            />
+            <div className="relative px-6 py-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="vital-dot h-2 w-2 rounded-full bg-[var(--vital)]" />
+                  <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--vital-2)]">
+                    응급 의료 신원증
+                  </span>
+                </div>
+                <span className="font-data text-[10px] text-white/55">
+                  {!isSelf ? "시연 프로필" : vcs ? "SD-JWT ✓" : <Skeleton light className="h-3 w-14 align-middle" />}
+                </span>
               </div>
-              <p className="mb-4 px-1 text-xs leading-relaxed text-slate-400">
-                응급 상황에서 아래 버튼을 누르면 혈액형 + 알레르기 정보만
-                선택적으로 공개합니다. 이름·주민번호·주소는 공개되지 않습니다.
-              </p>
-            </>
-          )}
 
-          {/* 응급 모드에서는 의료진이 당장 봐야 할 QR이 화면 최상단에
-              바로 보여야 한다 — 카드 3개를 스크롤해서 지나친 뒤에야 QR이
-              나오면 정작 응급 상황에서 제일 늦게 보이는 역설이 생긴다. */}
-          {emergencyOn && (
-            <section className="overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
-              {qrDataUrl && (
-                <div>
-                  <p className="mb-3 text-xs text-slate-500">
-                    의료진에게 QR을 보여주거나 아래 페이로드를 복사해서 의사
-                    화면에 붙여넣으세요.
-                  </p>
-                  <div className="flex justify-center rounded-2xl bg-slate-50 p-4">
-                    <img
-                      src={qrDataUrl}
-                      alt="Emergency VP QR"
-                      className="h-56 w-56 rounded-xl bg-white"
-                    />
+              <h2 className="mt-4 text-[28px] font-extrabold leading-none tracking-tight">
+                {selected.name}
+                <span className="ml-2 align-middle text-sm font-bold text-white/55">
+                  {selected.relation}
+                </span>
+              </h2>
+
+              {/* 혈액형 = 히어로 데이텀 */}
+              <div className="mt-5 flex items-stretch gap-3">
+                <div className="flex-none rounded-2xl bg-white/[0.07] px-5 py-3 text-center ring-1 ring-white/10">
+                  <div className="font-data text-[44px] font-bold leading-none">
+                    {selected.blood}
+                    <span className="text-[var(--vital-2)]">{selected.rh}</span>
                   </div>
-                  <button
-                    onClick={copy}
-                    className="mt-3 w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:bg-slate-800"
-                  >
-                    {copied ? "복사됨" : "VP 페이로드 클립보드 복사"}
-                  </button>
-                  {vpCompact && (
-                    <details className="mt-3 text-xs text-slate-400">
-                      <summary className="cursor-pointer select-none text-blue-600">
-                        SD-JWT VP 페이로드 (dev tools 시연용)
-                      </summary>
-                      <pre className="mt-1.5 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-slate-50 p-3 text-[10px]">
-                        {vpCompact}
-                      </pre>
-                    </details>
+                  <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/50">
+                    혈액형
+                  </div>
+                </div>
+                <div className="flex-1 rounded-2xl bg-white/[0.07] px-4 py-3 ring-1 ring-white/10">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
+                    알레르기
+                  </div>
+                  <div className="font-data text-base font-bold text-[var(--vital-2)]">
+                    {selected.allergen ?? "없음"}
+                    {selected.severity ? ` · ${selected.severity}` : ""}
+                  </div>
+                  {selected.meds && selected.meds.length > 0 && (
+                    <>
+                      <div className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">
+                        복용약
+                      </div>
+                      <div className="font-data text-[13px] text-white/90">
+                        {selected.meds.join(", ")}
+                      </div>
+                    </>
                   )}
                 </div>
-              )}
+              </div>
 
-              {!qrDataUrl && qrError && vpCompact && (
-                <div className="flex flex-col gap-2">
-                  <p className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-xs text-rose-700">
-                    {qrError}
-                  </p>
+              {isSelf ? (
+                <>
                   <button
-                    onClick={copy}
-                    className="w-full rounded-full bg-slate-900 py-3 text-sm font-semibold text-white active:bg-slate-800"
+                    onClick={() => (emergencyOn ? setEmergencyOn(false) : setConfirmOpen(true))}
+                    aria-pressed={emergencyOn}
+                    disabled={!vcs}
+                    className={`mt-5 w-full rounded-2xl py-3.5 text-base font-bold tracking-tight transition ${
+                      emergencyOn
+                        ? "bg-white/10 text-white ring-1 ring-white/25 active:bg-white/15"
+                        : "bg-[var(--vital)] text-white active:brightness-95 disabled:opacity-60"
+                    }`}
                   >
-                    {copied ? "복사됨" : "VP 페이로드 클립보드 복사"}
+                    {emergencyOn ? "공개 중단" : vcs ? "응급 공개 · QR 생성" : "신원 자료 준비 중…"}
                   </button>
-                  <details className="text-xs text-slate-400">
-                    <summary className="cursor-pointer select-none text-blue-600">
-                      SD-JWT VP 페이로드 ({new TextEncoder().encode(vpCompact).length} bytes)
-                    </summary>
-                    <pre className="mt-1.5 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-slate-50 p-3 text-[10px]">
-                      {vpCompact}
-                    </pre>
-                  </details>
+                  <p className="mt-2 text-center text-[11px] leading-relaxed text-white/55">
+                    혈액형 + 알레르기만 공개합니다. 이름·주민번호·주소는 공개되지 않아요.
+                  </p>
+                  <Link
+                    to="/emergency-card"
+                    className="mt-3 block w-full rounded-2xl bg-white/10 py-3 text-center text-sm font-bold text-white ring-1 ring-white/20 active:bg-white/15"
+                  >
+                    의식이 없을 때를 위해 · 응급 잠금화면 만들기
+                  </Link>
+                </>
+              ) : (
+                <p className="mt-5 rounded-2xl bg-white/[0.07] px-4 py-3 text-center text-xs leading-relaxed text-white/70 ring-1 ring-white/10">
+                  가족 데모 프로필입니다. 실제 응급 QR(SD-JWT 서명)은 본인 프로필에서만
+                  생성됩니다. 가족의 실제 발급은 추후 병원·기관 연동으로 열립니다.
+                </p>
+              )}
+            </div>
+
+            {isSelf && emergencyOn && (
+              <div className="animate-reveal-in relative border-t border-white/10 px-6 py-5">
+                {qrDataUrl && (
+                  <div>
+                    <p className="mb-3 text-xs text-white/70">
+                      의료진에게 QR을 보여주거나 아래 페이로드를 복사해 의사 화면에
+                      붙여넣으세요.
+                    </p>
+                    <div className="flex justify-center rounded-2xl bg-white p-4">
+                      <img
+                        src={qrDataUrl}
+                        alt="Emergency VP QR"
+                        className="h-56 w-56 rounded-xl bg-white"
+                      />
+                    </div>
+                    <button
+                      onClick={copy}
+                      className="mt-3 w-full rounded-2xl bg-white/10 py-3 text-sm font-bold text-white ring-1 ring-white/20 active:bg-white/15"
+                    >
+                      {copied ? "복사됨" : "VP 페이로드 복사"}
+                    </button>
+                    {vpCompact && (
+                      <details className="mt-3 text-xs text-white/60">
+                        <summary className="cursor-pointer select-none font-semibold text-[var(--vital-2)]">
+                          SD-JWT VP 페이로드 (시연용)
+                        </summary>
+                        <pre className="mt-1.5 max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-white/[0.06] p-3 font-data text-[10px] text-white/80">
+                          {vpCompact}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                )}
+
+                {!qrDataUrl && qrError && vpCompact && (
+                  <div className="flex flex-col gap-2">
+                    <p className="rounded-2xl border-l-4 border-[var(--vital)] bg-white/[0.06] p-3 text-xs text-[var(--vital-2)]">
+                      {qrError}
+                    </p>
+                    <button
+                      onClick={copy}
+                      className="w-full rounded-2xl bg-white/10 py-3 text-sm font-bold text-white ring-1 ring-white/20 active:bg-white/15"
+                    >
+                      {copied ? "복사됨" : "VP 페이로드 복사"}
+                    </button>
+                  </div>
+                )}
+
+                {!qrDataUrl && !qrError && (
+                  <p className="text-xs text-white/60">QR 생성 중...</p>
+                )}
+              </div>
+            )}
+          </section>
+
+          <BottomSheet
+            open={confirmOpen}
+            title="응급 정보를 공개할까요?"
+            onClose={() => setConfirmOpen(false)}
+          >
+            <p className="text-sm leading-relaxed text-[var(--ink-2)]">
+              의료진이 QR을 스캔하면 아래 정보만 볼 수 있어요.
+            </p>
+            <ul className="mt-3 flex flex-col gap-2">
+              <ShareRow label="혈액형" value={selected.blood} shared />
+              <ShareRow
+                label="알레르기"
+                value={selected.allergen ? `${selected.allergen}${selected.severity ? ` · ${selected.severity}` : ""}` : "없음"}
+                shared
+              />
+              {selected.meds && selected.meds.length > 0 && (
+                <ShareRow label="복용약" value={selected.meds.join(", ")} shared />
+              )}
+              <ShareRow label="이름 · 주민번호 · 주소" value="공개 안 함" />
+            </ul>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmOpen(false);
+                setEmergencyOn(true);
+              }}
+              className="mt-5 w-full rounded-2xl bg-[var(--vital)] py-3.5 text-base font-bold text-white active:brightness-95"
+            >
+              공개하고 QR 만들기
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(false)}
+              className="mt-2 w-full rounded-2xl py-3 text-sm font-bold text-[var(--ink-2)] active:bg-[var(--paper)]"
+            >
+              취소
+            </button>
+          </BottomSheet>
+
+          {/* ───────── 오늘 숫자 — 타일 두 개(작은 라벨 → 큰 숫자 → 점선 미터 → 의미색 막대) ───────── */}
+          <section aria-label="오늘 숫자" className="mt-5 grid grid-cols-2 gap-2">
+            <StatTile
+              to="/billing"
+              label="미납 진료비"
+              value={unpaidTotal.toLocaleString("ko-KR")}
+              unit="원"
+              hint={unpaid.length > 0 ? `${unpaid.length}건 수납대기` : "다 냈어요"}
+              ratio={visitCount > 0 ? unpaid.length / visitCount : 0}
+              tone="vital"
+            />
+            <StatTile
+              to="/insurance"
+              label="환급 가능"
+              value={String(claimable.length)}
+              unit="건"
+              hint={claimable.length > 0 ? "실손 청구로 돌려받기" : "청구할 게 없어요"}
+              ratio={paidVisits > 0 ? claimable.length / paidVisits : 0}
+              tone="refund"
+            />
+          </section>
+
+          {/* ───────── 오늘 챙길 것 — 카드 속 카드(흰 바깥 카드 · paper 행) ───────── */}
+          <section
+            aria-label="오늘 챙길 것"
+            className="mt-3 rounded-[28px] bg-[var(--surface)] p-3 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+          >
+            <p className="mb-2 px-2 pt-1 text-sm font-extrabold tracking-tight text-[var(--ink)]">오늘 챙길 것</p>
+            <div className="flex flex-col gap-1.5">
+              {unpaid.length === 0 && claimable.length === 0 && upcoming.length === 0 && (
+                <div className="flex items-center gap-3 rounded-2xl bg-[var(--refund)]/10 px-4 py-3">
+                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[var(--refund)] font-data text-sm font-bold text-white">
+                    ✓
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-[var(--refund-ink)]">오늘은 급한 게 없어요</p>
+                    <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">
+                      미납·청구·예약 모두 정리됐어요. 숨은 환급금만 한 번 확인해 보세요.
+                    </p>
+                  </div>
                 </div>
               )}
-
-              {!qrDataUrl && !qrError && (
-                <p className="text-xs text-slate-400">QR 생성 중...</p>
+              {unpaid.length > 0 && (
+                <TodoRow
+                  to="/billing"
+                  tone="vital"
+                  title={`미납 진료비 ${unpaid.length}건`}
+                  meta={`${unpaid[0].hospital}${unpaid.length > 1 ? ` 외 ${unpaid.length - 1}곳` : ""}`}
+                  trailing={<CountUp value={unpaidTotal} suffix="원" />}
+                />
               )}
-            </section>
-          )}
-
-          {emergencyOn && (
-            <div className="mt-5 flex flex-col gap-3">
-              <p className="px-1 text-xs font-medium text-slate-400">
-                보유 중인 정보 (QR에는 혈액형·알레르기만 포함)
-              </p>
-              <div className="flex flex-col gap-3 md:grid md:grid-cols-2">
-                {PATIENT_CARDS.map((card) => (
-                  <VCCard key={card.title} {...card} />
-                ))}
-              </div>
+              {claimable.length > 0 && (
+                <TodoRow
+                  to="/insurance"
+                  tone="refund"
+                  title={`실손 청구 가능 ${claimable.length}건`}
+                  meta="낸 병원비, 보험으로 돌려받기"
+                  trailing="청구"
+                />
+              )}
+              {upcoming.length > 0 && (
+                <TodoRow
+                  to="/billing"
+                  tone="ink"
+                  title={`다가오는 예약 ${upcoming.length}건`}
+                  meta={`${upcoming[0].hospital} · ${upcoming[0].dept} · ${upcoming[0].date}`}
+                  trailing="보기"
+                />
+              )}
+              <TodoRow
+                to="/checker"
+                tone="refund"
+                title="숨은 의료비 환급 찾기"
+                meta="전국 미신청 3,617억원 · 1분이면 확인"
+                trailing="확인"
+              />
             </div>
-          )}
-        </main>
+          </section>
 
-        {/* 응급 모드 — 모바일은 엄지로 바로 누를 수 있게 화면에 고정, 데스크톱은
-            카드 안쪽 일반 흐름으로 들어가 떠 있는 버튼이 되지 않게 한다. */}
-        <div className="pointer-events-none fixed bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 md:static md:left-auto md:w-full md:max-w-none md:translate-x-0">
-          <div className="pointer-events-auto border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur md:rounded-b-3xl">
-            <button
-              onClick={() => setEmergencyOn((v) => !v)}
-              aria-pressed={emergencyOn}
-              className={`w-full rounded-2xl py-3.5 text-base font-semibold text-white transition ${
-                emergencyOn ? "bg-rose-600 active:bg-rose-700" : "bg-slate-900 active:bg-slate-800"
-              }`}
-            >
-              {emergencyOn ? "응급 모드 끄기" : "응급 모드 켜기"}
-            </button>
-          </div>
-        </div>
+          {/* ───────── 빠른 작업: 환급 · 실손 · 예약 · 수납 — 카드 속 카드 ───────── */}
+          <section
+            aria-label="빠른 작업"
+            className="mt-3 rounded-[28px] bg-[var(--surface)] p-3 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+          >
+            <p className="mb-2 px-2 pt-1 text-sm font-extrabold tracking-tight text-[var(--ink)]">빠른 작업</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { to: "/checker", title: "환급", desc: "병원비 돌려받기", accent: "refund" },
+                { to: "/insurance", title: "실손 청구", desc: "낸 병원비 보험 청구", accent: "refund", demo: true },
+                { to: "/booking", title: "예약", desc: "진료 예약", accent: "ink", demo: true },
+                { to: "/billing", title: "수납", desc: "진료비·진료기록", accent: "ink", demo: true },
+              ].map((a) => (
+                <Link
+                  key={a.to}
+                  to={a.to}
+                  className="flex min-h-[44px] items-center justify-between gap-2 rounded-2xl bg-[var(--paper)] px-4 py-3 active:bg-[var(--mist)]"
+                >
+                  <div>
+                    <div className="text-sm font-bold text-[var(--ink)]">
+                      {a.title}
+                      {a.demo && (
+                        <span className="ml-1 font-data text-[9px] font-medium text-[var(--ink-2)]">시연</span>
+                      )}
+                    </div>
+                    <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">{a.desc}</div>
+                  </div>
+                  <span
+                    aria-hidden="true"
+                    className={`flex h-7 w-7 flex-none items-center justify-center rounded-full text-sm font-bold text-white ${
+                      a.accent === "refund" ? "bg-[var(--refund)]" : "bg-[var(--ink)]"
+                    }`}
+                  >
+                    ›
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          {/* ───────── 가족 프리미엄 ───────── */}
+          <Link
+            to="/subscribe"
+            className="mt-4 flex items-center justify-between rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+          >
+            <div>
+              <p className="text-sm font-bold text-[var(--ink)]">
+                가족 프리미엄
+                {isPremium() && (
+                  <span className="ml-2 rounded-full bg-[var(--refund)]/12 px-2 py-0.5 font-data text-[10px] font-bold text-[var(--refund-ink)]">
+                    이용 중
+                  </span>
+                )}
+              </p>
+              <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">
+                {isPremium()
+                  ? "가족 무제한 · 환급 자동 알림이 켜져 있어요"
+                  : "가족 무제한 · 환급 자동 재확인 · 기록 백업 · 월 3,900원"}
+              </p>
+            </div>
+            <span className="font-data text-sm font-bold text-[var(--refund-ink)]">
+              {isPremium() ? "관리 →" : "구독 →"}
+            </span>
+          </Link>
+
+          {/* ───────── 보조 ───────── */}
+          <nav className="mt-6">
+            <p className="mb-2 px-1 font-data text-[10px] uppercase tracking-[0.2em] text-[var(--ink-2)]">
+              그 외
+            </p>
+            <div className="flex gap-2">
+              {[
+                { to: "/symptom", label: "증상 정보" },
+                { to: "/diary", label: "증상 일기" },
+                { to: "/labels", label: "라벨링 현황" },
+              ].map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className="flex-1 rounded-2xl border border-[var(--mist)] bg-[var(--surface)] px-3 py-3 text-center text-[13px] font-semibold text-[var(--ink-2)] active:bg-[var(--paper)]"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </nav>
+        </main>
       </div>
     </div>
   );
 }
 
-interface VCCardProps {
+type Tone = TileTone;
+const BAR: Record<Tone, string> = {
+  vital: "bg-[var(--vital)]",
+  refund: "bg-[var(--refund)]",
+  ink: "bg-[var(--ink)]",
+};
+const TRAIL: Record<Tone, string> = {
+  vital: "text-[var(--vital-ink)]",
+  refund: "text-[var(--refund-ink)]",
+  ink: "text-[var(--ink)]",
+};
+
+/** 오늘 챙길 것의 한 행 — paper 면·44px·오른쪽에 금액 또는 행동 단어. */
+function TodoRow({
+  to,
+  tone,
+  title,
+  meta,
+  trailing,
+}: {
+  to: string;
+  tone: Tone;
   title: string;
-  issuerLabel: string;
-  subtitle?: string;
-  claims: [string, string][];
-  accent: "blue" | "rose" | "amber";
+  meta: string;
+  trailing: React.ReactNode;
+}) {
+  return (
+    <Link
+      to={to}
+      className="flex min-h-[44px] items-center justify-between gap-3 rounded-2xl bg-[var(--paper)] px-4 py-3 transition active:bg-[var(--mist)]"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <span aria-hidden="true" className={`h-8 w-1 flex-none rounded-full ${BAR[tone]}`} />
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-[var(--ink)]">{title}</p>
+          <p className="mt-0.5 truncate text-[11px] text-[var(--ink-2)]">{meta}</p>
+        </div>
+      </div>
+      <span className={`flex-none font-data text-sm font-bold ${TRAIL[tone]}`}>
+        {trailing}
+        {typeof trailing === "string" ? " →" : ""}
+      </span>
+    </Link>
+  );
 }
 
-function VCCard({ title, issuerLabel, subtitle, claims, accent }: VCCardProps) {
-  const dot = {
-    blue: "bg-blue-500",
-    rose: "bg-rose-500",
-    amber: "bg-amber-500",
-  }[accent];
-
+/** 공개 확인 시트의 한 줄 — 공개되는 항목은 초록 체크, 아닌 항목은 회색 대시. */
+function ShareRow({ label, value, shared }: { label: string; value: string; shared?: boolean }) {
   return (
-    <div className="rounded-3xl bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className={`h-2 w-2 flex-none rounded-full ${dot}`} />
-          <h3 className="truncate text-sm font-semibold text-slate-800">{title}</h3>
-        </div>
-        <span className="max-w-[55%] flex-none truncate rounded-full bg-slate-50 px-2 py-0.5 text-[10px] text-slate-500">
-          {issuerLabel}
+    <li className="flex items-center justify-between gap-3 rounded-xl bg-[var(--paper)] px-3 py-2.5">
+      <span className="flex items-center gap-2 text-sm text-[var(--ink)]">
+        <span
+          aria-hidden="true"
+          className={`flex h-5 w-5 items-center justify-center rounded-full font-data text-[11px] font-bold ${
+            shared ? "bg-[var(--refund)] text-white" : "bg-[var(--mist)] text-[var(--ink-2)]"
+          }`}
+        >
+          {shared ? "✓" : "–"}
         </span>
-      </div>
-      {subtitle && <p className="mt-0.5 text-[10px] italic text-slate-400">{subtitle}</p>}
-      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs text-slate-700">
-        {claims.map(([k, v]) => (
-          <div key={k} className="contents">
-            <dt className="text-slate-400">{k}</dt>
-            <dd className="font-medium">{v}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
+        {label}
+      </span>
+      <span
+        className={`truncate font-data text-sm font-bold ${
+          shared ? "text-[var(--ink)]" : "text-[var(--ink-2)]"
+        }`}
+      >
+        {value}
+      </span>
+    </li>
   );
 }
 

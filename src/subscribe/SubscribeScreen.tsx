@@ -1,0 +1,253 @@
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { FAMILY_PREMIUM, isPremium, setPremium } from "./plan";
+import {
+  isPaymentConfigured,
+  startCheckout,
+  PaymentNotConfiguredError,
+  readPendingOrder,
+  clearPendingOrder,
+} from "./payment";
+
+function won(n: number) {
+  return `${n.toLocaleString("ko-KR")}원`;
+}
+
+type Confirm = "idle" | "confirming" | "ok" | "error";
+
+/**
+ * 가족 프리미엄 구독 화면.
+ *
+ * - 토스 키가 설정돼 있으면 '구독하기' → 실제 토스 결제창 → successUrl 복귀 →
+ *   서버리스(/api/confirm)에서 승인 → 프리미엄 활성화.
+ * - 키가 없으면(기본) 가짜 결제 대신 '연동 설정 안내'를 보여준다.
+ */
+export function SubscribeScreen() {
+  useEffect(() => {
+    document.title = "가족 프리미엄 — 가족 의료지갑";
+  }, []);
+
+  const [params] = useSearchParams();
+  const navigate = useNavigate();
+  const status = params.get("status");
+  const [premium, setPremiumState] = useState(isPremium());
+  const [confirm, setConfirm] = useState<Confirm>("idle");
+  const [confirmMsg, setConfirmMsg] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  // 같은 성공 URL에 대해 승인 요청은 한 번만(StrictMode 이중 실행·재렌더 방지).
+  const confirmedFor = useRef<string | null>(null);
+
+  // 결제 후 successUrl/failUrl로 돌아오면 처리한다.
+  useEffect(() => {
+    if (status === "fail") {
+      setConfirm("error");
+      setConfirmMsg(params.get("message") ?? "결제가 완료되지 않았어요. 다시 시도해 주세요.");
+      return;
+    }
+    if (status !== "success") return;
+    if (isPremium()) return; // 이미 승인됨 — 새로고침·뒤로가기로 다시 와도 재승인하지 않는다.
+
+    const paymentKey = params.get("paymentKey");
+    const orderId = params.get("orderId");
+    const amount = Number(params.get("amount"));
+    if (!paymentKey || !orderId || !amount) return;
+    if (confirmedFor.current === orderId) return;
+    confirmedFor.current = orderId;
+
+    // 이 기기에서 연 결제창의 주문인지 대조 — 위조·재사용된 성공 URL은 승인하지 않는다.
+    const pending = readPendingOrder();
+    if (!pending || pending.orderId !== orderId || pending.amount !== amount) {
+      setConfirm("error");
+      setConfirmMsg("이 기기에서 시작한 결제가 아니에요. 구독 화면에서 다시 결제해 주세요.");
+      return;
+    }
+
+    setConfirm("confirming");
+    fetch("/api/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentKey, orderId, amount }),
+    })
+      .then(async (res) => {
+        const body = await res.json().catch(() => ({}));
+        const approved =
+          res.ok &&
+          body?.status === "DONE" &&
+          body?.orderId === orderId &&
+          Number(body?.totalAmount) === pending.amount;
+        if (approved) {
+          clearPendingOrder();
+          setPremium(true);
+          setPremiumState(true);
+          setConfirm("ok");
+          // 결제 키가 주소창·방문 기록에 남지 않게 쿼리를 지운다.
+          navigate("/subscribe", { replace: true });
+          return;
+        }
+        setConfirm("error");
+        setConfirmMsg(
+          res.ok
+            ? "승인 결과를 확인하지 못했어요. 결제 내역을 확인한 뒤 다시 시도해 주세요."
+            : (body?.message ??
+                "결제 승인 서버(/api/confirm)가 아직 설정되지 않았습니다. Vercel에 TOSS_SECRET_KEY를 넣고 재배포하면 승인됩니다."),
+        );
+      })
+      .catch(() => {
+        setConfirm("error");
+        setConfirmMsg(
+          "승인 요청에 실패했습니다. 결제 승인 서버리스 함수(/api/confirm)가 배포돼 있어야 합니다.",
+        );
+      });
+  }, [status, params, navigate]);
+
+  async function handleSubscribe() {
+    setCheckoutError(null);
+    try {
+      await startCheckout({
+        amount: FAMILY_PREMIUM.priceMonthly,
+        orderName: `${FAMILY_PREMIUM.name} 월 구독`,
+      });
+    } catch (e) {
+      if (e instanceof PaymentNotConfiguredError) return; // 아래 설정 안내가 뜸
+      setCheckoutError((e as Error)?.message ?? "결제창을 여는 데 실패했습니다.");
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-[var(--paper)] md:px-6 md:py-10">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-[var(--paper)] md:max-w-xl md:min-h-0 md:overflow-hidden md:rounded-[32px] md:shadow-[0_8px_60px_rgba(11,59,60,0.14)]">
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-[var(--mist)] bg-[var(--paper)]/92 px-5 py-4 backdrop-blur">
+          <Link
+            to="/wallet"
+            aria-label="지갑으로 돌아가기"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--ink-2)] hover:bg-[var(--surface)]"
+          >
+            ‹
+          </Link>
+          <h1 className="text-base font-extrabold tracking-tight text-[var(--ink)]">
+            가족 프리미엄
+          </h1>
+        </header>
+
+        <main className="flex-1 overflow-y-auto px-5 pb-10 pt-5">
+          {premium || confirm === "ok" ? (
+            <section className="rounded-[28px] bg-[var(--surface)] p-6 text-center shadow-[0_2px_24px_rgba(11,59,60,0.09)]">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--refund)]/12 text-2xl">
+                ✓
+              </div>
+              <p className="text-lg font-extrabold text-[var(--ink)]">가족 프리미엄 이용 중</p>
+              <p className="mt-2 text-sm text-[var(--ink-2)]">
+                가족 무제한 · 환급 자동 재확인 · 진료기록 무제한 백업이 켜졌어요.
+              </p>
+              <Link
+                to="/family"
+                className="mt-4 block w-full rounded-2xl bg-[var(--ink)] py-3 text-sm font-bold text-white active:brightness-110"
+              >
+                가족 추가하러 가기
+              </Link>
+            </section>
+          ) : (
+            <>
+              {/* 가치 */}
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.2em] text-[var(--refund-ink)]">
+                환급은 늘 무료 · 관리에만 과금
+              </p>
+              <h2 className="mb-1 text-2xl font-extrabold tracking-tight text-[var(--ink)]">
+                가족 의료를 한 번에
+              </h2>
+              <p className="mb-5 text-sm leading-relaxed text-[var(--ink-2)]">
+                환급금엔 수수료 0원 그대로. 멀리 사는 부모님까지 가족 모두의 의료를
+                자녀가 한 계정에서 챙기는 편의에만 과금합니다.
+              </p>
+
+              <section className="relative overflow-hidden rounded-[28px] bg-[var(--surface)] p-6 shadow-[0_2px_24px_rgba(11,59,60,0.09)]">
+                <div className="absolute inset-x-0 top-0 h-1.5 bg-[var(--refund)]" />
+                <div className="flex items-end justify-between">
+                  <span className="text-sm font-extrabold text-[var(--ink)]">
+                    {FAMILY_PREMIUM.name}
+                  </span>
+                  <span>
+                    <span className="font-data text-3xl font-bold text-[var(--ink)]">
+                      {won(FAMILY_PREMIUM.priceMonthly)}
+                    </span>
+                    <span className="text-sm font-medium text-[var(--ink-2)]"> /월</span>
+                  </span>
+                </div>
+                <ul className="mt-4 flex flex-col gap-2">
+                  {FAMILY_PREMIUM.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-[var(--ink)]">
+                      <span className="mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded-full bg-[var(--refund)]/15 text-[10px] text-[var(--refund-ink)]">
+                        ✓
+                      </span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+
+                {confirm === "confirming" && (
+                  <p className="mt-4 text-sm text-[var(--ink-2)]">결제 승인 중...</p>
+                )}
+                {confirm === "error" && confirmMsg && (
+                  <p className="mt-4 rounded-2xl border-l-4 border-[var(--vital)] bg-[var(--paper)] px-4 py-3 text-xs text-[var(--vital-ink)]">
+                    {confirmMsg}
+                  </p>
+                )}
+                {checkoutError && (
+                  <p className="mt-4 rounded-2xl border-l-4 border-[var(--vital)] bg-[var(--paper)] px-4 py-3 text-xs text-[var(--vital-ink)]">
+                    {checkoutError}
+                  </p>
+                )}
+
+                <section
+                  aria-label="해지·환불 안내"
+                  className="mt-4 rounded-2xl bg-[var(--paper)] px-4 py-3 text-[11px] leading-relaxed text-[var(--ink-2)]"
+                >
+                  <p className="text-xs font-bold text-[var(--ink)]">결제 전에 알아두세요</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                    <li>1개월분을 한 번 결제하며, 다음 달에 자동으로 결제되지 않아요.</li>
+                    <li>결제일로부터 7일 이내에는 청약철회(전액 환불)할 수 있어요(전자상거래법).</li>
+                    <li>해지는 이 화면에서 하고, 결제한 기간 끝까지 쓸 수 있어요.</li>
+                  </ul>
+                  <Link to="/terms" className="mt-1.5 inline-block font-bold text-[var(--ink)] underline">
+                    이용약관 전문 보기
+                  </Link>
+                </section>
+
+                {isPaymentConfigured() ? (
+                  <button
+                    type="button"
+                    onClick={handleSubscribe}
+                    className="mt-5 w-full rounded-2xl bg-[var(--refund)] py-3.5 text-base font-bold text-white active:brightness-95"
+                  >
+                    구독하기 · {won(FAMILY_PREMIUM.priceMonthly)}/월
+                  </button>
+                ) : (
+                  <div className="mt-5 rounded-2xl bg-[var(--paper)] p-4">
+                    <p className="text-sm font-bold text-[var(--ink)]">결제 연동 준비됨</p>
+                    <p className="mt-1 text-xs leading-relaxed text-[var(--ink-2)]">
+                      실제 결제는 토스페이먼츠 키를 연결하면 바로 켜집니다(가짜 결제는
+                      만들지 않았어요). 연결 방법:
+                    </p>
+                    <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs leading-relaxed text-[var(--ink-2)]">
+                      <li>토스페이먼츠 가입 → 클라이언트 키·시크릿 키 발급</li>
+                      <li>
+                        <code className="font-data">VITE_TOSS_CLIENT_KEY</code>(프론트) ·{" "}
+                        <code className="font-data">TOSS_SECRET_KEY</code>(서버)를 Vercel
+                        환경변수에 추가
+                      </li>
+                      <li>재배포 → 이 버튼이 실제 결제창으로 바뀜</li>
+                    </ol>
+                    <p className="mt-2 text-[11px] text-[var(--ink-2)]">
+                      자세한 건 저장소의 <code className="font-data">docs/payments.md</code>.
+                    </p>
+                  </div>
+                )}
+              </section>
+            </>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}

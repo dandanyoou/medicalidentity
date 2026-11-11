@@ -1,8 +1,51 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * 디자인 토큰 — "공식 의료 기록물" 미학.
+ * 두 간판이 각자 의미색을 가진다: 신원/응급 = vital(코랄레드), 환급 = refund(그린).
+ * 의료 데이터·금액·ID는 mono로 — 공식 기록/인식표 느낌.
+ */
+:root {
+  --ink: #0b3b3c; /* 딥 틸-블랙: 본문·프레임·신뢰 */
+  --ink-2: #2d5a5b; /* 보조 텍스트 */
+  --paper: #f2f5f4; /* 쿨 오프화이트 배경 */
+  --surface: #ffffff; /* 카드 면 */
+  --mist: #dce6e4; /* 헤어라인·구분 */
+  --vital: #ff5a4d; /* 응급·신원 */
+  --vital-ink: #b3261e; /* vital 텍스트용 어두운 톤 */
+  --vital-2: #ff8f82; /* 다크 카드 위 vital 텍스트(가독성) */
+  --ink-deep: #072a2b; /* 신원증 카드용 더 깊은 잉크 */
+  --refund: #0e9f6e; /* 환급(돈) */
+  --refund-ink: #0a6b4a;
+  --tabbar-h: 4.25rem; /* 하단 탭바 높이(safe-area 제외) */
+}
+
+/* 품질 바닥 — 성공 앱이 당연히 갖춘 디테일. */
+* {
+  -webkit-tap-highlight-color: transparent; /* 터치 시 회색 번쩍임 제거 */
+}
+:focus-visible {
+  outline: 2px solid var(--vital);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* 노치/다이내믹 아일랜드: sticky 헤더 상단에 safe-area만큼 여백(비노치에선 0). */
+header {
+  padding-top: calc(1rem + env(safe-area-inset-top)) !important;
+}
+
+/* 하단 탭바가 콘텐츠를 가리지 않게 — 모든 화면 main 하단에 탭바+safe-area 여백. */
+main {
+  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 1.5rem) !important;
+}
+
 body {
+  background: var(--paper);
+  color: var(--ink);
   font-family:
     "Pretendard",
     -apple-system,
@@ -10,6 +53,12 @@ body {
     "Apple SD Gothic Neo",
     "Noto Sans KR",
     sans-serif;
+}
+
+/* 의료 데이터·금액·ID 전용 — 숫자가 많은 제품이라 숫자에 개성을 싣는다. */
+.font-data {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-feature-settings: "tnum" 1;
 }
 
 /* 검증 결과가 나타날 때 쓰는 연출용 트랜지션 — DoctorScreen 참고. */
@@ -25,4 +74,77 @@ body {
 }
 .animate-reveal-in {
   animation: reveal-in 0.35s ease-out both;
+}
+
+/* 응급 신원증의 vital 엣지가 살아있다는 신호 — reduced-motion이면 끈다. */
+@keyframes vital-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.vital-dot {
+  animation: vital-pulse 1.8s ease-in-out infinite;
+}
+/* 바텀시트 — 아래에서 올라오고, 배경은 서서히 어두워진다. */
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-sheet-up {
+  animation: sheet-up 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.animate-fade-in {
+  animation: fade-in 0.25s ease-out both;
+}
+
+/* 스켈레톤 — 왼쪽에서 오른쪽으로 흐르는 하이라이트. */
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--mist) 25%, var(--paper) 50%, var(--mist) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-light {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.12) 25%,
+    rgba(255, 255, 255, 0.28) 50%,
+    rgba(255, 255, 255, 0.12) 75%
+  );
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-reveal-in,
+  .animate-sheet-up,
+  .animate-fade-in,
+  .skeleton {
+    animation: none;
+  }
+  .vital-dot {
+    animation: none;
+  }
 }
