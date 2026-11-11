@@ -26,7 +26,9 @@ describe("WalletScreen — 오늘 챙길 것", () => {
       </MemoryRouter>,
     );
     expect(await screen.findByText("오늘은 급한 게 없어요")).toBeTruthy();
-    expect(screen.queryByText(/미납 진료비/)).toBeNull();
+    // U1 뒤로 "미납 진료비" 타일은 0원으로 항상 보이므로, '오늘 챙길 것'의 미납 행(N건)만 없는지 본다.
+    expect(screen.queryByText(/미납 진료비 \d+건/)).toBeNull();
+    expect(screen.getByRole("meter", { name: "미납 진료비" }).getAttribute("aria-valuenow")).toBe("0");
   });
 });
 

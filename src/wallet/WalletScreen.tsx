@@ -33,6 +33,9 @@ export function WalletScreen() {
   const unpaidTotal = unpaid.reduce((s, v) => s + v.amount, 0);
   const claimable = listVisits(SELF_ID).filter((v) => v.amount > 0 && !getClaimByVisit(v.id));
   const upcoming = listVisits(SELF_ID).filter((v) => v.status === "예약");
+  // 타일 미터의 분모 — 미납은 "진료 중 몇 건", 환급 가능은 "돈 낸 진료 중 몇 건".
+  const visitCount = listVisits(SELF_ID).filter((v) => v.status !== "예약").length;
+  const paidVisits = listVisits(SELF_ID).filter((v) => v.amount > 0).length;
 
   const [vcs, setVCs] = useState<PatientVCs | null>(null);
   const [emergencyOn, setEmergencyOn] = useState(false);
@@ -132,39 +135,47 @@ export function WalletScreen() {
         </header>
 
         <main className="flex-1 overflow-y-auto px-5 pb-10 pt-4">
-          {/* ───────── 가족 구성원 전환 ───────── */}
-          <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1">
-            {members.map((m) => {
-              const active = m.id === selected.id;
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => selectMember(m.id)}
-                  aria-pressed={active}
-                  className={`flex flex-none items-center gap-2 rounded-full py-1.5 pl-1.5 pr-4 text-sm font-bold transition ${
-                    active
-                      ? "bg-[var(--ink)] text-white"
-                      : "border border-[var(--mist)] bg-[var(--surface)] text-[var(--ink-2)]"
-                  }`}
-                >
-                  <span
-                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
-                      active ? "bg-white/15 text-white" : "bg-[var(--paper)] text-[var(--ink)]"
+          {/* ───────── 가족 구성원 전환 — 알약 세그먼트(어두운 알약 안에서 선택만 흰 알약) ───────── */}
+          <div className="mb-4 flex items-center gap-2">
+            <div
+              role="group"
+              aria-label="가족 선택"
+              className="flex max-w-full min-w-0 gap-1 overflow-x-auto rounded-full bg-[var(--ink)] p-1"
+            >
+              {members.map((m) => {
+                const active = m.id === selected.id;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => selectMember(m.id)}
+                    aria-pressed={active}
+                    className={`flex min-h-[44px] flex-none items-center gap-2 rounded-full py-1 pl-1.5 pr-4 text-sm font-bold transition ${
+                      active ? "bg-[var(--surface)] text-[var(--ink)]" : "text-white/75 active:bg-white/10"
                     }`}
                   >
-                    {m.name.slice(0, 1)}
-                  </span>
-                  {m.name}
-                  <span className="text-[11px] font-medium opacity-70">{m.relation}</span>
-                </button>
-              );
-            })}
+                    <span
+                      className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                        active ? "bg-[var(--paper)] text-[var(--ink)]" : "bg-white/15 text-white"
+                      }`}
+                    >
+                      {m.name.slice(0, 1)}
+                    </span>
+                    {m.name}
+                    <span className={`text-[11px] font-medium ${active ? "text-[var(--ink-2)]" : "text-white/55"}`}>
+                      {m.relation}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
             <Link
               to="/family"
-              className="flex flex-none items-center rounded-full border border-dashed border-[var(--mist)] px-4 py-2 text-sm font-bold text-[var(--ink-2)] active:bg-[var(--surface)]"
+              aria-label="가족 추가"
+              title="가족 추가"
+              className="flex h-11 w-11 flex-none items-center justify-center rounded-full border border-[var(--mist)] bg-[var(--surface)] font-data text-xl font-bold text-[var(--ink)] active:bg-[var(--paper)]"
             >
-              + 가족
+              +
             </Link>
           </div>
 
@@ -359,14 +370,37 @@ export function WalletScreen() {
             </button>
           </BottomSheet>
 
-          {/* ───────── 오늘 챙길 것 (개인화 액션 피드) ───────── */}
-          <section className="mt-5">
-            <p className="mb-2 px-1 font-data text-[10px] uppercase tracking-[0.2em] text-[var(--ink-2)]">
-              오늘 챙길 것
-            </p>
-            <div className="flex flex-col gap-2">
+          {/* ───────── 오늘 숫자 — 타일 두 개(작은 라벨 → 큰 숫자 → 점선 미터 → 의미색 막대) ───────── */}
+          <section aria-label="오늘 숫자" className="mt-5 grid grid-cols-2 gap-2">
+            <StatTile
+              to="/billing"
+              label="미납 진료비"
+              value={unpaidTotal.toLocaleString("ko-KR")}
+              unit="원"
+              hint={unpaid.length > 0 ? `${unpaid.length}건 수납대기` : "다 냈어요"}
+              ratio={visitCount > 0 ? unpaid.length / visitCount : 0}
+              tone="vital"
+            />
+            <StatTile
+              to="/insurance"
+              label="환급 가능"
+              value={String(claimable.length)}
+              unit="건"
+              hint={claimable.length > 0 ? "실손 청구로 돌려받기" : "청구할 게 없어요"}
+              ratio={paidVisits > 0 ? claimable.length / paidVisits : 0}
+              tone="refund"
+            />
+          </section>
+
+          {/* ───────── 오늘 챙길 것 — 카드 속 카드(흰 바깥 카드 · paper 행) ───────── */}
+          <section
+            aria-label="오늘 챙길 것"
+            className="mt-3 rounded-[28px] bg-[var(--surface)] p-3 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+          >
+            <p className="mb-2 px-2 pt-1 text-sm font-extrabold tracking-tight text-[var(--ink)]">오늘 챙길 것</p>
+            <div className="flex flex-col gap-1.5">
               {unpaid.length === 0 && claimable.length === 0 && upcoming.length === 0 && (
-                <div className="flex items-center gap-3 rounded-3xl bg-[var(--refund)]/10 px-5 py-4">
+                <div className="flex items-center gap-3 rounded-2xl bg-[var(--refund)]/10 px-4 py-3">
                   <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[var(--refund)] font-data text-sm font-bold text-white">
                     ✓
                   </span>
@@ -379,93 +413,81 @@ export function WalletScreen() {
                 </div>
               )}
               {unpaid.length > 0 && (
-                <Link
+                <TodoRow
                   to="/billing"
-                  className="relative flex items-center justify-between overflow-hidden rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)] transition active:scale-[0.99]"
-                >
-                  <div className="absolute inset-y-0 left-0 w-1 bg-[var(--vital)]" />
-                  <div className="pl-1">
-                    <p className="text-sm font-bold text-[var(--ink)]">미납 진료비 {unpaid.length}건</p>
-                    <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">
-                      {unpaid[0].hospital}
-                      {unpaid.length > 1 ? ` 외 ${unpaid.length - 1}곳` : ""}
-                    </p>
-                  </div>
-                  <p className="font-data text-lg font-bold text-[var(--vital-ink)]">
-                    <CountUp value={unpaidTotal} suffix="원" />
-                  </p>
-                </Link>
+                  tone="vital"
+                  title={`미납 진료비 ${unpaid.length}건`}
+                  meta={`${unpaid[0].hospital}${unpaid.length > 1 ? ` 외 ${unpaid.length - 1}곳` : ""}`}
+                  trailing={<CountUp value={unpaidTotal} suffix="원" />}
+                />
               )}
               {claimable.length > 0 && (
-                <Link
+                <TodoRow
                   to="/insurance"
-                  className="relative flex items-center justify-between overflow-hidden rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)] transition active:scale-[0.99]"
-                >
-                  <div className="absolute inset-y-0 left-0 w-1 bg-[var(--refund)]" />
-                  <div className="pl-1">
-                    <p className="text-sm font-bold text-[var(--ink)]">실손 청구 가능 {claimable.length}건</p>
-                    <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">낸 병원비, 보험으로 돌려받기</p>
-                  </div>
-                  <span className="font-data text-sm font-bold text-[var(--refund-ink)]">청구 →</span>
-                </Link>
+                  tone="refund"
+                  title={`실손 청구 가능 ${claimable.length}건`}
+                  meta="낸 병원비, 보험으로 돌려받기"
+                  trailing="청구"
+                />
               )}
               {upcoming.length > 0 && (
-                <Link
+                <TodoRow
                   to="/billing"
-                  className="relative flex items-center justify-between overflow-hidden rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)] transition active:scale-[0.99]"
-                >
-                  <div className="absolute inset-y-0 left-0 w-1 bg-[var(--ink)]" />
-                  <div className="pl-1">
-                    <p className="text-sm font-bold text-[var(--ink)]">다가오는 예약 {upcoming.length}건</p>
-                    <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">
-                      {upcoming[0].hospital} · {upcoming[0].dept} · {upcoming[0].date}
-                    </p>
-                  </div>
-                  <span className="font-data text-sm font-bold text-[var(--ink)]">보기 →</span>
-                </Link>
+                  tone="ink"
+                  title={`다가오는 예약 ${upcoming.length}건`}
+                  meta={`${upcoming[0].hospital} · ${upcoming[0].dept} · ${upcoming[0].date}`}
+                  trailing="보기"
+                />
               )}
-              <Link
+              <TodoRow
                 to="/checker"
-                className="relative flex items-center justify-between overflow-hidden rounded-3xl bg-[var(--surface)] px-5 py-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)] transition active:scale-[0.99]"
-              >
-                <div className="absolute inset-y-0 left-0 w-1 bg-[var(--refund)]" />
-                <div className="pl-1">
-                  <p className="text-sm font-bold text-[var(--ink)]">숨은 의료비 환급 찾기</p>
-                  <p className="mt-0.5 text-[11px] text-[var(--ink-2)]">전국 미신청 3,617억원 · 1분이면 확인</p>
-                </div>
-                <span className="font-data text-sm font-bold text-[var(--refund-ink)]">확인 →</span>
-              </Link>
+                tone="refund"
+                title="숨은 의료비 환급 찾기"
+                meta="전국 미신청 3,617억원 · 1분이면 확인"
+                trailing="확인"
+              />
             </div>
           </section>
 
-          {/* ───────── 빠른 작업: 환급 · 실손 · 예약 · 수납 ───────── */}
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {[
-              { to: "/checker", title: "환급", desc: "병원비 돌려받기", accent: "refund" },
-              { to: "/insurance", title: "실손 청구", desc: "낸 병원비 보험 청구", accent: "refund", demo: true },
-              { to: "/booking", title: "예약", desc: "진료 예약", accent: "ink", demo: true },
-              { to: "/billing", title: "수납", desc: "진료비·진료기록", accent: "ink", demo: true },
-            ].map((a) => (
-              <Link
-                key={a.to}
-                to={a.to}
-                className="relative overflow-hidden rounded-3xl bg-[var(--surface)] p-4 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
-              >
-                <div
-                  className={`absolute inset-x-0 top-0 h-1 ${a.accent === "refund" ? "bg-[var(--refund)]" : "bg-[var(--ink)]"}`}
-                />
-                <div className="text-sm font-bold text-[var(--ink)]">
-                  {a.title}
-                  {a.demo && (
-                    <span className="ml-1 font-data text-[9px] font-medium text-[var(--ink-2)]">
-                      시연
-                    </span>
-                  )}
-                </div>
-                <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">{a.desc}</div>
-              </Link>
-            ))}
-          </div>
+          {/* ───────── 빠른 작업: 환급 · 실손 · 예약 · 수납 — 카드 속 카드 ───────── */}
+          <section
+            aria-label="빠른 작업"
+            className="mt-3 rounded-[28px] bg-[var(--surface)] p-3 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
+          >
+            <p className="mb-2 px-2 pt-1 text-sm font-extrabold tracking-tight text-[var(--ink)]">빠른 작업</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { to: "/checker", title: "환급", desc: "병원비 돌려받기", accent: "refund" },
+                { to: "/insurance", title: "실손 청구", desc: "낸 병원비 보험 청구", accent: "refund", demo: true },
+                { to: "/booking", title: "예약", desc: "진료 예약", accent: "ink", demo: true },
+                { to: "/billing", title: "수납", desc: "진료비·진료기록", accent: "ink", demo: true },
+              ].map((a) => (
+                <Link
+                  key={a.to}
+                  to={a.to}
+                  className="flex min-h-[44px] items-center justify-between gap-2 rounded-2xl bg-[var(--paper)] px-4 py-3 active:bg-[var(--mist)]"
+                >
+                  <div>
+                    <div className="text-sm font-bold text-[var(--ink)]">
+                      {a.title}
+                      {a.demo && (
+                        <span className="ml-1 font-data text-[9px] font-medium text-[var(--ink-2)]">시연</span>
+                      )}
+                    </div>
+                    <div className="mt-0.5 text-[11px] leading-snug text-[var(--ink-2)]">{a.desc}</div>
+                  </div>
+                  <span
+                    aria-hidden="true"
+                    className={`flex h-7 w-7 flex-none items-center justify-center rounded-full text-sm font-bold text-white ${
+                      a.accent === "refund" ? "bg-[var(--refund)]" : "bg-[var(--ink)]"
+                    }`}
+                  >
+                    ›
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
 
           {/* ───────── 가족 프리미엄 ───────── */}
           <Link
@@ -516,6 +538,108 @@ export function WalletScreen() {
         </main>
       </div>
     </div>
+  );
+}
+
+type Tone = "vital" | "refund" | "ink";
+const BAR: Record<Tone, string> = {
+  vital: "bg-[var(--vital)]",
+  refund: "bg-[var(--refund)]",
+  ink: "bg-[var(--ink)]",
+};
+const TRAIL: Record<Tone, string> = {
+  vital: "text-[var(--vital-ink)]",
+  refund: "text-[var(--refund-ink)]",
+  ink: "text-[var(--ink)]",
+};
+
+/**
+ * 숫자 타일 — 작은 라벨 → 큰 숫자 → 점선 미터 → 의미색 막대(참고 영상 규칙 2).
+ * 막대 길이는 ratio(0~1). 숫자는 한 타일에 하나만.
+ */
+function StatTile({
+  to,
+  label,
+  value,
+  unit,
+  hint,
+  ratio,
+  tone,
+}: {
+  to: string;
+  label: string;
+  value: string;
+  unit: string;
+  hint: string;
+  ratio: number;
+  tone: Tone;
+}) {
+  const pct = Math.round(Math.max(0, Math.min(1, ratio)) * 100);
+  return (
+    <Link
+      to={to}
+      className="flex flex-col rounded-[24px] bg-[var(--surface)] px-4 pb-4 pt-3.5 shadow-[0_1px_12px_rgba(11,59,60,0.07)] transition active:scale-[0.99]"
+    >
+      <p className="text-[11px] font-semibold text-[var(--ink-2)]">{label}</p>
+      <p className="mt-1 whitespace-nowrap font-data text-[24px] font-bold leading-none tracking-tight text-[var(--ink)] md:text-[30px]">
+        <span>{value}</span>
+        <span className="ml-0.5 text-[13px] font-semibold text-[var(--ink-2)]">{unit}</span>
+      </p>
+      <p className="mt-1 text-[10px] text-[var(--ink-2)]">{hint}</p>
+      <div
+        aria-hidden="true"
+        className="mt-auto h-2 pt-3"
+        style={{
+          backgroundImage: "radial-gradient(circle, var(--mist) 1px, transparent 1.2px)",
+          backgroundSize: "6px 6px",
+        }}
+      />
+      <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-[var(--paper)]">
+        <div
+          role="meter"
+          aria-label={label}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={pct}
+          className={`h-full rounded-full ${BAR[tone]}`}
+          style={{ width: `${Math.max(pct, pct > 0 ? 8 : 0)}%` }}
+        />
+      </div>
+    </Link>
+  );
+}
+
+/** 오늘 챙길 것의 한 행 — paper 면·44px·오른쪽에 금액 또는 행동 단어. */
+function TodoRow({
+  to,
+  tone,
+  title,
+  meta,
+  trailing,
+}: {
+  to: string;
+  tone: Tone;
+  title: string;
+  meta: string;
+  trailing: React.ReactNode;
+}) {
+  return (
+    <Link
+      to={to}
+      className="flex min-h-[44px] items-center justify-between gap-3 rounded-2xl bg-[var(--paper)] px-4 py-3 transition active:bg-[var(--mist)]"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <span aria-hidden="true" className={`h-8 w-1 flex-none rounded-full ${BAR[tone]}`} />
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-[var(--ink)]">{title}</p>
+          <p className="mt-0.5 truncate text-[11px] text-[var(--ink-2)]">{meta}</p>
+        </div>
+      </div>
+      <span className={`flex-none font-data text-sm font-bold ${TRAIL[tone]}`}>
+        {trailing}
+        {typeof trailing === "string" ? " →" : ""}
+      </span>
+    </Link>
   );
 }
 
