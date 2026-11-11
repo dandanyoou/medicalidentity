@@ -60,22 +60,26 @@ export function QueuePanel({ onChange }: { onChange?: () => void } = {}) {
         나타나요.
       </p>
     ) : (
-      <ol className="mt-3 flex flex-col gap-2">
+      // 행 목록 — paper 안쪽 카드, 이니셜 원 · 굵은 이름 · 흐린 메타, 헤어라인 구분. 선택된 행은 잉크 면.
+      <ol aria-label="오늘 대기열" className="mt-3 divide-y divide-[var(--mist)] rounded-2xl bg-[var(--paper)] px-2">
         {queue.map((v) => {
           const name = nameOf(v);
           const isDemo = v.id.startsWith(DEMO_ID_PREFIX);
           const open = openId === v.id;
+          const dark = open && desktop;
           return (
-            <li
-              key={v.id}
-              className={`rounded-2xl px-4 py-3 ${open && desktop ? "bg-[var(--ink)] text-white" : "bg-[var(--paper)]"}`}
-            >
+            <li key={v.id} className={`-mx-2 px-4 py-3 first:rounded-t-2xl last:rounded-b-2xl ${dark ? "bg-[var(--ink)] text-white" : ""}`}>
               <div className="flex items-start gap-3">
-                <span className={`w-12 flex-none font-data text-sm font-bold ${open && desktop ? "text-white" : "text-[var(--ink)]"}`}>
-                  {v.time ?? "—"}
+                <span
+                  aria-hidden="true"
+                  className={`flex h-10 w-10 flex-none items-center justify-center rounded-full text-sm font-bold ${
+                    dark ? "bg-white/15 text-white" : "bg-[var(--surface)] text-[var(--ink)]"
+                  }`}
+                >
+                  {name.slice(0, 1)}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className={`flex items-center gap-1.5 text-sm font-bold ${open && desktop ? "text-white" : "text-[var(--ink)]"}`}>
+                  <p className={`flex items-center gap-1.5 text-sm font-bold ${dark ? "text-white" : "text-[var(--ink)]"}`}>
                     {name}
                     {isDemo && (
                       <span className="rounded-full bg-[var(--mist)] px-1.5 py-0.5 font-data text-[9px] font-bold text-[var(--ink-2)]">
@@ -83,8 +87,10 @@ export function QueuePanel({ onChange }: { onChange?: () => void } = {}) {
                       </span>
                     )}
                   </p>
-                  <p className={`font-data text-[11px] ${open && desktop ? "text-white/70" : "text-[var(--ink-2)]"}`}>{v.dept}</p>
-                  <p className={`mt-1 text-xs leading-relaxed ${open && desktop ? "text-white/80" : "text-[var(--ink-2)]"}`}>{v.reason}</p>
+                  <p className={`font-data text-[11px] ${dark ? "text-white/70" : "text-[var(--ink-2)]"}`}>
+                    <span>{v.time ?? "—"}</span> · {v.dept}
+                  </p>
+                  <p className={`mt-1 text-xs leading-relaxed ${dark ? "text-white/80" : "text-[var(--ink-2)]"}`}>{v.reason}</p>
                 </div>
                 {desktop ? (
                   <button
@@ -168,14 +174,7 @@ export function QueuePanel({ onChange }: { onChange?: () => void } = {}) {
         className="rounded-3xl bg-[var(--surface)] p-5 shadow-[0_1px_12px_rgba(11,59,60,0.07)]"
       >
         {selected ? (
-          <>
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-sm font-bold text-[var(--ink)]">
-                {nameOf(selected)} <span className="font-data text-[11px] font-medium text-[var(--ink-2)]">{selected.time ?? ""} · {selected.dept}</span>
-              </h2>
-            </div>
-            <IntakeCard key={selected.id} visit={selected} onComplete={handleComplete} />
-          </>
+          <IntakeCard key={selected.id} visit={selected} onComplete={handleComplete} />
         ) : (
           <div className="flex min-h-[200px] flex-col items-center justify-center text-center">
             <p className="text-sm font-bold text-[var(--ink)]">왼쪽에서 환자를 고르세요</p>
