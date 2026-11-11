@@ -74,7 +74,8 @@ describe("BillingScreen — 진료 후 병원 평가(R8)", () => {
     const completed = listVisits().filter((v) => v.status === "완료").length;
     const groups = screen.getAllByRole("group", { name: "병원 평가" });
     expect(groups).toHaveLength(completed);
-    const form = groups.find((g) => g.parentElement?.textContent?.includes("2026-11-01"))!;
+    // U5 뒤 진료 기록은 표라, 같은 방문의 묶음(tbody) 안에서 날짜로 찾는다.
+    const form = groups.find((g) => (g.closest("tbody") ?? g.parentElement)?.textContent?.includes("2026-11-01"))!;
     fireEvent.click(within(form).getByRole("button", { name: "4점" }));
     fireEvent.change(within(form).getByLabelText(/한 줄/), { target: { value: "대기 짧았어요" } });
     fireEvent.click(within(form).getByRole("button", { name: /평가 저장/ }));

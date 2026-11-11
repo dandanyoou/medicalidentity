@@ -5,6 +5,7 @@ import { CountUp } from "../shell/CountUp";
 import { Stepper } from "../shell/Stepper";
 import { BottomSheet } from "../shell/BottomSheet";
 import { RemindersCard } from "./RemindersCard";
+import { StatTile } from "../shell/StatTile";
 import { COMMENT_MAX, getRating, rateVisit } from "../visits/ratings";
 
 // 방문 진행 상태 — 예약 → 방문 → 수납.
@@ -48,6 +49,10 @@ export function BillingScreen() {
 
   const visits = listVisits(MEMBER);
   const unpaid = unpaidVisits(MEMBER);
+  const unpaidTotal = unpaid.reduce((s, v) => s + v.amount, 0);
+  const paidVisits = visits.filter((v) => v.paid);
+  const paidTotal = paidVisits.reduce((s, v) => s + v.amount, 0);
+  const billed = visits.filter((v) => v.status !== "예약").length; // 타일 미터의 분모(진료비가 생긴 방문)
   void tick;
 
   function confirmPay() {
@@ -116,31 +121,49 @@ export function BillingScreen() {
             </button>
           </div>
 
-          {unpaid.length > 0 && (
-            <div className="mb-3 flex items-center justify-between rounded-2xl border-l-4 border-[var(--vital)] bg-[var(--surface)] px-4 py-3">
-              <span className="text-sm font-bold text-[var(--vital-ink)]">
-                미납 {unpaid.length}건
-              </span>
-              <span className="font-data text-sm font-bold text-[var(--ink)]">
-                <CountUp value={unpaid.reduce((s, v) => s + v.amount, 0)} suffix="원" />
-              </span>
-            </div>
-          )}
+          {/* 숫자 타일 — 미납(vital) · 낸 진료비(refund). 숫자는 한 타일에 하나. */}
+          <section aria-label="수납 숫자" className="grid grid-cols-2 gap-2">
+            <StatTile
+              label="미납 진료비"
+              value={unpaidTotal.toLocaleString("ko-KR")}
+              unit="원"
+              hint={unpaid.length > 0 ? `미납 ${unpaid.length}건` : "다 냈어요"}
+              ratio={billed > 0 ? unpaid.length / billed : 0}
+              tone="vital"
+            />
+            <StatTile
+              label="낸 진료비"
+              value={paidTotal.toLocaleString("ko-KR")}
+              unit="원"
+              hint={paidVisits.length > 0 ? `수납완료 ${paidVisits.length}건` : "아직 없어요"}
+              ratio={billed > 0 ? paidVisits.length / billed : 0}
+              tone="refund"
+            />
+          </section>
 
-          <p className="mb-2 mt-5 px-1 font-data text-[10px] uppercase tracking-[0.2em] text-[var(--ink-2)]">
-            진료 기록
-          </p>
-          <div className="flex flex-col gap-3">
-            {visits.map((v) => (
-              <VisitCard
-                key={v.id}
-                visit={v}
-                open={openId === v.id}
-                onToggle={() => setOpenId((id) => (id === v.id ? null : v.id))}
-                onPay={() => setPayTarget(v)}
-              />
-            ))}
-          </div>
+          {/* 진료 기록 — 표(헤더 행 흰 면·흐린 글씨, 본문 헤어라인). 행을 누르면 상세가 아래에 카드 속 카드로. */}
+          <section className="mt-3 rounded-[24px] bg-[var(--surface)] p-3 shadow-[0_1px_12px_rgba(11,59,60,0.07)]">
+            <p className="mb-2 px-2 pt-1 text-sm font-extrabold tracking-tight text-[var(--ink)]">진료 기록</p>
+            {/* table-fixed — 긴 사유 문장이 첫 열을 넓히지 않게(폰 폭에서 날짜·금액 열이 밀리지 않도록). */}
+            <table aria-label="진료 기록" className="w-full table-fixed border-collapse text-left">
+              <thead>
+                <tr className="whitespace-nowrap text-[10px] font-semibold text-[var(--ink-2)]">
+                  <th scope="col" className="rounded-l-xl bg-[var(--paper)] px-2 py-2 font-semibold">병원 · 과</th>
+                  <th scope="col" className="w-[78px] bg-[var(--paper)] px-2 py-2 font-semibold">날짜</th>
+                  <th scope="col" className="w-[92px] rounded-r-xl bg-[var(--paper)] px-2 py-2 text-right font-semibold">금액 · 상태</th>
+                </tr>
+              </thead>
+              {visits.map((v) => (
+                <VisitRows
+                  key={v.id}
+                  visit={v}
+                  open={openId === v.id}
+                  onToggle={() => setOpenId((id) => (id === v.id ? null : v.id))}
+                  onPay={() => setPayTarget(v)}
+                />
+              ))}
+            </table>
+          </section>
         </main>
 
         <BottomSheet
@@ -185,7 +208,11 @@ export function BillingScreen() {
   );
 }
 
-function VisitCard({
+/**
+ * 진료 기록 표의 한 방문 — 접힌 행 1개 + (완료면) 평가 행 + (펼치면) 상세 행.
+ * 행 전체를 누르면 펼쳐지고, 첫 칸의 버튼이 키보드·스크린리더용 손잡이다.
+ */
+function VisitRows({
   visit,
   open,
   onToggle,
@@ -196,92 +223,97 @@ function VisitCard({
   onToggle: () => void;
   onPay: () => void;
 }) {
+  const bar =
+    visit.status === "수납대기" ? "bg-[var(--vital)]" : visit.status === "예약" ? "bg-[var(--ink)]" : "bg-[var(--refund)]";
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-[var(--surface)] shadow-[0_1px_12px_rgba(11,59,60,0.07)]">
-      <div
-        className={`absolute inset-y-0 left-0 w-1 ${
-          visit.status === "수납대기"
-            ? "bg-[var(--vital)]"
-            : visit.status === "예약"
-              ? "bg-[var(--ink)]"
-              : "bg-[var(--refund)]"
-        }`}
-      />
-      <button
-        type="button"
-        onClick={onToggle}
-        className="block w-full px-5 py-4 pl-6 text-left"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-[var(--ink)]">{visit.hospital}</p>
-            <p className="font-data text-[11px] text-[var(--ink-2)]">
-              {visit.date} · {visit.dept}
-            </p>
-            <p className="mt-1 truncate text-xs text-[var(--ink-2)]">{visit.reason}</p>
-          </div>
-          <div className="flex-none text-right">
-            <p className="font-data text-base font-bold text-[var(--ink)]">
-              {won(visit.amount)}
-            </p>
-            <span
-              className={`mt-1 inline-block rounded-full px-2 py-0.5 font-data text-[10px] font-bold ${STATUS_BADGE[visit.status].cls}`}
-            >
-              {STATUS_BADGE[visit.status].label}
+    <tbody className="border-t border-[var(--mist)] first-of-type:border-t-0">
+      <tr onClick={onToggle} className="cursor-pointer align-top active:bg-[var(--paper)]">
+        <td className="px-2 py-3">
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggle();
+            }}
+            className="flex min-h-[44px] w-full min-w-0 items-start gap-2 text-left"
+          >
+            <span aria-hidden="true" className={`mt-1 h-8 w-1 flex-none rounded-full ${bar}`} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-bold text-[var(--ink)]">{visit.hospital}</span>
+              <span className="block font-data text-[11px] text-[var(--ink-2)]">{visit.dept}</span>
+              <span className="mt-0.5 block truncate text-xs text-[var(--ink-2)]">{visit.reason}</span>
             </span>
-          </div>
-        </div>
-      </button>
+          </button>
+        </td>
+        <td className="whitespace-nowrap px-2 py-3 pt-4 font-data text-[11px] text-[var(--ink-2)]">{visit.date}</td>
+        <td className="whitespace-nowrap px-2 py-3 pt-4 text-right">
+          <span className="block font-data text-sm font-bold text-[var(--ink)]">{won(visit.amount)}</span>
+          <span
+            className={`mt-1 inline-block rounded-full px-2 py-0.5 font-data text-[10px] font-bold ${STATUS_BADGE[visit.status].cls}`}
+          >
+            {STATUS_BADGE[visit.status].label}
+          </span>
+        </td>
+      </tr>
 
-      {visit.status === "완료" && <RatingBox visit={visit} />}
+      {visit.status === "완료" && (
+        <tr>
+          <td colSpan={3} className="px-0 pb-2">
+            <RatingBox visit={visit} />
+          </td>
+        </tr>
+      )}
 
       {open && (
-        <div className="animate-reveal-in border-t border-[var(--mist)] px-5 py-4 pl-6">
-          <div className="mb-4">
-            <Stepper steps={VISIT_STEPS} current={VISIT_STEP_INDEX[visit.status]} />
-          </div>
-          <Section label="방문 사유">
-            <p className="text-sm text-[var(--ink)]">{visit.reason}</p>
-          </Section>
+        <tr>
+          <td colSpan={3} className="px-1 pb-3">
+            {/* 카드 속 카드 — 상세는 paper 안쪽 카드 */}
+            <div role="group" aria-label="진료 상세" className="animate-reveal-in rounded-2xl bg-[var(--paper)] px-4 py-4">
+              <div className="mb-4">
+                <Stepper steps={VISIT_STEPS} current={VISIT_STEP_INDEX[visit.status]} />
+              </div>
+              <Section label="방문 사유">
+                <p className="text-sm text-[var(--ink)]">{visit.reason}</p>
+              </Section>
 
-          {visit.opinion && (
-            <Section label="소견서">
-              <p className="text-sm leading-relaxed text-[var(--ink)]">{visit.opinion}</p>
-            </Section>
-          )}
+              {visit.opinion && (
+                <Section label="소견서">
+                  <p className="text-sm leading-relaxed text-[var(--ink)]">{visit.opinion}</p>
+                </Section>
+              )}
 
-          <Section label="처방전">
-            {visit.prescriptions && visit.prescriptions.length > 0 ? (
-              <ul className="flex flex-col gap-2">
-                {visit.prescriptions.map((p) => (
-                  <li
-                    key={p.drug}
-                    className="rounded-xl bg-[var(--paper)] px-3 py-2"
-                  >
-                    <p className="text-sm font-semibold text-[var(--ink)]">{p.drug}</p>
-                    <p className="font-data text-[11px] text-[var(--ink-2)]">
-                      {p.dose} · {p.days}일분
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-[var(--ink-2)]">처방 없음</p>
-            )}
-          </Section>
+              <Section label="처방전">
+                {visit.prescriptions && visit.prescriptions.length > 0 ? (
+                  <ul className="flex flex-col gap-2">
+                    {visit.prescriptions.map((p) => (
+                      <li key={p.drug} className="rounded-xl bg-[var(--surface)] px-3 py-2">
+                        <p className="text-sm font-semibold text-[var(--ink)]">{p.drug}</p>
+                        <p className="font-data text-[11px] text-[var(--ink-2)]">
+                          {p.dose} · {p.days}일분
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-[var(--ink-2)]">처방 없음</p>
+                )}
+              </Section>
 
-          {isUnpaid(visit) && (
-            <button
-              type="button"
-              onClick={onPay}
-              className="mt-2 w-full rounded-2xl bg-[var(--ink)] py-3 text-sm font-bold text-white active:brightness-110"
-            >
-              수납하기 · {won(visit.amount)} (시연)
-            </button>
-          )}
-        </div>
+              {isUnpaid(visit) && (
+                <button
+                  type="button"
+                  onClick={onPay}
+                  className="mt-2 min-h-[44px] w-full rounded-full bg-[var(--ink)] py-3 text-sm font-bold text-white active:brightness-110"
+                >
+                  수납하기 · {won(visit.amount)} (시연)
+                </button>
+              )}
+            </div>
+          </td>
+        </tr>
       )}
-    </div>
+    </tbody>
   );
 }
 
